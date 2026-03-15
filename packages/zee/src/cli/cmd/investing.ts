@@ -5,12 +5,14 @@ import {
   INVESTING_EVENT_CLASSIFICATIONS,
   INVESTING_EVENT_CONNECTORS,
   INVESTING_EVENT_DIRECTIONS,
+  INVESTING_EVENT_MATERIALITY_BANDS,
   getInvestingEvent,
   getInvestingEventCatalogStatus,
   listInvestingEvents,
   type InvestingEventClassification,
   type InvestingEventConnector,
   type InvestingEventDirection,
+  type InvestingEventMaterialityBand,
 } from "@/investing/events"
 import {
   INVESTING_CONNECTOR_KINDS,
@@ -180,6 +182,8 @@ const InvestingEventStatusCommand = cmd({
     console.log(`- by connector: ${JSON.stringify(status.countsByConnector)}`)
     console.log(`- by classification: ${JSON.stringify(status.countsByClassification)}`)
     console.log(`- by direction: ${JSON.stringify(status.countsByDirection)}`)
+    console.log(`- by materiality: ${JSON.stringify(status.countsByMaterialityBand)}`)
+    console.log(`- linked coverage: holdings=${status.holdingLinkedCount} watchlist=${status.watchlistLinkedCount}`)
   },
 })
 
@@ -203,9 +207,24 @@ const InvestingEventListCommand = cmd({
         choices: [...INVESTING_EVENT_DIRECTIONS],
         describe: "optional direction filter",
       })
+      .option("materiality-band", {
+        type: "string",
+        choices: [...INVESTING_EVENT_MATERIALITY_BANDS],
+        describe: "optional materiality band filter",
+      })
       .option("symbol", {
         type: "string",
         describe: "optional symbol filter",
+      })
+      .option("holding", {
+        type: "boolean",
+        default: false,
+        describe: "only include events linked to holdings",
+      })
+      .option("watchlist", {
+        type: "boolean",
+        default: false,
+        describe: "only include events linked to watchlist symbols",
       })
       .option("limit", {
         type: "number",
@@ -221,7 +240,10 @@ const InvestingEventListCommand = cmd({
     connector?: InvestingEventConnector
     classification?: InvestingEventClassification
     direction?: InvestingEventDirection
+    materialityBand?: InvestingEventMaterialityBand
     symbol?: string
+    holding?: boolean
+    watchlist?: boolean
     limit?: number
     json?: boolean
   }) => {
@@ -229,7 +251,10 @@ const InvestingEventListCommand = cmd({
       connector: args.connector,
       classification: args.classification,
       direction: args.direction,
+      materialityBand: args.materialityBand,
       symbol: args.symbol,
+      holdingOnly: args.holding,
+      watchlistOnly: args.watchlist,
       limit: args.limit,
     })
     if (args.json) {
@@ -238,7 +263,7 @@ const InvestingEventListCommand = cmd({
     }
     for (const event of events) {
       console.log(
-        `- ${event.id}: ${event.classification} connector=${event.connector} direction=${event.direction} confidence=${event.confidence.toFixed(2)} symbol=${event.symbol ?? "n/a"} asOf=${event.asOf} title=${event.title}`,
+        `- ${event.id}: ${event.classification} connector=${event.connector} direction=${event.direction} materiality=${event.materiality.band}:${event.materiality.score} audience=${event.entityLinks.audience} confidence=${event.confidence.toFixed(2)} symbol=${event.symbol ?? "n/a"} asOf=${event.asOf} title=${event.title}`,
       )
     }
   },
@@ -272,10 +297,14 @@ const InvestingEventReadCommand = cmd({
 
     console.log(`${event.id}`)
     console.log(`- classification=${event.classification} connector=${event.connector} direction=${event.direction}`)
+    console.log(`- materiality=${event.materiality.band} score=${event.materiality.score} audience=${event.entityLinks.audience}`)
     console.log(`- confidence=${event.confidence.toFixed(2)} symbol=${event.symbol ?? "n/a"} asOf=${event.asOf}`)
+    console.log(`- sectors=${event.entityLinks.sectorLabels.join(", ") || "n/a"}`)
+    console.log(`- holding=${event.entityLinks.holdingId ?? "n/a"} watchlist=${event.entityLinks.watchlistId ?? "n/a"}`)
     console.log(`- title=${event.title}`)
     console.log(`- summary=${event.summary}`)
     console.log(`- reasons=${event.reasons.join("; ") || "n/a"}`)
+    console.log(`- materiality-reasons=${event.materiality.reasons.join("; ") || "n/a"}`)
   },
 })
 

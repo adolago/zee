@@ -478,6 +478,8 @@ export async function executeInvestingConnectorRun(input: {
   stateFile?: string
   entityStateFile?: string
   eventStateFile?: string
+  portfolioFile?: string
+  watchlistFile?: string
   now?: number
 }): Promise<InvestingConnectorRunRecord> {
   const startedAt = input.now ?? Date.now()
@@ -509,6 +511,8 @@ export async function executeInvestingConnectorRun(input: {
         ? await upsertInvestingEvents({
             events: classifiedEvents,
             stateFile: input.eventStateFile,
+            portfolioFile: input.portfolioFile,
+            watchlistFile: input.watchlistFile,
           })
         : undefined
     const record: InvestingConnectorRunRecord = {
@@ -558,6 +562,9 @@ export async function executeInvestingConnectorRun(input: {
         classifiedEventTypes: [...new Set(classifiedEvents.map((event) => event.classification))],
         eventInserted: eventUpdate?.inserted ?? 0,
         eventUpdated: eventUpdate?.updated ?? 0,
+        materialityBands: eventUpdate?.batchCountsByMaterialityBand ?? undefined,
+        holdingLinkedCount: eventUpdate?.batchHoldingLinkedCount ?? 0,
+        watchlistLinkedCount: eventUpdate?.batchWatchlistLinkedCount ?? 0,
         freshnessStatus: record.freshnessStatus,
         freshnessSloMinutes: record.freshnessSloMinutes,
         retryAttempts: record.retryAttempts,
@@ -633,6 +640,8 @@ export async function executeInvestingConnectorRunWithRetry(input: {
   stateFile?: string
   entityStateFile?: string
   eventStateFile?: string
+  portfolioFile?: string
+  watchlistFile?: string
   now?: number
   sleep?: (ms: number) => Promise<void>
 }): Promise<InvestingConnectorRunRecord> {
@@ -649,6 +658,8 @@ export async function executeInvestingConnectorRunWithRetry(input: {
         stateFile: input.stateFile,
         entityStateFile: input.entityStateFile,
         eventStateFile: input.eventStateFile,
+        portfolioFile: input.portfolioFile,
+        watchlistFile: input.watchlistFile,
         now: attempt === 0 ? input.now : undefined,
       })
     } catch (error) {
@@ -687,6 +698,8 @@ export async function runInvestingConnector(
     stateFile?: string
     entityStateFile?: string
     eventStateFile?: string
+    portfolioFile?: string
+    watchlistFile?: string
   } = {},
 ): Promise<InvestingConnectorRunRecord> {
   const rawConfig = options.config ?? (await Config.get())
@@ -701,6 +714,8 @@ export async function runInvestingConnector(
       stateFile: options.stateFile,
       entityStateFile: options.entityStateFile,
       eventStateFile: options.eventStateFile,
+      portfolioFile: options.portfolioFile,
+      watchlistFile: options.watchlistFile,
     })
   } finally {
     await client.disconnect().catch(() => {})
@@ -712,6 +727,8 @@ export async function runEnabledInvestingConnectors(options: {
   stateFile?: string
   entityStateFile?: string
   eventStateFile?: string
+  portfolioFile?: string
+  watchlistFile?: string
   connectors?: InvestingConnectorKind[]
 } = {}): Promise<InvestingConnectorRunRecord[]> {
   const rawConfig = options.config ?? (await Config.get())
@@ -732,6 +749,8 @@ export async function runEnabledInvestingConnectors(options: {
           stateFile: options.stateFile,
           entityStateFile: options.entityStateFile,
           eventStateFile: options.eventStateFile,
+          portfolioFile: options.portfolioFile,
+          watchlistFile: options.watchlistFile,
         }),
       )
     }
@@ -844,6 +863,8 @@ async function runBackfillWithConnectorConfig(input: {
   stateFile?: string
   entityStateFile?: string
   eventStateFile?: string
+  portfolioFile?: string
+  watchlistFile?: string
 }): Promise<InvestingConnectorRunRecord> {
   const client = await createInvestingClient(input.rawConfig)
   try {
@@ -854,6 +875,8 @@ async function runBackfillWithConnectorConfig(input: {
       stateFile: input.stateFile,
       entityStateFile: input.entityStateFile,
       eventStateFile: input.eventStateFile,
+      portfolioFile: input.portfolioFile,
+      watchlistFile: input.watchlistFile,
     })
   } finally {
     await client.disconnect().catch(() => {})
@@ -903,6 +926,8 @@ export async function runInvestingConnectorBackfill(input: {
   stateFile?: string
   entityStateFile?: string
   eventStateFile?: string
+  portfolioFile?: string
+  watchlistFile?: string
   operationsFile?: string
   symbols?: string[]
   lookbackDays?: number
@@ -952,6 +977,8 @@ export async function runInvestingConnectorBackfill(input: {
           stateFile: input.stateFile,
           entityStateFile: input.entityStateFile,
           eventStateFile: input.eventStateFile,
+          portfolioFile: input.portfolioFile,
+          watchlistFile: input.watchlistFile,
         })
 
     record.finishedAt = Date.now()

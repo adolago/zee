@@ -48,6 +48,7 @@ import {
   INVESTING_EVENT_CLASSIFICATIONS,
   INVESTING_EVENT_CONNECTORS,
   INVESTING_EVENT_DIRECTIONS,
+  INVESTING_EVENT_MATERIALITY_BANDS,
   getInvestingEvent,
   getInvestingEventCatalogStatus,
   listInvestingEvents,
@@ -794,7 +795,10 @@ const EventIntelligenceParams = z.discriminatedUnion("action", [
     connector: z.enum(INVESTING_EVENT_CONNECTORS).optional().describe("Optional connector filter"),
     classification: z.enum(INVESTING_EVENT_CLASSIFICATIONS).optional().describe("Optional classification filter"),
     direction: z.enum(INVESTING_EVENT_DIRECTIONS).optional().describe("Optional direction filter"),
+    materialityBand: z.enum(INVESTING_EVENT_MATERIALITY_BANDS).optional().describe("Optional materiality band filter"),
     symbol: z.string().optional().describe("Optional symbol filter"),
+    holdingOnly: z.boolean().default(false).describe("Only include events linked to holdings"),
+    watchlistOnly: z.boolean().default(false).describe("Only include events linked to watchlist symbols"),
     limit: z.number().min(1).max(100).default(10).describe("Maximum number of events to return"),
   }),
   z.object({
@@ -826,7 +830,10 @@ export const eventIntelligenceTool: ToolDefinition = {
             connector: args.connector,
             classification: args.classification,
             direction: args.direction,
+            materialityBand: args.materialityBand,
             symbol: args.symbol,
+            holdingOnly: args.holdingOnly,
+            watchlistOnly: args.watchlistOnly,
             limit: args.limit,
           });
           return {
@@ -837,7 +844,10 @@ export const eventIntelligenceTool: ToolDefinition = {
               connector: args.connector,
               classification: args.classification,
               direction: args.direction,
+              materialityBand: args.materialityBand,
               symbol: args.symbol,
+              holdingOnly: args.holdingOnly,
+              watchlistOnly: args.watchlistOnly,
             },
             output: JSON.stringify({ events, count: events.length }, null, 2),
           };
