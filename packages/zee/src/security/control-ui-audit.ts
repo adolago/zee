@@ -1,4 +1,5 @@
 import { Flag } from "@/flag/flag"
+import { FluxRecorder } from "@/flux"
 import { isLoopbackHostname } from "@/server/auth"
 
 export const CONTROL_UI_BREAK_GLASS_ACK = "I_UNDERSTAND_CONTROL_UI_AUTH_IS_INSECURE"
@@ -18,6 +19,32 @@ export type SecurityAuditReport = {
   warnings: number
   checked: string[]
   findings: SecurityAuditFinding[]
+  metrics: SecurityAuditMetrics
+}
+
+export type SecurityAuditMetrics = {
+  checkedCount: number
+  findingCount: number
+  activePairedNodes?: number
+  revokedPairedNodes?: number
+  totalPairedNodes?: number
+  unknownStatusNodes?: number
+  duplicateTokenHashes?: number
+  missingTokenHashes?: number
+  activeNodesMissingLastSeen?: number
+  revokedNodesMissingTimestamp?: number
+  revokedNodesMissingReason?: number
+  nodeClientEnabled?: boolean
+  nodeClientSecurityMode?: "deny" | "allowlist" | "full"
+}
+
+export type SecurityAuditTelemetrySource = "security.audit" | "doctor.security" | "v3.release"
+
+export type SecurityAuditTelemetryInput = {
+  source: SecurityAuditTelemetrySource
+  deep: boolean
+  strict?: boolean
+  report: SecurityAuditReport
 }
 
 function asObject(value: unknown): Record<string, unknown> | undefined {
@@ -53,7 +80,11 @@ function hasBreakGlassAcknowledgement(configValue: unknown): boolean {
   return effective === CONTROL_UI_BREAK_GLASS_ACK
 }
 
-function summarizeFindings(checked: string[], findings: SecurityAuditFinding[]): SecurityAuditReport {
+function summarizeFindings(
+  checked: string[],
+  findings: SecurityAuditFinding[],
+  metrics: Partial<SecurityAuditMetrics> = {},
+): SecurityAuditReport {
   const errors = findings.filter((item) => item.severity === "error").length
   const warnings = findings.filter((item) => item.severity === "warning").length
   return {
@@ -62,7 +93,59 @@ function summarizeFindings(checked: string[], findings: SecurityAuditFinding[]):
     warnings,
     checked,
     findings,
+    metrics: {
+      checkedCount: checked.length,
+      findingCount: findings.length,
+      ...metrics,
+    },
   }
+}
+
+export function emitSecurityAuditTelemetry(input: SecurityAuditTelemetryInput): { traceID: string } {
+  const traceID = crypto.randomUUID()
+  const metadata = {
+    source: input.source,
+    deep: input.deep,
+    strict: input.strict ?? false,
+    ok: input.report.ok,
+    errors: input.report.errors,
+    warnings: input.report.warnings,
+    ...input.report.metrics,
+  }
+
+  FluxRecorder.record({
+    traceID,
+    direction: "internal",
+    domain: "security",
+    kind: "security.audit.checked",
+    status: input.report.ok ? "ok" : "error",
+    method: "CLI",
+    path: input.source,
+    route: input.source,
+    metadata,
+  })
+
+  for (const finding of input.report.findings) {
+    FluxRecorder.record({
+      traceID,
+      direction: "internal",
+      domain: "security",
+      kind: "security.audit.finding",
+      status: finding.severity === "error" ? "error" : "ok",
+      method: "CLI",
+      path: input.source,
+      route: input.source,
+      metadata: {
+        source: input.source,
+        deep: input.deep,
+        severity: finding.severity,
+        code: finding.code,
+        hasRemediation: Boolean(finding.remediation),
+      },
+    })
+  }
+
+  return { traceID }
 }
 
 export function auditControlUiSecurity(config: unknown): SecurityAuditReport {
@@ -261,40 +344,111 @@ export function auditControlUiSecurity(config: unknown): SecurityAuditReport {
 
 export async function auditControlUiSecurityDeep(config: unknown): Promise<SecurityAuditReport> {
   const base = auditControlUiSecurity(config)
-  const checked = [...base.checked, "gateway.nodeClient.state.active", "gateway.nodeClient.state.revoked"]
+  const checked = [
+    ...base.checked,
+    "gateway.nodeClient.state.active",
+    "gateway.nodeClient.state.revoked",
+    "gateway.nodeClient.state.total",
+    "gateway.nodeClient.state.status",
+    "gateway.nodeClient.state.tokenHash",
+    "gateway.nodeClient.state.lastSeenAt",
+    "gateway.nodeClient.state.revokeMetadata",
+  ]
   const findings = [...base.findings]
 
   try {
     const { getNodeClientRegistry, resolveNodeClientPolicy } = await import("@/gateway/node-client-registry")
     const policy = resolveNodeClientPolicy(config)
-    const stats = await getNodeClientRegistry().getStats()
+    const snapshot = await getNodeClientRegistry().getAuditSnapshot()
 
-    if (stats.active > 0 && !policy.enabled) {
+    if (snapshot.active > 0 && !policy.enabled) {
       findings.push({
         severity: "warning",
         code: "node_client_state_present_but_feature_disabled",
-        message: `There are ${stats.active} active paired nodes while gateway.nodeClient.enabled is false.`,
+        message: `There are ${snapshot.active} active paired nodes while gateway.nodeClient.enabled is false.`,
         remediation: "Reconcile state: either enable nodeClient policy or revoke stale paired nodes.",
       })
     }
 
-    if (stats.active > policy.maxPairedNodes) {
+    if (snapshot.active > policy.maxPairedNodes) {
       findings.push({
         severity: "error",
         code: "node_client_active_nodes_exceed_limit",
-        message: `Active paired nodes (${stats.active}) exceed maxPairedNodes (${policy.maxPairedNodes}).`,
+        message: `Active paired nodes (${snapshot.active}) exceed maxPairedNodes (${policy.maxPairedNodes}).`,
         remediation: "Revoke unused nodes or increase maxPairedNodes after explicit risk review.",
       })
     }
 
-    if (stats.active > 0 && policy.securityMode === "full") {
+    if (snapshot.active > 0 && policy.securityMode === "full") {
       findings.push({
         severity: "error",
         code: "node_client_active_nodes_with_full_mode",
-        message: `There are ${stats.active} active nodes while securityMode=full.`,
+        message: `There are ${snapshot.active} active nodes while securityMode=full.`,
         remediation: "Move to allowlist mode and rotate pair tokens after policy downgrade.",
       })
     }
+
+    if (snapshot.unknownStatus > 0) {
+      findings.push({
+        severity: "error",
+        code: "node_client_state_unknown_status",
+        message: `${snapshot.unknownStatus} node record(s) use an unknown status value.`,
+        remediation: "Repair corrupted node-client state and keep record statuses limited to `paired` or `revoked`.",
+      })
+    }
+
+    if (snapshot.missingTokenHashes > 0) {
+      findings.push({
+        severity: "error",
+        code: "node_client_state_missing_token_hash",
+        message: `${snapshot.missingTokenHashes} node record(s) are missing a token hash.`,
+        remediation: "Revoke affected node records and re-pair them to regenerate credentials safely.",
+      })
+    }
+
+    if (snapshot.duplicateTokenHashes > 0) {
+      findings.push({
+        severity: "error",
+        code: "node_client_duplicate_token_hash",
+        message: `${snapshot.duplicateTokenHashes} duplicate node credential hash collision(s) were detected.`,
+        remediation: "Revoke the duplicated node records and re-pair them to restore unique credentials.",
+      })
+    }
+
+    if (snapshot.activeMissingLastSeen > 0) {
+      findings.push({
+        severity: "warning",
+        code: "node_client_active_nodes_missing_last_seen",
+        message: `${snapshot.activeMissingLastSeen} active node record(s) are missing lastSeenAt audit metadata.`,
+        remediation: "Reconnect or rotate affected nodes so operator audit history reflects current activity.",
+      })
+    }
+
+    if (snapshot.revokedMissingTimestamp > 0 || snapshot.revokedMissingReason > 0) {
+      findings.push({
+        severity: "warning",
+        code: "node_client_revoked_metadata_incomplete",
+        message:
+          `Revoked node metadata is incomplete (` +
+          `missing revokedAt=${snapshot.revokedMissingTimestamp}, missing revokeReason=${snapshot.revokedMissingReason}).`,
+        remediation: "Normalize stale revoked records so audit trails retain both revocation timestamp and operator reason.",
+      })
+    }
+
+    return summarizeFindings(checked, findings, {
+      ...base.metrics,
+      activePairedNodes: snapshot.active,
+      revokedPairedNodes: snapshot.revoked,
+      totalPairedNodes: snapshot.total,
+      unknownStatusNodes: snapshot.unknownStatus,
+      duplicateTokenHashes: snapshot.duplicateTokenHashes,
+      missingTokenHashes: snapshot.missingTokenHashes,
+      activeNodesMissingLastSeen: snapshot.activeMissingLastSeen,
+      revokedNodesMissingTimestamp: snapshot.revokedMissingTimestamp,
+      revokedNodesMissingReason: snapshot.revokedMissingReason,
+      nodeClientEnabled: policy.enabled,
+      nodeClientSecurityMode: policy.securityMode,
+    })
   } catch (error) {
     findings.push({
       severity: "warning",
@@ -304,5 +458,5 @@ export async function auditControlUiSecurityDeep(config: unknown): Promise<Secur
     })
   }
 
-  return summarizeFindings(checked, findings)
+  return summarizeFindings(checked, findings, base.metrics)
 }

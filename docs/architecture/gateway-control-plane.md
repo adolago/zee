@@ -84,7 +84,9 @@ Audit commands:
 
 ```bash
 zee security audit
+zee security audit --deep --strict
 zee doctor security
+zee doctor security --deep --strict
 ```
 
 Header semantics:
@@ -96,6 +98,18 @@ Header semantics:
   - password mode returns `WWW-Authenticate: Basic realm="zee"`
 
 For non-loopback deployments, terminate TLS at a reverse proxy and keep `trustedOrigins` explicit.
+
+Deep audit operator checks:
+
+- paired-node exposure: active paired nodes while `gateway.nodeClient.enabled=false`
+- policy drift: active paired nodes above `maxPairedNodes` or while `securityMode=full`
+- state integrity: unknown node statuses, missing token hashes, duplicate token hashes
+- audit trail completeness: active nodes missing `lastSeenAt`, revoked nodes missing `revokedAt` or `revokeReason`
+
+Audit telemetry:
+
+- `security.audit.checked`: summary event with error/warning totals plus paired-node metrics
+- `security.audit.finding`: one event per audit finding code for downstream dashboards or release gates
 
 ## Telegram Channel-Native Action Pack
 
