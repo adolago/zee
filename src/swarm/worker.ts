@@ -83,6 +83,7 @@ export class Worker extends EventEmitter {
           ZEE_WORKER_ID: this.id,
           ZEE_WORKER_NAME: this.name,
           ZEE_AGENT: this.agent,
+          ZEE_CLIENT: "daemon",
           ZEE_IS_SUBAGENT: "true",
           ZEE_PARENT_PID: String(process.pid),
           ...(this.permissionScope ? { ZEE_PERMISSION_SCOPE: this.permissionScope } : {}),

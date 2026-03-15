@@ -149,11 +149,14 @@ export namespace SessionCompaction {
         created: Date.now(),
       },
     })) as MessageV2.Assistant
+    const session = await Session.get(input.sessionID)
     const processor = await createSessionRuntimeProcessor({
       assistantMessage: msg,
       sessionID: input.sessionID,
       model,
       abort: input.abort,
+      sessionSurface: session?.surface,
+      source: "compaction",
     })
     // Allow plugins to inject context or replace compaction prompt
     const compacting = await Plugin.trigger(

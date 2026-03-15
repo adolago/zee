@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto"
 import { createConnection, type Socket } from "node:net"
+import { recordOpenCodeRuntimeRoute } from "@/runtime/opencode-rollout"
 
 export type RuntimeAgent = "zee"
 
@@ -109,6 +110,14 @@ export async function requestOrchestration<TParams = unknown, TResult = unknown>
     params,
     timestamp: Date.now(),
   }
+  recordOpenCodeRuntimeRoute({
+    surface: "orchestration",
+    requestID: request.id,
+    traceID: request.id,
+    metadata: {
+      command,
+    },
+  })
 
   const formatSocketError = (error: unknown, targetPath: string): Error => {
     const err = error as NodeJS.ErrnoException

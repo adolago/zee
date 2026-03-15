@@ -6,6 +6,7 @@ export type FluxDomain =
   | "provider"
   | "gateway"
   | "investing"
+  | "runtime"
   | "auth"
   | "security"
   | "mcp"
@@ -73,6 +74,8 @@ export type FluxKind =
   | "llm.bridge.stream.error"
   | "orchestration.pi_agent_event_schema.used"
   | "compat.shim.used"
+  | "runtime.opencode.route.selected"
+  | "runtime.opencode.route.fallback"
   | "event"
 
 export type FluxRedaction = "strict" | "balanced" | "debug"

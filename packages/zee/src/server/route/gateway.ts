@@ -14,6 +14,7 @@ import { RequestMeta } from "../request-meta"
 import { extractGatewayRouteSecret, isMatchingSecret } from "@/security"
 import { Config } from "@/config/config"
 import { getServerRuntimeConfig, isTrustedControlOrigin } from "../auth"
+import { recordOpenCodeRuntimeRoute } from "@/runtime/opencode-rollout"
 
 const log = Log.create({ service: "server:gateway" })
 
@@ -256,6 +257,17 @@ async function callGateway<T = unknown>(
   log.debug("callGateway started", { method })
   const timeoutMs = options.timeoutMs ?? 10_000
   const traceID = options.traceID ?? crypto.randomUUID()
+  recordOpenCodeRuntimeRoute({
+    surface: "gateway",
+    traceID,
+    requestID: options.requestID,
+    sessionID: options.sessionID,
+    metadata: {
+      method,
+      timeoutMs,
+      agentID: options.agentID,
+    },
+  })
   const startedAt = Date.now()
   FluxRecorder.record({
     traceID,
