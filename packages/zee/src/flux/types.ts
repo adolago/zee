@@ -51,6 +51,7 @@ export type FluxKind =
   | "investing.ingestion.run"
   | "investing.ingestion.schedule"
   | "investing.event.classified"
+  | "investing.event.scored"
   | "investing.research.plan"
   | "investing.research.plan.task"
   | "investing.research.execution"

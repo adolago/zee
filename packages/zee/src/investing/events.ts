@@ -1,4 +1,5 @@
 import fs from "node:fs/promises"
+import os from "node:os"
 import path from "node:path"
 import z from "zod"
 import { FluxRecorder } from "@/flux"
@@ -20,14 +21,48 @@ export const INVESTING_EVENT_CLASSIFICATIONS = [
   "general_news",
 ] as const
 export const INVESTING_EVENT_DIRECTIONS = ["positive", "negative", "neutral", "mixed", "unknown"] as const
+export const INVESTING_EVENT_MATERIALITY_BANDS = ["critical", "high", "medium", "low"] as const
+export const INVESTING_EVENT_AUDIENCES = ["general", "watchlist", "holding"] as const
 
 export type InvestingEventConnector = (typeof INVESTING_EVENT_CONNECTORS)[number]
 export type InvestingEventClassification = (typeof INVESTING_EVENT_CLASSIFICATIONS)[number]
 export type InvestingEventDirection = (typeof INVESTING_EVENT_DIRECTIONS)[number]
+export type InvestingEventMaterialityBand = (typeof INVESTING_EVENT_MATERIALITY_BANDS)[number]
+export type InvestingEventAudience = (typeof INVESTING_EVENT_AUDIENCES)[number]
 
 const InvestingEventConnectorSchema = z.enum(INVESTING_EVENT_CONNECTORS)
 const InvestingEventClassificationSchema = z.enum(INVESTING_EVENT_CLASSIFICATIONS)
 const InvestingEventDirectionSchema = z.enum(INVESTING_EVENT_DIRECTIONS)
+const InvestingEventMaterialityBandSchema = z.enum(INVESTING_EVENT_MATERIALITY_BANDS)
+const InvestingEventAudienceSchema = z.enum(INVESTING_EVENT_AUDIENCES)
+
+const InvestingEventEntityLinksSchema = z
+  .object({
+    issuerId: z.string().optional(),
+    instrumentId: z.string().optional(),
+    sectorIds: z.array(z.string()).default([]),
+    sectorLabels: z.array(z.string()).default([]),
+    holdingId: z.string().optional(),
+    watchlistId: z.string().optional(),
+    audience: InvestingEventAudienceSchema.default("general"),
+  })
+  .default({
+    sectorIds: [],
+    sectorLabels: [],
+    audience: "general",
+  })
+
+const InvestingEventMaterialitySchema = z
+  .object({
+    score: z.number().min(0).max(100),
+    band: InvestingEventMaterialityBandSchema,
+    reasons: z.array(z.string()).default([]),
+  })
+  .default({
+    score: 0,
+    band: "low",
+    reasons: [],
+  })
 
 export const InvestingEventRecordSchema = z.object({
   id: z.string(),
@@ -50,6 +85,8 @@ export const InvestingEventRecordSchema = z.object({
   sourceUrl: z.string().optional(),
   tags: z.array(z.string()).default([]),
   reasons: z.array(z.string()).default([]),
+  entityLinks: InvestingEventEntityLinksSchema,
+  materiality: InvestingEventMaterialitySchema,
 })
 
 export const InvestingEventCatalogSchema = z.object({
@@ -68,15 +105,31 @@ export type InvestingEventCatalogStatus = {
   countsByConnector: Record<InvestingEventConnector, number>
   countsByClassification: Record<InvestingEventClassification, number>
   countsByDirection: Record<InvestingEventDirection, number>
+  countsByMaterialityBand: Record<InvestingEventMaterialityBand, number>
+  holdingLinkedCount: number
+  watchlistLinkedCount: number
 }
 
 export type InvestingEventCatalogUpdate = InvestingEventCatalogStatus & {
   batchCount: number
   inserted: number
   updated: number
+  batchCountsByMaterialityBand: Record<InvestingEventMaterialityBand, number>
+  batchHoldingLinkedCount: number
+  batchWatchlistLinkedCount: number
 }
 
 type GenericRecord = Record<string, unknown>
+type InvestingCoveragePosition = {
+  symbol: string
+  shares: number
+  averageCost?: number
+  sectorLabels: string[]
+}
+type InvestingWatchlistEntry = {
+  symbol: string
+  sectorLabels: string[]
+}
 
 const POSITIVE_KEYWORDS = [
   "beat",
@@ -96,7 +149,7 @@ const POSITIVE_KEYWORDS = [
   "buyback",
   "partnership",
   "launch",
-]
+] as const
 
 const NEGATIVE_KEYWORDS = [
   "miss",
@@ -119,7 +172,18 @@ const NEGATIVE_KEYWORDS = [
   "slump",
   "drop",
   "antitrust",
-]
+] as const
+
+const MATERIALITY_BASE_SCORES: Record<InvestingEventClassification, number> = {
+  earnings_result: 70,
+  guidance_update: 82,
+  mna: 88,
+  management_change: 58,
+  legal_regulatory: 90,
+  product_and_partnership: 60,
+  capital_allocation: 55,
+  general_news: 35,
+}
 
 const NEWS_CLASSIFICATION_RULES: Array<{
   classification: InvestingEventClassification
@@ -164,10 +228,29 @@ function normalizeText(value: string | undefined): string {
   return (value ?? "").trim().toLowerCase()
 }
 
+function normalizeSegment(value: unknown, fallback = "unknown"): string {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(Math.trunc(value))
+  }
+  if (typeof value !== "string") return fallback
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+  return normalized || fallback
+}
+
+function normalizeSymbol(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined
+  const normalized = value.trim().toUpperCase()
+  return normalized || undefined
+}
+
 function trimSentence(value: string, maxLength = 280): string {
   const normalized = value.replace(/\s+/g, " ").trim()
   if (normalized.length <= maxLength) return normalized
-  return `${normalized.slice(0, maxLength - 1).trimEnd()}…`
+  return `${normalized.slice(0, maxLength - 1).trimEnd()}...`
 }
 
 function withDefaultCounts<const T extends readonly string[]>(items: T): Record<T[number], number> {
@@ -176,6 +259,14 @@ function withDefaultCounts<const T extends readonly string[]>(items: T): Record<
 
 function clampConfidence(value: number): number {
   return Math.max(0, Math.min(1, Number.parseFloat(value.toFixed(2))))
+}
+
+function clampScore(value: number): number {
+  return Math.max(0, Math.min(100, Math.round(value)))
+}
+
+function uniqueStrings(values: Array<string | undefined>): string[] {
+  return [...new Set(values.map((value) => value?.trim()).filter((value): value is string => Boolean(value)))]
 }
 
 function dedupeEvents(events: InvestingEventRecord[]): InvestingEventRecord[] {
@@ -193,6 +284,56 @@ function extractSourceUrl(entity: NormalizedInvestingEntity): string | undefined
     if (evidence.url) return evidence.url
   }
   return undefined
+}
+
+function extractString(record: GenericRecord, ...keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = record[key]
+    if (typeof value === "string" && value.trim()) return value.trim()
+  }
+  return undefined
+}
+
+function extractStringValues(value: unknown): string[] {
+  if (typeof value === "string") {
+    return value.trim() ? [value.trim()] : []
+  }
+  if (Array.isArray(value)) {
+    return uniqueStrings(
+      value.flatMap((entry) => {
+        if (typeof entry === "string") return [entry]
+        const record = asRecord(entry)
+        if (!record) return []
+        return [
+          extractString(record, "name", "label", "title", "sector", "industry"),
+          ...Object.keys(record).filter((key) => record[key] === true),
+        ]
+      }),
+    )
+  }
+  const record = asRecord(value)
+  if (!record) return []
+  return uniqueStrings([
+    extractString(record, "name", "label", "title", "sector", "industry"),
+    ...Object.keys(record),
+  ])
+}
+
+function extractSectorLabels(record: GenericRecord): string[] {
+  return uniqueStrings([
+    ...extractStringValues(record.sector),
+    ...extractStringValues(record.sectors),
+    ...extractStringValues(record.industry),
+    ...extractStringValues(record.industries),
+    ...extractStringValues(record.group),
+    ...extractStringValues(record.groups),
+  ])
+}
+
+function extractSectorLabelsFromEntity(entity: NormalizedInvestingEntity): string[] {
+  const attributes = asRecord(entity.attributes) ?? {}
+  const external = asRecord(entity.identifiers.external) ?? {}
+  return uniqueStrings([...extractSectorLabels(attributes), ...extractSectorLabels(external)])
 }
 
 function entityText(entity: NormalizedInvestingEntity): string {
@@ -276,6 +417,37 @@ function summarizeNewsEntity(entity: NormalizedInvestingEntity, classification: 
   return trimSentence(`${classification.replace(/_/g, " ")} :: ${summary}`)
 }
 
+function sectorEntityId(label: string): string {
+  return `sector:${normalizeSegment(label)}`
+}
+
+function holdingEntityId(symbol: string): string {
+  return `holding:equity:${normalizeSegment(symbol)}`
+}
+
+function watchlistEntityId(symbol: string): string {
+  return `watchlist:equity:${normalizeSegment(symbol)}`
+}
+
+function baseEntityLinks(entity: NormalizedInvestingEntity): z.infer<typeof InvestingEventEntityLinksSchema> {
+  const sectorLabels = extractSectorLabelsFromEntity(entity)
+  return {
+    issuerId: entity.identifiers.company,
+    instrumentId: entity.identifiers.instrument,
+    sectorIds: sectorLabels.map(sectorEntityId),
+    sectorLabels,
+    audience: "general",
+  }
+}
+
+function defaultMateriality(): z.infer<typeof InvestingEventMaterialitySchema> {
+  return {
+    score: 0,
+    band: "low",
+    reasons: ["materiality pending enrichment"],
+  }
+}
+
 function createEventRecord(input: {
   connector: InvestingEventConnector
   entity: NormalizedInvestingEntity
@@ -323,6 +495,8 @@ function createEventRecord(input: {
       sourceUrl,
       tags: [...new Set(["earnings", ...entity.tags])],
       reasons: classification === "guidance_update" ? ["earnings text included guidance/outlook language"] : ["earnings connector event"],
+      entityLinks: baseEntityLinks(entity),
+      materiality: defaultMateriality(),
     })
   }
 
@@ -348,6 +522,8 @@ function createEventRecord(input: {
     sourceUrl,
     tags: [...new Set(["news", classified.classification, ...entity.tags])],
     reasons: classified.reasons,
+    entityLinks: baseEntityLinks(entity),
+    materiality: defaultMateriality(),
   })
 }
 
@@ -374,15 +550,29 @@ async function writeCatalog(catalog: InvestingEventCatalog, stateFile = EVENT_ST
   await fs.writeFile(stateFile, JSON.stringify(catalog, null, 2) + "\n", "utf8")
 }
 
+function buildBatchCountsByMaterialityBand(events: InvestingEventRecord[]): Record<InvestingEventMaterialityBand, number> {
+  const countsByMaterialityBand = withDefaultCounts(INVESTING_EVENT_MATERIALITY_BANDS)
+  for (const event of events) {
+    countsByMaterialityBand[event.materiality.band] += 1
+  }
+  return countsByMaterialityBand
+}
+
 function buildStatus(catalog: InvestingEventCatalog): InvestingEventCatalogStatus {
   const countsByConnector = withDefaultCounts(INVESTING_EVENT_CONNECTORS)
   const countsByClassification = withDefaultCounts(INVESTING_EVENT_CLASSIFICATIONS)
   const countsByDirection = withDefaultCounts(INVESTING_EVENT_DIRECTIONS)
+  const countsByMaterialityBand = withDefaultCounts(INVESTING_EVENT_MATERIALITY_BANDS)
+  let holdingLinkedCount = 0
+  let watchlistLinkedCount = 0
 
   for (const event of Object.values(catalog.events)) {
     countsByConnector[event.connector] += 1
     countsByClassification[event.classification] += 1
     countsByDirection[event.direction] += 1
+    countsByMaterialityBand[event.materiality.band] += 1
+    if (event.entityLinks.holdingId) holdingLinkedCount += 1
+    if (event.entityLinks.watchlistId) watchlistLinkedCount += 1
   }
 
   return {
@@ -392,7 +582,233 @@ function buildStatus(catalog: InvestingEventCatalog): InvestingEventCatalogStatu
     countsByConnector,
     countsByClassification,
     countsByDirection,
+    countsByMaterialityBand,
+    holdingLinkedCount,
+    watchlistLinkedCount,
   }
+}
+
+function defaultPortfolioFile(): string {
+  return process.env.ZEE_INVESTING_PORTFOLIO_FILE || path.join(os.homedir(), ".zee", "investing", "portfolio.json")
+}
+
+function defaultWatchlistFile(): string {
+  return process.env.ZEE_INVESTING_WATCHLIST_FILE || path.join(os.homedir(), ".zee", "investing", "watchlist.json")
+}
+
+async function readJsonFile(filePath: string): Promise<unknown> {
+  const raw = await fs.readFile(filePath, "utf8").catch(() => "")
+  if (!raw) return undefined
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return undefined
+  }
+}
+
+function parseNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : undefined
+  }
+  return undefined
+}
+
+async function loadPortfolioCoverage(portfolioFile = defaultPortfolioFile()): Promise<Map<string, InvestingCoveragePosition>> {
+  const parsed = await readJsonFile(portfolioFile)
+  const record = asRecord(parsed)
+  const positions = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(record?.positions)
+      ? record.positions
+      : Array.isArray(record?.holdings)
+        ? record.holdings
+        : []
+  const bySymbol = new Map<string, InvestingCoveragePosition>()
+
+  for (const position of positions) {
+    const candidate = asRecord(position)
+    if (!candidate) continue
+    const symbol = normalizeSymbol(extractString(candidate, "symbol", "ticker"))
+    const shares = parseNumber(candidate.shares ?? candidate.quantity ?? candidate.position)
+    if (!symbol || typeof shares !== "number" || shares <= 0) continue
+    const averageCost = parseNumber(
+      candidate.averageCost ??
+        candidate.average_cost ??
+        candidate.avg_cost ??
+        candidate.entryPrice ??
+        candidate.entry_price ??
+        candidate.price,
+    )
+    bySymbol.set(symbol, {
+      symbol,
+      shares,
+      averageCost,
+      sectorLabels: extractSectorLabels(candidate),
+    })
+  }
+
+  return bySymbol
+}
+
+async function loadWatchlistCoverage(watchlistFile = defaultWatchlistFile()): Promise<Map<string, InvestingWatchlistEntry>> {
+  const parsed = await readJsonFile(watchlistFile)
+  const record = asRecord(parsed)
+  const items = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(record?.items)
+      ? record.items
+      : Array.isArray(record?.watchlist)
+        ? record.watchlist
+        : Array.isArray(record?.symbols)
+          ? record.symbols
+          : []
+  const bySymbol = new Map<string, InvestingWatchlistEntry>()
+
+  for (const item of items) {
+    if (typeof item === "string") {
+      const symbol = normalizeSymbol(item)
+      if (!symbol) continue
+      bySymbol.set(symbol, { symbol, sectorLabels: [] })
+      continue
+    }
+
+    const candidate = asRecord(item)
+    if (!candidate) continue
+    const symbol = normalizeSymbol(extractString(candidate, "symbol", "ticker", "code"))
+    if (!symbol) continue
+    const existing = bySymbol.get(symbol)
+    bySymbol.set(symbol, {
+      symbol,
+      sectorLabels: uniqueStrings([...(existing?.sectorLabels ?? []), ...extractSectorLabels(candidate)]),
+    })
+  }
+
+  return bySymbol
+}
+
+function materialityBandForScore(score: number): InvestingEventMaterialityBand {
+  if (score >= 90) return "critical"
+  if (score >= 75) return "high"
+  if (score >= 55) return "medium"
+  return "low"
+}
+
+function eventAgeHours(asOf: string): number | undefined {
+  const parsed = Date.parse(asOf)
+  if (!Number.isFinite(parsed)) return undefined
+  return (Date.now() - parsed) / 3_600_000
+}
+
+function enrichInvestingEventRecord(input: {
+  event: InvestingEventRecord
+  holdings: Map<string, InvestingCoveragePosition>
+  watchlist: Map<string, InvestingWatchlistEntry>
+}): InvestingEventRecord {
+  const event = input.event
+  const symbol = normalizeSymbol(event.symbol)
+  const holding = symbol ? input.holdings.get(symbol) : undefined
+  const watched = symbol ? input.watchlist.get(symbol) : undefined
+  const sectorLabels = uniqueStrings([
+    ...event.entityLinks.sectorLabels,
+    ...(holding?.sectorLabels ?? []),
+    ...(watched?.sectorLabels ?? []),
+  ])
+  const audience: InvestingEventAudience = holding ? "holding" : watched ? "watchlist" : "general"
+
+  let score = MATERIALITY_BASE_SCORES[event.classification]
+  const reasons = [`base score for ${event.classification.replace(/_/g, " ")}`]
+
+  switch (event.direction) {
+    case "negative":
+      score += 10
+      reasons.push("negative direction raises urgency")
+      break
+    case "mixed":
+      score += 8
+      reasons.push("mixed direction still indicates decision-relevant change")
+      break
+    case "positive":
+      score += 5
+      reasons.push("positive direction still matters for portfolio actions")
+      break
+    case "unknown":
+      score -= 4
+      reasons.push("unknown direction reduces conviction")
+      break
+  }
+
+  const confidenceAdjustment = Math.round((event.confidence - 0.5) * 20)
+  score += confidenceAdjustment
+  reasons.push(`classifier confidence ${event.confidence.toFixed(2)}`)
+
+  const ageHours = eventAgeHours(event.asOf)
+  if (typeof ageHours === "number") {
+    if (ageHours <= 24) {
+      score += 6
+      reasons.push("captured within the last 24 hours")
+    } else if (ageHours <= 72) {
+      score += 3
+      reasons.push("captured within the last 72 hours")
+    } else if (ageHours > 24 * 7) {
+      score -= 8
+      reasons.push("older than seven days")
+    }
+  }
+
+  if (holding && symbol) {
+    score += 15
+    reasons.push(`linked to holding ${symbol}`)
+  }
+
+  if (watched && symbol) {
+    score += holding ? 4 : 8
+    reasons.push(`linked to watchlist ${symbol}`)
+  }
+
+  if (sectorLabels.length > 0) {
+    score += Math.min(4, sectorLabels.length * 2)
+    reasons.push(`linked sector context: ${sectorLabels.join(", ")}`)
+  }
+
+  const normalizedScore = clampScore(score)
+  return InvestingEventRecordSchema.parse({
+    ...event,
+    entityLinks: {
+      issuerId: event.companyId ?? event.entityLinks.issuerId,
+      instrumentId: event.instrumentId ?? event.entityLinks.instrumentId,
+      sectorIds: sectorLabels.map(sectorEntityId),
+      sectorLabels,
+      holdingId: symbol && holding ? holdingEntityId(symbol) : undefined,
+      watchlistId: symbol && watched ? watchlistEntityId(symbol) : undefined,
+      audience,
+    },
+    materiality: {
+      score: normalizedScore,
+      band: materialityBandForScore(normalizedScore),
+      reasons,
+    },
+  })
+}
+
+async function enrichInvestingEvents(input: {
+  events: InvestingEventRecord[]
+  portfolioFile?: string
+  watchlistFile?: string
+}): Promise<InvestingEventRecord[]> {
+  const [holdings, watchlist] = await Promise.all([
+    loadPortfolioCoverage(input.portfolioFile),
+    loadWatchlistCoverage(input.watchlistFile),
+  ])
+
+  return input.events.map((event) =>
+    enrichInvestingEventRecord({
+      event,
+      holdings,
+      watchlist,
+    }),
+  )
 }
 
 export function classifyInvestingConnectorEvents(input: {
@@ -417,6 +833,8 @@ export function classifyInvestingConnectorEvents(input: {
 export async function upsertInvestingEvents(input: {
   events: InvestingEventRecord[]
   stateFile?: string
+  portfolioFile?: string
+  watchlistFile?: string
 }): Promise<InvestingEventCatalogUpdate> {
   if (input.events.length === 0) {
     const status = buildStatus(await readCatalog(input.stateFile))
@@ -425,14 +843,25 @@ export async function upsertInvestingEvents(input: {
       batchCount: 0,
       inserted: 0,
       updated: 0,
+      batchCountsByMaterialityBand: withDefaultCounts(INVESTING_EVENT_MATERIALITY_BANDS),
+      batchHoldingLinkedCount: 0,
+      batchWatchlistLinkedCount: 0,
     }
   }
 
   const catalog = await readCatalog(input.stateFile)
+  const enrichedEvents = await enrichInvestingEvents({
+    events: input.events,
+    portfolioFile: input.portfolioFile,
+    watchlistFile: input.watchlistFile,
+  })
+  const batchCountsByMaterialityBand = buildBatchCountsByMaterialityBand(enrichedEvents)
+  const batchHoldingLinkedCount = enrichedEvents.filter((event) => Boolean(event.entityLinks.holdingId)).length
+  const batchWatchlistLinkedCount = enrichedEvents.filter((event) => Boolean(event.entityLinks.watchlistId)).length
   let inserted = 0
   let updated = 0
 
-  for (const event of input.events) {
+  for (const event of enrichedEvents) {
     const existed = Boolean(catalog.events[event.id])
     if (existed) updated += 1
     else inserted += 1
@@ -458,6 +887,28 @@ export async function upsertInvestingEvents(input: {
         mode: existed ? "updated" : "inserted",
       },
     })
+
+    FluxRecorder.record({
+      traceID: crypto.randomUUID(),
+      direction: "internal",
+      domain: "investing",
+      kind: "investing.event.scored",
+      status: "ok",
+      method: "materiality",
+      path: event.connector,
+      route: event.materiality.band,
+      metadata: {
+        eventId: event.id,
+        entityId: event.entityId,
+        symbol: event.symbol,
+        materialityScore: event.materiality.score,
+        materialityBand: event.materiality.band,
+        audience: event.entityLinks.audience,
+        holdingLinked: Boolean(event.entityLinks.holdingId),
+        watchlistLinked: Boolean(event.entityLinks.watchlistId),
+        sectorIds: event.entityLinks.sectorIds,
+      },
+    })
   }
 
   catalog.updatedAt = Date.now()
@@ -465,9 +916,12 @@ export async function upsertInvestingEvents(input: {
   const status = buildStatus(catalog)
   return {
     ...status,
-    batchCount: input.events.length,
+    batchCount: enrichedEvents.length,
     inserted,
     updated,
+    batchCountsByMaterialityBand,
+    batchHoldingLinkedCount,
+    batchWatchlistLinkedCount,
   }
 }
 
@@ -480,19 +934,30 @@ export async function listInvestingEvents(options: {
   connector?: InvestingEventConnector
   classification?: InvestingEventClassification
   direction?: InvestingEventDirection
+  materialityBand?: InvestingEventMaterialityBand
   symbol?: string
+  holdingOnly?: boolean
+  watchlistOnly?: boolean
   limit?: number
 } = {}): Promise<InvestingEventRecord[]> {
   const catalog = await readCatalog(options.stateFile)
-  const symbol = options.symbol?.trim().toUpperCase()
+  const symbol = normalizeSymbol(options.symbol)
   const limit = Math.max(1, Math.min(200, options.limit ?? 20))
 
   return Object.values(catalog.events)
     .filter((event) => (options.connector ? event.connector === options.connector : true))
     .filter((event) => (options.classification ? event.classification === options.classification : true))
     .filter((event) => (options.direction ? event.direction === options.direction : true))
+    .filter((event) => (options.materialityBand ? event.materiality.band === options.materialityBand : true))
     .filter((event) => (symbol ? event.symbol === symbol : true))
-    .sort((left, right) => right.asOf.localeCompare(left.asOf))
+    .filter((event) => (options.holdingOnly ? Boolean(event.entityLinks.holdingId) : true))
+    .filter((event) => (options.watchlistOnly ? Boolean(event.entityLinks.watchlistId) : true))
+    .sort((left, right) => {
+      if (right.materiality.score !== left.materiality.score) {
+        return right.materiality.score - left.materiality.score
+      }
+      return right.asOf.localeCompare(left.asOf)
+    })
     .slice(0, limit)
 }
 

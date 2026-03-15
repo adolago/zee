@@ -188,17 +188,17 @@ rg "export class Memory|getMemory|getMemoryAsync" src/memory/unified.ts  # Unifi
 **Purpose:** Provide user-facing capabilities across life admin, investing, and learning.
 - **Zee tools collection:** `src/domain/zee/tools.ts:1884`
 - **Zee tool registration:** `src/domain/zee/tools.ts:1909`
-- **Stanley tools collection:** `src/domain/investing/tools.ts:1187`
-- **Stanley registration:** `src/domain/investing/tools.ts:1206`
+- **Stanley tools collection:** `src/domain/investing/tools.ts:1197`
+- **Stanley registration:** `src/domain/investing/tools.ts:1216`
 - **Johny tools collection:** `src/domain/learning/tools.ts:502`
 - **Johny registration:** `src/domain/learning/tools.ts:504`
 
 ### Feature: Investing Event Intelligence
-**Purpose:** Classify normalized earnings and news entities into a persistent event ledger for downstream research automation.
+**Purpose:** Classify, score, and link normalized earnings and news entities into a persistent event ledger for downstream research automation.
 - **Event catalog + classifier:** `packages/zee/src/investing/events.ts:1`
 - **Ingestion hook + telemetry:** `packages/zee/src/investing/ingestion.ts:473`
-- **CLI surface (`zee investing event ...`):** `packages/zee/src/cli/cmd/investing.ts:162`
-- **Stanley tool (`zee:invest-events`):** `src/domain/investing/tools.ts:806`
+- **CLI surface (`zee investing event ...`):** `packages/zee/src/cli/cmd/investing.ts:164`
+- **Stanley tool (`zee:invest-events`):** `src/domain/investing/tools.ts:810`
 - **Operator doc:** `docs/architecture/investing-event-intelligence.md:1`
 
 ### Feature: Memory (Qdrant + Hybrid Search + Markdown Sync)

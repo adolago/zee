@@ -86,8 +86,31 @@ describe("executeInvestingConnectorRun", () => {
     const stateFile = path.join(dir.path, "investing-ingestion.json")
     const entityStateFile = path.join(dir.path, "investing-entities.json")
     const eventStateFile = path.join(dir.path, "investing-events.json")
+    const portfolioFile = path.join(dir.path, "portfolio.json")
+    const watchlistFile = path.join(dir.path, "watchlist.json")
     const recordSpy = spyOn(FluxRecorder, "record")
     const startedAt = 1_700_000_000_000
+
+    await fs.writeFile(
+      portfolioFile,
+      JSON.stringify(
+        {
+          positions: [{ symbol: "AAPL", shares: 8, averageCost: 180, sector: "Technology" }],
+        },
+        null,
+        2,
+      ),
+    )
+    await fs.writeFile(
+      watchlistFile,
+      JSON.stringify(
+        {
+          items: [{ symbol: "MSFT", sector: "Software" }],
+        },
+        null,
+        2,
+      ),
+    )
 
     const result = await executeInvestingConnectorRun({
       connector: "earnings",
@@ -104,6 +127,8 @@ describe("executeInvestingConnectorRun", () => {
       },
       stateFile,
       entityStateFile,
+      portfolioFile,
+      watchlistFile,
       now: startedAt,
       executor: async () => ({
         itemCount: 4,
@@ -146,6 +171,7 @@ describe("executeInvestingConnectorRun", () => {
     expect(result.lastFinishedAt).toBeGreaterThanOrEqual(startedAt)
     expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.entity.normalized")).toBe(true)
     expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.event.classified")).toBe(true)
+    expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.event.scored")).toBe(true)
     expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.ingestion.run")).toBe(true)
     expect(recordSpy.mock.calls.find((call) => call[0]?.kind === "investing.entity.normalized")?.[0]).toMatchObject({
       domain: "investing",
@@ -167,6 +193,8 @@ describe("executeInvestingConnectorRun", () => {
         requestCount: 1,
         normalizedEntityCount: 3,
         classifiedEventCount: 1,
+        holdingLinkedCount: 1,
+        watchlistLinkedCount: 0,
         freshnessStatus: "fresh",
       },
     })
@@ -187,6 +215,8 @@ describe("executeInvestingConnectorRun", () => {
     const eventStatus = await getInvestingEventCatalogStatus(eventStateFile)
     expect(eventStatus.totalEvents).toBe(1)
     expect(eventStatus.countsByConnector.earnings).toBe(1)
+    expect(eventStatus.countsByMaterialityBand.critical).toBe(1)
+    expect(eventStatus.holdingLinkedCount).toBe(1)
   })
 
   test("persists failed runs and emits error telemetry", async () => {
