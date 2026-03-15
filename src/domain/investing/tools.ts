@@ -13,6 +13,15 @@ import type { ToolDefinition, ToolRuntime, ToolExecutionContext, ToolExecutionRe
 import { Investing } from "../../paths";
 import { scratchpadTool } from "./scratchpad";
 import { getResearchContextManager, resetResearchContextManager } from "./research-context";
+import {
+  INVESTING_RESEARCH_PLAN_STATUSES,
+  INVESTING_RESEARCH_TASK_STATUSES,
+  INVESTING_RESEARCH_WORKFLOW_KINDS,
+  createInvestingResearchPlan,
+  getInvestingResearchPlan,
+  listInvestingResearchPlans,
+  updateInvestingResearchTask,
+} from "./planner";
 
 type InvestingResult = {
   ok: boolean;
@@ -471,6 +480,102 @@ export const researchTool: ToolDefinition = {
   }),
 };
 
+const ResearchPlannerParams = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("create"),
+    objective: z.string().describe("Research objective to decompose into a repeatable workflow"),
+    workflow: z.enum(INVESTING_RESEARCH_WORKFLOW_KINDS).optional()
+      .describe("Optional workflow override"),
+    symbols: z.array(z.string()).optional()
+      .describe("Ticker symbols in scope for the workflow"),
+  }),
+  z.object({
+    action: z.literal("read"),
+    planId: z.string().describe("Persisted research plan identifier"),
+  }),
+  z.object({
+    action: z.literal("list"),
+    status: z.enum(INVESTING_RESEARCH_PLAN_STATUSES).optional()
+      .describe("Optional plan status filter"),
+    limit: z.number().min(1).max(100).default(10)
+      .describe("Maximum number of plans to return"),
+  }),
+  z.object({
+    action: z.literal("update"),
+    planId: z.string().describe("Persisted research plan identifier"),
+    taskId: z.string().describe("Task identifier within the plan"),
+    status: z.enum(INVESTING_RESEARCH_TASK_STATUSES)
+      .describe("Next status for the task"),
+    note: z.string().optional()
+      .describe("Optional operator note or execution result"),
+  }),
+]);
+
+export const researchPlannerTool: ToolDefinition = {
+  id: "zee:invest-planner",
+  category: "domain",
+  init: async () => ({
+    description: `Create and manage repeatable multi-step investing research workflows. Use create before a complex Stanley-style analysis, read to reload a plan, list to inspect active work, and update as tasks progress.`,
+    parameters: ResearchPlannerParams,
+    execute: async (args, ctx): Promise<ToolExecutionResult> => {
+      switch (args.action) {
+        case "create": {
+          ctx.metadata({ title: `Planning research workflow: ${args.objective.slice(0, 48)}` });
+          const plan = createInvestingResearchPlan({
+            objective: args.objective,
+            workflow: args.workflow,
+            symbols: args.symbols,
+          });
+          return {
+            title: "Investing Research Planner",
+            metadata: { action: args.action, planId: plan.id, workflow: plan.workflow },
+            output: JSON.stringify(plan, null, 2),
+          };
+        }
+        case "read": {
+          ctx.metadata({ title: `Loading research plan ${args.planId}` });
+          const plan = getInvestingResearchPlan(args.planId);
+          return {
+            title: "Investing Research Planner",
+            metadata: { action: args.action, planId: args.planId, found: Boolean(plan) },
+            output: JSON.stringify(
+              plan ?? { error: `Research plan not found: ${args.planId}` },
+              null,
+              2,
+            ),
+          };
+        }
+        case "list": {
+          ctx.metadata({ title: "Listing investing research plans" });
+          const plans = listInvestingResearchPlans({
+            status: args.status,
+            limit: args.limit,
+          });
+          return {
+            title: "Investing Research Planner",
+            metadata: { action: args.action, count: plans.length, status: args.status },
+            output: JSON.stringify({ plans, count: plans.length }, null, 2),
+          };
+        }
+        case "update": {
+          ctx.metadata({ title: `Updating research task ${args.taskId}` });
+          const plan = updateInvestingResearchTask({
+            planId: args.planId,
+            taskId: args.taskId,
+            status: args.status,
+            note: args.note,
+          });
+          return {
+            title: "Investing Research Planner",
+            metadata: { action: args.action, planId: plan.id, status: plan.status, taskId: args.taskId },
+            output: JSON.stringify(plan, null, 2),
+          };
+        }
+      }
+    },
+  }),
+};
+
 // =============================================================================
 // Nautilus Trading Tool
 // =============================================================================
@@ -642,6 +747,7 @@ export const INVESTING_TOOLS = [
   portfolioTool,
   secFilingsTool,
   researchTool,
+  researchPlannerTool,
   nautilusTool,
   estimatesTool,
   insiderTradesTool,
