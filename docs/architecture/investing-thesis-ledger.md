@@ -32,6 +32,8 @@ Each record stores:
   - next monitoring items that should trigger a refresh
 - `valuation`
   - latest linked valuation case, packet, run, and signal metadata
+- `confidence`
+  - latest applied thesis confidence assessment
 - `revisions[]`
   - append-only change log for the thesis
 
@@ -57,6 +59,8 @@ Each revision stores:
   - linked valuation snapshot for later diffing
 - `evidence[]`
   - references to persisted evidence or valuation packets
+- `confidence`
+  - applied confidence rule, capped conviction, and operator-readable reasons
 - `source`
   - workflow/task/execution/artifact pointers when the revision came from automation
 
@@ -83,6 +87,8 @@ zee investing thesis status --json
 
 `zee investing thesis status` reports total theses, total revisions, and current counts by status and conviction.
 
+Confidence rules and downgrade behavior are documented in `docs/architecture/investing-thesis-confidence.md`.
+
 ## Telemetry
 
 Flux events emitted for this slice:
@@ -91,3 +97,5 @@ Flux events emitted for this slice:
   - emitted whenever a thesis record is created, updated, or advanced by a revision
 - `investing.thesis.revision`
   - emitted whenever a new thesis revision is appended to the change log
+- `investing.thesis.confidence`
+  - emitted whenever Zee evaluates the confidence rule for a thesis revision

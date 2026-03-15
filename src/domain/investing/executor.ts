@@ -383,7 +383,7 @@ async function buildSynthesis(input: {
 
   if (input.plan.workflow === "thesis-refresh") {
     const primarySymbol = normalizeSymbol(input.plan.symbols[0]);
-    if (primarySymbol) {
+    if (primarySymbol && input.evidence.some((item) => item.status === "completed")) {
       const thesisDraft = buildInvestingThesisDraft({
         symbol: primarySymbol,
         evidence: input.evidence,
