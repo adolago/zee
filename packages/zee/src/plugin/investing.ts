@@ -16,7 +16,7 @@ import {
   InvestingNotRunningError,
   InvestingTimeoutError,
 } from "@zee/investing-sdk"
-import { buildInvestingEventDeltaBrief, renderInvestingEventDeltaBrief } from "../investing/briefing-deltas"
+import { buildInvestingPortfolioBriefing, renderInvestingPortfolioBriefing } from "@root/domain/investing/briefings"
 import { Log } from "../util/log"
 import { Investing } from "../paths"
 
@@ -940,11 +940,10 @@ export async function InvestingPlugin(input: PluginInput): Promise<Hooks> {
             }
           }
 
-          const eventDeltas = await buildInvestingEventDeltaBrief({
-            mode: "daily",
-            symbols: args.watchlist,
+          const portfolioBriefing = await buildInvestingPortfolioBriefing({
+            watchlistSymbols: args.watchlist,
           })
-          sections.push(renderInvestingEventDeltaBrief(eventDeltas))
+          sections.push(renderInvestingPortfolioBriefing(portfolioBriefing))
 
           return sections.join("\n\n")
         },

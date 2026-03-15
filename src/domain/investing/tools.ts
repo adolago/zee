@@ -45,6 +45,13 @@ import {
   listInvestingValuationPackets,
 } from "./valuation-packet";
 import {
+  INVESTING_PORTFOLIO_BRIEFING_KINDS,
+  createInvestingPortfolioBriefing,
+  getInvestingPortfolioBriefing,
+  getInvestingPortfolioBriefingStateFile,
+  listInvestingPortfolioBriefings,
+} from "./briefings";
+import {
   INVESTING_EVENT_CLASSIFICATIONS,
   INVESTING_EVENT_CONNECTORS,
   INVESTING_EVENT_DIRECTIONS,
@@ -1029,6 +1036,83 @@ export const valuationPacketTool: ToolDefinition = {
   }),
 };
 
+const PortfolioBriefingParams = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("create"),
+    kind: z.enum(INVESTING_PORTFOLIO_BRIEFING_KINDS).default("daily-portfolio-brief").describe("Briefing workflow kind"),
+    watchlistSymbols: z.array(z.string()).optional().describe("Optional explicit watchlist override"),
+  }),
+  z.object({
+    action: z.literal("read"),
+    briefingId: z.string().describe("Persisted portfolio briefing identifier"),
+  }),
+  z.object({
+    action: z.literal("list"),
+    kind: z.enum(INVESTING_PORTFOLIO_BRIEFING_KINDS).optional().describe("Optional briefing kind filter"),
+    symbol: z.string().optional().describe("Optional symbol filter"),
+    audience: z.enum(["holding", "watchlist"]).optional().describe("Optional audience filter"),
+    limit: z.number().min(1).max(100).default(10).describe("Maximum number of briefings to return"),
+  }),
+]);
+
+export const portfolioBriefingsTool: ToolDefinition = {
+  id: "zee:invest-briefings",
+  category: "domain",
+  init: async () => ({
+    description: `Create, read, and list daily portfolio briefings built from thesis state and event intelligence.`,
+    parameters: PortfolioBriefingParams,
+    execute: async (args, ctx): Promise<ToolExecutionResult> => {
+      switch (args.action) {
+        case "create": {
+          ctx.metadata({ title: `Creating ${args.kind}` });
+          const briefing = await createInvestingPortfolioBriefing({
+            watchlistSymbols: args.watchlistSymbols,
+          });
+          return {
+            title: "Investing Portfolio Briefings",
+            metadata: {
+              action: args.action,
+              briefingId: briefing.id,
+              kind: briefing.kind,
+              stateFile: getInvestingPortfolioBriefingStateFile(),
+            },
+            output: JSON.stringify(briefing, null, 2),
+          };
+        }
+        case "read": {
+          ctx.metadata({ title: `Loading portfolio briefing ${args.briefingId}` });
+          const briefing = getInvestingPortfolioBriefing(args.briefingId);
+          return {
+            title: "Investing Portfolio Briefings",
+            metadata: { action: args.action, briefingId: args.briefingId, found: Boolean(briefing) },
+            output: JSON.stringify(briefing ?? { error: `Portfolio briefing not found: ${args.briefingId}` }, null, 2),
+          };
+        }
+        case "list": {
+          ctx.metadata({ title: "Listing portfolio briefings" });
+          const briefings = listInvestingPortfolioBriefings({
+            kind: args.kind,
+            symbol: args.symbol,
+            audience: args.audience,
+            limit: args.limit,
+          });
+          return {
+            title: "Investing Portfolio Briefings",
+            metadata: {
+              action: args.action,
+              count: briefings.length,
+              kind: args.kind,
+              symbol: args.symbol,
+              audience: args.audience,
+            },
+            output: JSON.stringify({ briefings, count: briefings.length }, null, 2),
+          };
+        }
+      }
+    },
+  }),
+};
+
 // =============================================================================
 // Nautilus Trading Tool
 // =============================================================================
@@ -1202,6 +1286,7 @@ export const INVESTING_TOOLS = [
   researchTool,
   valuationKernelTool,
   valuationPacketTool,
+  portfolioBriefingsTool,
   researchPlannerTool,
   researchExecutorTool,
   researchArtifactsTool,
