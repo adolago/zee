@@ -1,19 +1,15 @@
 import { describe, expect, spyOn, test } from "bun:test"
-import fs from "node:fs/promises"
 import { FluxRecorder } from "../../src/flux"
 import { tmpdir } from "../fixture/fixture"
 import {
   createInvestingResearchPlan,
-  getInvestingResearchPlan,
   updateInvestingResearchTask,
 } from "../../../../src/domain/investing/planner"
+import { runInvestingResearchExecution } from "../../../../src/domain/investing/executor"
 import {
-  getInvestingResearchExecution,
-  getInvestingResearchExecutionStateFile,
-  runInvestingResearchExecution,
-} from "../../../../src/domain/investing/executor"
+  researchArtifactsTool,
+} from "../../../../src/domain/investing/tools"
 import { getInvestingResearchArtifact } from "../../../../src/domain/investing/artifacts"
-import { researchExecutorTool } from "../../../../src/domain/investing/tools"
 
 function makeToolContext() {
   return {
@@ -25,7 +21,7 @@ function makeToolContext() {
   }
 }
 
-async function withExecutorState<T>(fn: () => Promise<T>): Promise<T> {
+async function withArtifactState<T>(fn: () => Promise<T>): Promise<T> {
   await using dir = await tmpdir()
   const originalStateHome = process.env.XDG_STATE_HOME
   const originalFetch = globalThis.fetch
@@ -42,9 +38,10 @@ async function withExecutorState<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
-describe("investing research executor", () => {
-  test("runs a multi-source task, persists evidence links, and advances the planner", async () => {
-    await withExecutorState(async () => {
+describe("investing research artifacts", () => {
+  test("creates a structured artifact for a successful execution", async () => {
+    await withArtifactState(async () => {
+      const recordSpy = spyOn(FluxRecorder, "record")
       globalThis.fetch = (async (input: RequestInfo | URL) => {
         const url = String(input)
         if (url.endsWith("/api/accounting/NVDA/filings")) {
@@ -60,7 +57,7 @@ describe("investing research executor", () => {
           return new Response(
             JSON.stringify({
               success: true,
-              data: { symbol: "NVDA", summary: "Demand for AI infrastructure remains strong." },
+              data: { symbol: "NVDA", summary: "Demand remains strong." },
             }),
             { status: 200, headers: { "content-type": "application/json" } },
           )
@@ -68,7 +65,6 @@ describe("investing research executor", () => {
         throw new Error(`Unexpected URL ${url}`)
       }) as typeof fetch
 
-      const recordSpy = spyOn(FluxRecorder, "record")
       const plan = createInvestingResearchPlan({
         objective: "Prepare a pre-earnings preview for NVDA",
       })
@@ -79,36 +75,55 @@ describe("investing research executor", () => {
       })
 
       const execution = await runInvestingResearchExecution({ planId: plan.id })
-
-      expect(execution.taskId).toBe("source-refresh")
-      expect(execution.status).toBe("ok")
-      expect(execution.evidence).toHaveLength(2)
-      expect(execution.evidence[0]?.citation).toBe("E1")
-      expect(execution.evidence[1]?.citation).toBe("E2")
-      expect(execution.synthesis).toContain("[E1]")
-      expect(execution.synthesis).toContain("[E2]")
-      expect(execution.synthesis).toContain("Source Used:")
-      expect(execution.synthesis).toContain("Primary source: zee:invest-research")
       expect(execution.artifactId).toBeDefined()
-      expect(getInvestingResearchArtifact(execution.artifactId!)?.executionId).toBe(execution.id)
-      expect(getInvestingResearchExecution(execution.id)?.id).toBe(execution.id)
 
-      const persisted = JSON.parse(await fs.readFile(getInvestingResearchExecutionStateFile(), "utf8")) as {
-        executions: Array<{ id: string }>
-      }
-      expect(persisted.executions[0]?.id).toBe(execution.id)
+      const artifact = getInvestingResearchArtifact(execution.artifactId!)
+      expect(artifact).toBeDefined()
+      if (!artifact) throw new Error("artifact should be defined")
 
-      const updatedPlan = getInvestingResearchPlan(plan.id)
-      expect(updatedPlan?.tasks.find((task) => task.id === "source-refresh")?.status).toBe("completed")
-      expect(updatedPlan?.tasks.find((task) => task.id === "expectation-map")?.status).toBe("in_progress")
-
-      expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.research.execution")).toBe(true)
-      expect(recordSpy.mock.calls.filter((call) => call[0]?.kind === "investing.research.evidence").length).toBeGreaterThanOrEqual(2)
+      expect(artifact.kind).toBe("source-delta")
+      expect(artifact.status).toBe("ready")
+      expect(artifact.sections.map((section) => section.title)).toEqual(["Overview", "Synthesis", "Evidence"])
+      expect(artifact.citations.map((item) => item.citation)).toEqual(["E1", "E2"])
+      expect(artifact.nextActions).toContain("Run the next task: Map consensus and management setup.")
+      expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.research.artifact")).toBe(true)
     })
   })
 
-  test("tool surface can run, read, and list executions", async () => {
-    await withExecutorState(async () => {
+  test("captures actionable diagnostics for failed runs", async () => {
+    await withArtifactState(async () => {
+      const recordSpy = spyOn(FluxRecorder, "record")
+      globalThis.fetch = (async () => {
+        throw new Error("connection refused")
+      }) as typeof fetch
+
+      const plan = createInvestingResearchPlan({
+        objective: "Prepare a pre-earnings preview for NVDA",
+      })
+      updateInvestingResearchTask({
+        planId: plan.id,
+        taskId: "coverage-check",
+        status: "completed",
+      })
+
+      const execution = await runInvestingResearchExecution({ planId: plan.id })
+      const artifact = getInvestingResearchArtifact(execution.artifactId!)
+
+      expect(execution.status).toBe("error")
+      expect(artifact).toBeDefined()
+      if (!artifact) throw new Error("artifact should be defined")
+
+      expect(artifact.kind).toBe("failure-diagnostic")
+      expect(artifact.status).toBe("failed")
+      expect(artifact.diagnostics.length).toBeGreaterThanOrEqual(2)
+      expect(artifact.sections.some((section) => section.title === "Diagnostics")).toBe(true)
+      expect(artifact.diagnostics.some((diagnostic) => diagnostic.command === "zee investing ingest status")).toBe(true)
+      expect(recordSpy.mock.calls.some((call) => call[0]?.kind === "investing.research.diagnostic")).toBe(true)
+    })
+  })
+
+  test("tool surface can create, read, and list artifacts", async () => {
+    await withArtifactState(async () => {
       globalThis.fetch = (async (input: RequestInfo | URL) => {
         const url = String(input)
         if (url.endsWith("/api/accounting/NVDA/filings")) {
@@ -124,7 +139,7 @@ describe("investing research executor", () => {
           return new Response(
             JSON.stringify({
               success: true,
-              data: { symbol: "NVDA", headline: "Consensus nudging higher" },
+              data: { symbol: "NVDA", headline: "Consensus moving higher" },
             }),
             { status: 200, headers: { "content-type": "application/json" } },
           )
@@ -141,28 +156,29 @@ describe("investing research executor", () => {
         status: "completed",
       })
 
-      const runtime = await researchExecutorTool.init()
+      const execution = await runInvestingResearchExecution({ planId: plan.id })
+      const runtime = await researchArtifactsTool.init()
       const ctx = makeToolContext()
-      const runResult = await runtime.execute(
-        {
-          action: "run",
-          planId: plan.id,
-          taskId: "source-refresh",
-        },
-        ctx,
-      )
-      const execution = JSON.parse(runResult.output) as { id: string; taskId: string }
-      expect(execution.taskId).toBe("source-refresh")
 
-      const readResult = await runtime.execute(
+      const createResult = await runtime.execute(
         {
-          action: "read",
+          action: "create",
           executionId: execution.id,
         },
         ctx,
       )
+      const artifact = JSON.parse(createResult.output) as { id: string; executionId: string }
+      expect(artifact.executionId).toBe(execution.id)
+
+      const readResult = await runtime.execute(
+        {
+          action: "read",
+          artifactId: artifact.id,
+        },
+        ctx,
+      )
       expect(JSON.parse(readResult.output)).toMatchObject({
-        id: execution.id,
+        id: artifact.id,
       })
 
       const listResult = await runtime.execute(
@@ -175,10 +191,10 @@ describe("investing research executor", () => {
       )
       const listed = JSON.parse(listResult.output) as {
         count: number
-        executions: Array<{ id: string }>
+        artifacts: Array<{ id: string }>
       }
       expect(listed.count).toBeGreaterThan(0)
-      expect(listed.executions.some((entry) => entry.id === execution.id)).toBe(true)
+      expect(listed.artifacts.some((entry) => entry.id === artifact.id)).toBe(true)
     })
   })
 })

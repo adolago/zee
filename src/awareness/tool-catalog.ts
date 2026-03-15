@@ -48,6 +48,7 @@ const AGENT_PRIMARY_TOOLS: Record<string, string[]> = {
     "zee:invest-research",
     "zee:invest-planner",
     "zee:invest-executor",
+    "zee:invest-artifacts",
     "zee:invest-estimates",
     "zee:invest-insider-trades",
     "zee:invest-segments",

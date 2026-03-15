@@ -52,6 +52,8 @@ export type FluxKind =
   | "investing.research.plan.task"
   | "investing.research.execution"
   | "investing.research.evidence"
+  | "investing.research.artifact"
+  | "investing.research.diagnostic"
   | "agent.legacy_tools_alias.used"
   | "gateway.fallback.invoked"
   | "provider.fallback.used"
