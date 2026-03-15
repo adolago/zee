@@ -45,6 +45,13 @@ import {
   listInvestingValuationPackets,
 } from "./valuation-packet";
 import {
+  createInvestingEarningsPacket,
+  exportInvestingEarningsPacket,
+  getInvestingEarningsPacket,
+  INVESTING_EARNINGS_PACKET_WORKFLOWS,
+  listInvestingEarningsPackets,
+} from "./earnings-packets";
+import {
   INVESTING_PORTFOLIO_BRIEFING_KINDS,
   createInvestingPortfolioBriefing,
   getInvestingPortfolioBriefing,
@@ -1036,6 +1043,132 @@ export const valuationPacketTool: ToolDefinition = {
   }),
 };
 
+const EarningsPacketParams = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("create"),
+    executionId: z.string().describe("Persisted research execution identifier"),
+    overwrite: z.boolean().optional().default(false).describe("Regenerate the packet even if one already exists"),
+  }),
+  z.object({
+    action: z.literal("read"),
+    packetId: z.string().describe("Persisted earnings packet identifier"),
+  }),
+  z.object({
+    action: z.literal("list"),
+    symbol: z.string().optional().describe("Optional symbol filter"),
+    workflow: z.enum(INVESTING_EARNINGS_PACKET_WORKFLOWS).optional().describe("Optional workflow filter"),
+    executionId: z.string().optional().describe("Optional execution filter"),
+    limit: z.number().min(1).max(100).default(10).describe("Maximum number of packets to return"),
+  }),
+  z.object({
+    action: z.literal("export"),
+    packetId: z.string().describe("Persisted earnings packet identifier"),
+    format: z.enum(["json", "markdown"]).default("json").describe("Export format"),
+  }),
+]);
+
+export const earningsPacketTool: ToolDefinition = {
+  id: "zee:invest-earnings-packets",
+  category: "domain",
+  init: async () => ({
+    description: `Create, inspect, list, and export pre and post earnings packets tied to catalysts, risks, and valuation changes.`,
+    parameters: EarningsPacketParams,
+    execute: async (args, ctx): Promise<ToolExecutionResult> => {
+      switch (args.action) {
+        case "create": {
+          ctx.metadata({ title: `Creating earnings packet for ${args.executionId}` });
+          const execution = getInvestingResearchExecution(args.executionId);
+          if (!execution) {
+            return {
+              title: "Investing Earnings Packets",
+              metadata: { action: args.action, executionId: args.executionId, found: false },
+              output: JSON.stringify({ error: `Research execution not found: ${args.executionId}` }, null, 2),
+            };
+          }
+
+          const plan = getInvestingResearchPlan(execution.planId);
+          const task = plan?.tasks.find((entry) => entry.id === execution.taskId);
+          if (!plan || !task) {
+            return {
+              title: "Investing Earnings Packets",
+              metadata: { action: args.action, executionId: args.executionId, found: false },
+              output: JSON.stringify(
+                { error: `Research plan context not found for execution: ${args.executionId}` },
+                null,
+                2,
+              ),
+            };
+          }
+
+          const packet = await createInvestingEarningsPacket({
+            execution,
+            plan,
+            task,
+            overwrite: args.overwrite,
+          });
+          return {
+            title: "Investing Earnings Packets",
+            metadata: {
+              action: args.action,
+              packetId: packet.id,
+              executionId: packet.executionId,
+              workflow: packet.workflow,
+              status: packet.status,
+            },
+            output: JSON.stringify(packet, null, 2),
+          };
+        }
+        case "read": {
+          ctx.metadata({ title: `Loading earnings packet ${args.packetId}` });
+          const packet = getInvestingEarningsPacket(args.packetId);
+          return {
+            title: "Investing Earnings Packets",
+            metadata: { action: args.action, packetId: args.packetId, found: Boolean(packet) },
+            output: JSON.stringify(packet ?? { error: `Earnings packet not found: ${args.packetId}` }, null, 2),
+          };
+        }
+        case "list": {
+          ctx.metadata({ title: "Listing earnings packets" });
+          const packets = listInvestingEarningsPackets({
+            symbol: args.symbol,
+            workflow: args.workflow,
+            executionId: args.executionId,
+            limit: args.limit,
+          });
+          return {
+            title: "Investing Earnings Packets",
+            metadata: {
+              action: args.action,
+              count: packets.length,
+              symbol: args.symbol,
+              workflow: args.workflow,
+              executionId: args.executionId,
+            },
+            output: JSON.stringify({ packets, count: packets.length }, null, 2),
+          };
+        }
+        case "export": {
+          ctx.metadata({ title: `Exporting earnings packet ${args.packetId}` });
+          const exported = exportInvestingEarningsPacket({
+            packetId: args.packetId,
+            format: args.format,
+          });
+          return {
+            title: "Investing Earnings Packets",
+            metadata: {
+              action: args.action,
+              packetId: args.packetId,
+              format: args.format,
+              exportCount: exported.packet.audit.exportCount,
+            },
+            output: exported.content,
+          };
+        }
+      }
+    },
+  }),
+};
+
 const PortfolioBriefingParams = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("create"),
@@ -1286,6 +1419,7 @@ export const INVESTING_TOOLS = [
   researchTool,
   valuationKernelTool,
   valuationPacketTool,
+  earningsPacketTool,
   portfolioBriefingsTool,
   researchPlannerTool,
   researchExecutorTool,

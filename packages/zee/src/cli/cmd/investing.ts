@@ -32,6 +32,16 @@ import {
   type InvestingPortfolioBriefingAudience,
   type InvestingPortfolioBriefingKind,
 } from "@root/domain/investing/briefings"
+import {
+  createInvestingEarningsPacket,
+  exportInvestingEarningsPacket,
+  getInvestingEarningsPacket,
+  INVESTING_EARNINGS_PACKET_WORKFLOWS,
+  listInvestingEarningsPackets,
+  type InvestingEarningsPacketWorkflow,
+} from "@root/domain/investing/earnings-packets"
+import { getInvestingResearchExecution } from "@root/domain/investing/executor"
+import { getInvestingResearchPlan } from "@root/domain/investing/planner"
 
 const InvestingIngestStatusCommand = cmd({
   command: "status",
@@ -355,6 +365,193 @@ const InvestingThesisCommand = cmd({
   async handler() {},
 })
 
+const InvestingEarningsPacketCreateCommand = cmd({
+  command: "create <executionId>",
+  describe: "create a persisted pre or post earnings packet from a research execution",
+  builder: (yargs: Argv) =>
+    yargs
+      .positional("executionId", {
+        type: "string",
+        demandOption: true,
+        describe: "persisted research execution identifier",
+      })
+      .option("overwrite", {
+        type: "boolean",
+        default: false,
+        describe: "regenerate the packet even if one already exists",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output as JSON",
+      }),
+  handler: async (args: { executionId?: string; overwrite?: boolean; json?: boolean }) => {
+    if (!args.executionId) {
+      throw new Error("executionId is required")
+    }
+    const execution = getInvestingResearchExecution(args.executionId)
+    if (!execution) {
+      console.log(JSON.stringify({ error: `Research execution not found: ${args.executionId}` }, null, 2))
+      return
+    }
+
+    const plan = getInvestingResearchPlan(execution.planId)
+    const task = plan?.tasks.find((entry) => entry.id === execution.taskId)
+    if (!plan || !task) {
+      console.log(JSON.stringify({ error: `Research plan context not found for execution: ${args.executionId}` }, null, 2))
+      return
+    }
+
+    const packet = await createInvestingEarningsPacket({
+      execution,
+      plan,
+      task,
+      overwrite: args.overwrite,
+    })
+    if (args.json) {
+      console.log(JSON.stringify(packet, null, 2))
+      return
+    }
+
+    console.log(`${packet.id}`)
+    console.log(`- workflow=${packet.workflow} symbol=${packet.symbol} status=${packet.status}`)
+    console.log(`- summary=${packet.summary}`)
+    console.log(
+      `- coverage catalysts=${packet.catalysts.length} risks=${packet.risks.length} citations=${packet.citations.length}`,
+    )
+  },
+})
+
+const InvestingEarningsPacketReadCommand = cmd({
+  command: "read <packetId>",
+  describe: "read one persisted earnings packet",
+  builder: (yargs: Argv) =>
+    yargs
+      .positional("packetId", {
+        type: "string",
+        demandOption: true,
+        describe: "persisted earnings packet identifier",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output as JSON",
+      }),
+  handler: async (args: { packetId?: string; json?: boolean }) => {
+    if (!args.packetId) {
+      throw new Error("packetId is required")
+    }
+    const packet = getInvestingEarningsPacket(args.packetId)
+    const payload = packet ?? { error: `Earnings packet not found: ${args.packetId}` }
+    if (args.json || !packet) {
+      console.log(JSON.stringify(payload, null, 2))
+      return
+    }
+
+    console.log(`${packet.id}`)
+    console.log(`- workflow=${packet.workflow} symbol=${packet.symbol} status=${packet.status}`)
+    console.log(`- summary=${packet.summary}`)
+    for (const section of packet.sections) {
+      console.log(`\n${section.title}`)
+      console.log(section.body)
+    }
+  },
+})
+
+const InvestingEarningsPacketListCommand = cmd({
+  command: "list",
+  describe: "list persisted earnings packets",
+  builder: (yargs: Argv) =>
+    yargs
+      .option("symbol", {
+        type: "string",
+        describe: "optional symbol filter",
+      })
+      .option("workflow", {
+        type: "string",
+        choices: [...INVESTING_EARNINGS_PACKET_WORKFLOWS],
+        describe: "optional workflow filter",
+      })
+      .option("execution-id", {
+        type: "string",
+        describe: "optional execution filter",
+      })
+      .option("limit", {
+        type: "number",
+        default: 10,
+        describe: "maximum number of packets to return",
+      })
+      .option("json", {
+        type: "boolean",
+        default: false,
+        describe: "output as JSON",
+      }),
+  handler: async (args: {
+    symbol?: string
+    workflow?: string
+    executionId?: string
+    limit?: number
+    json?: boolean
+  }) => {
+    const packets = listInvestingEarningsPackets({
+      symbol: args.symbol,
+      workflow: args.workflow as InvestingEarningsPacketWorkflow | undefined,
+      executionId: args.executionId,
+      limit: args.limit,
+    })
+    if (args.json) {
+      console.log(JSON.stringify({ packets, count: packets.length }, null, 2))
+      return
+    }
+    for (const packet of packets) {
+      console.log(
+        `- ${packet.id}: workflow=${packet.workflow} symbol=${packet.symbol} status=${packet.status} catalysts=${packet.catalysts.length} risks=${packet.risks.length} summary=${packet.summary}`,
+      )
+    }
+  },
+})
+
+const InvestingEarningsPacketExportCommand = cmd({
+  command: "export <packetId>",
+  describe: "export one persisted earnings packet",
+  builder: (yargs: Argv) =>
+    yargs
+      .positional("packetId", {
+        type: "string",
+        demandOption: true,
+        describe: "persisted earnings packet identifier",
+      })
+      .option("format", {
+        type: "string",
+        choices: ["json", "markdown"],
+        default: "json",
+        describe: "export format",
+      }),
+  handler: async (args: { packetId?: string; format?: string }) => {
+    if (!args.packetId) {
+      throw new Error("packetId is required")
+    }
+    const exported = exportInvestingEarningsPacket({
+      packetId: args.packetId,
+      format: (args.format as "json" | "markdown" | undefined) ?? "json",
+    })
+    console.log(exported.content)
+  },
+})
+
+const InvestingEarningsPacketCommand = cmd({
+  command: "earnings-packet",
+  describe: "persisted pre and post earnings research packets",
+  builder: (yargs: Argv) =>
+    yargs
+      .command(InvestingEarningsPacketCreateCommand)
+      .command(InvestingEarningsPacketReadCommand)
+      .command(InvestingEarningsPacketListCommand)
+      .command(InvestingEarningsPacketExportCommand)
+      .demandCommand(),
+  async handler() {},
+})
+
 const InvestingBriefingCreateCommand = cmd({
   command: "create",
   describe: "create a persisted daily portfolio briefing",
@@ -533,6 +730,7 @@ export const InvestingCommand = cmd({
       .command(InvestingEntityCommand)
       .command(InvestingEventCommand)
       .command(InvestingThesisCommand)
+      .command(InvestingEarningsPacketCommand)
       .command(InvestingBriefingCommand)
       .demandCommand(),
   async handler() {},
