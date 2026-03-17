@@ -1,5 +1,4 @@
 import { Server } from "../../server/server"
-import { Investing } from "../../paths"
 import { cmd } from "./cmd"
 import { withNetworkOptions, resolveNetworkOptions } from "../network"
 
@@ -8,17 +7,6 @@ export const ServeCommand = cmd({
   builder: (yargs) => withNetworkOptions(yargs),
   describe: "starts a headless zee server",
   handler: async (args) => {
-    // Mandatory: Investing runtime must be reachable or ready for autostart
-    const err = Investing.preflight()
-    if (err) {
-      console.error(`\n  Investing backend is not ready:\n`)
-      for (const line of err.split("\n")) {
-        console.error(`  ${line}`)
-      }
-      console.error()
-      process.exit(1)
-    }
-
     const opts = await resolveNetworkOptions(args)
     const server = Server.listen(opts)
     const url = `http://${server.hostname}:${server.port}`

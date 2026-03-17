@@ -14,17 +14,13 @@
     "prepare": "husky",
     "random": "echo 'Random script'",
     "hello": "echo 'Hello World!'",
-    "test": "echo 'do not run tests from root' && exit 1",
-    "build:gui": "cargo build --release --package zee-gui",
-    "dev:gui": "cargo build --package zee-gui && ./target/debug/zee-gui"
+    "test": "echo 'do not run tests from root' && exit 1"
   },
   "workspaces": {
     "packages": [
       "packages/zee",
       "packages/zee-adapter",
-      "packages/app",
       "packages/plugin",
-      "packages/investing-sdk",
       "packages/sdk",
       "packages/ui",
       "packages/util",

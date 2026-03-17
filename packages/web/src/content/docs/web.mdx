@@ -1,132 +1,60 @@
 ---
-title: Web
-description: Using Zee in your browser.
+title: OpenBB Workspace
+description: Using Zee as the OpenBB Workspace copilot.
 ---
 
-Zee can run as a web application in your browser, providing the same powerful AI coding experience without needing a terminal.
-
-![Zee Web - New Session](../../assets/web/web-homepage-new-session.png)
+Zee no longer ships an in-repo web app. Browser-based investing workflows now run through OpenBB Workspace, with Zee exposed as a stateless copilot over HTTP + SSE.
 
 ## Getting Started
 
-Start the web interface by running:
+Start the Zee daemon:
 
 ```bash
-zee web
+zee daemon --hostname 127.0.0.1 --port 3210
 ```
 
-This starts a local server on `127.0.0.1` with a random available port and automatically opens Zee in your default browser.
+Then configure OpenBB Workspace to use:
+
+- `GET http://127.0.0.1:3210/openbb/agents.json`
+- `POST http://127.0.0.1:3210/openbb/query`
 
 :::caution
-If `ZEE_SERVER_PASSWORD` is not set, the server will be unsecured. This is fine for local use but should be set for network access.
+If `ZEE_SERVER_PASSWORD` is not set, the server will be unsecured. Set it before exposing Zee beyond loopback.
 :::
 
 ---
 
 ## Configuration
 
-You can configure the web server using command line flags or in your [config file](/docs/config).
-
-### Port
-
-By default, Zee picks an available port. You can specify a port:
-
-```bash
-zee web --port 4096
-```
-
-### Hostname
-
-By default, the server binds to `127.0.0.1` (localhost only). To make Zee accessible on your network:
-
-```bash
-zee web --hostname 0.0.0.0
-```
-
-When using `0.0.0.0`, Zee will display both local and network addresses:
-
-```
-  Local access:       http://localhost:4096
-  Network access:     http://192.168.1.100:4096
-```
-
-### mDNS Discovery
-
-Enable mDNS to make your server discoverable on the local network:
-
-```bash
-zee web --mdns
-```
-
-This automatically sets the hostname to `0.0.0.0` and advertises the server as `zee.local`.
-
-### CORS
-
-To allow additional domains for CORS (useful for custom frontends):
-
-```bash
-zee web --cors https://example.com
-```
-
 ### Authentication
 
-To protect access, set a password using the `ZEE_SERVER_PASSWORD` environment variable:
+OpenBB Workspace should send either:
 
-```bash
-ZEE_SERVER_PASSWORD=secret zee web
-```
+- `Authorization: Bearer <ZEE_SERVER_PASSWORD>`
+- `X-Zee-Token: <ZEE_SERVER_PASSWORD>`
 
-The username defaults to `zee` but can be changed with `ZEE_SERVER_USERNAME`.
+Trusted browser origins default to loopback plus hosted OpenBB Workspace origins.
 
 ---
 
-## Using the Web Interface
+## Workspace Flow
 
-Once started, the web interface provides access to your Zee sessions.
+Each `/openbb/query` request is stateless. OpenBB sends the full conversation history plus widget context on every request, and Zee maps that history back onto a matching session.
 
-### Sessions
-
-View and manage your sessions from the homepage. You can see active sessions and start new ones.
-
-![Zee Web - Active Session](../../assets/web/web-homepage-active-session.png)
-
-### Server Status
-
-Click "See Servers" to view connected servers and their status.
-
-![Zee Web - See Servers](../../assets/web/web-homepage-see-servers.png)
+When Zee needs client-side widget data, it emits `copilotFunctionCall` for `get_widget_data`, OpenBB fetches the data, and then re-posts the conversation with a `tool` message so Zee can continue.
 
 ---
 
 ## Attaching a Terminal
 
-You can attach a terminal TUI to a running web server:
+You can still attach the TUI to the same backend:
 
 ```bash
-# Start the web server
-zee web --port 4096
+# Start the backend
+zee serve --port 4096
 
 # In another terminal, attach the TUI
 zee attach http://localhost:4096
 ```
 
-This allows you to use both the web interface and terminal simultaneously, sharing the same sessions and state.
-
----
-
-## Config File
-
-You can also configure server settings in your `zee.json` config file:
-
-```json
-{
-  "server": {
-    "port": 4096,
-    "hostname": "0.0.0.0",
-    "mdns": true,
-    "cors": ["https://example.com"]
-  }
-}
-```
-
-Command line flags take precedence over config file settings.
+This keeps the TUI and OpenBB copilot on the same daemon and memory backend.

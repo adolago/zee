@@ -58,7 +58,7 @@ describe("runtime-process-guard helpers", () => {
 
   test("extractMcpServerName extracts server names", () => {
     expect(extractMcpServerName("bun run /repo/src/mcp/servers/memory.ts")).toBe("memory")
-    expect(extractMcpServerName("bun run /repo/src/mcp/servers/portfolio.ts --stdio")).toBe("portfolio")
+    expect(extractMcpServerName("bun run /repo/src/mcp/servers/calendar.ts --stdio")).toBe("calendar")
     expect(extractMcpServerName("zee daemon")).toBeUndefined()
   })
 

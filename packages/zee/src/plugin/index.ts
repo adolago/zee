@@ -10,7 +10,6 @@ import { CodexAuthPlugin } from "./codex"
 import { Session } from "../session"
 import { NamedError } from "@zee/util/error"
 import { KimiAuthPlugin } from "./kimi"
-import { InvestingPlugin } from "./investing"
 import path from "path"
 
 export namespace Plugin {
@@ -19,7 +18,7 @@ export namespace Plugin {
   const BUILTIN: string[] = []
 
   // Built-in plugins that are directly imported (not installed from npm)
-  const INTERNAL_PLUGINS: PluginInstance[] = [CodexAuthPlugin, KimiAuthPlugin, InvestingPlugin]
+  const INTERNAL_PLUGINS: PluginInstance[] = [CodexAuthPlugin, KimiAuthPlugin]
 
   const state = Instance.state(async () => {
     const { Server } = await import("../server/server")

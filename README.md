@@ -3,7 +3,7 @@
 [![Version](https://img.shields.io/npm/v/%40adolago%2Fzee?style=flat-square)](https://www.npmjs.com/package/@adolago/zee)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
-Zee is a unified CLI agent engine for life admin, investing, and learning. Semantic memory, tool orchestration, multi-surface support (CLI, Web, WhatsApp).
+Zee is a unified CLI agent engine for life admin, investing, and learning. Semantic memory, tool orchestration, and multi-surface support across the TUI, daemon APIs, OpenBB Workspace, and messaging channels.
 
 ## Release
 
@@ -17,7 +17,7 @@ Zee is a unified CLI agent engine for life admin, investing, and learning. Seman
 
 - [Bun](https://bun.sh) (v1.1+)
 - [Qdrant](https://qdrant.tech) (local) for semantic memory
-- Python 3.10-3.13 (3.12 recommended) for Investing dependencies
+- [OpenBB Platform API](https://docs.openbb.co/platform/developer_guide/api) for investing workflows (`http://127.0.0.1:6900` by default or `ZEE_OPENBB_API_URL`)
 - API key for your model provider (Anthropic, OpenAI, Google, etc.)
 
 ### Install (npm)
@@ -33,12 +33,6 @@ npm install -g @adolago/zee@nightly
 ```bash
 curl -fsSL https://raw.githubusercontent.com/adolago/zee/main/install | ZEE_NPM_PACKAGE=@adolago/zee bash
 ```
-
-The installer now bootstraps Investing Python dependencies into:
-- `~/.local/share/zee/investing/.venv`
-
-And configures:
-- `ZEE_INVESTING_PYTHON=~/.local/share/zee/investing/.venv/bin/python`
 
 ### Install from source
 
@@ -58,25 +52,14 @@ bun run build
 ln -sf ~/.local/src/zee/packages/zee/dist/@adolago/zee-linux-x64/bin/zee ~/.bun/bin/zee
 ```
 
-### Install Investing (required for investing module development)
+### OpenBB setup
 
-Investing is a Zee-owned capability pack. For source development, install full Python dependencies in a venv:
+For investing workflows and the OpenBB copilot surface, point Zee at an OpenBB Platform API instance:
 
 ```bash
-# From zee repo root
-cd investing
-
-# Create venv and install all pinned dependencies
-python3.12 -m venv .venv
-.venv/bin/pip install -r requirements-lock.txt
-
-# Point Zee to this interpreter
-export ZEE_INVESTING_PYTHON=$PWD/.venv/bin/python
-```
-
-Add to your shell profile (`~/.bashrc` or `~/.zshrc`):
-```bash
-export ZEE_INVESTING_PYTHON=~/.local/share/zee/investing/.venv/bin/python
+export ZEE_OPENBB_API_URL=http://127.0.0.1:6900
+# optional if you use a custom launcher name/path
+export ZEE_OPENBB_API_CMD=openbb-api
 ```
 
 ### Configuration
@@ -112,7 +95,7 @@ Example memory + embeddings configuration:
       "collection": "agent_memory"
     },
     "embedding": {
-      "profile": "google/gemini-embedding-001",
+      "profile": "google/gemini-embedding-2-preview",
       "dimensions": 3072
     }
   }
@@ -148,7 +131,7 @@ docker run -p 6333:6333 qdrant/qdrant
 
 Common profiles you can set in `memory.embedding.profile`:
 
-- `google/gemini-embedding-001` (3072 dims, recommended)
+- `google/gemini-embedding-2-preview` (3072 dims, recommended)
 
 Zee supports Google-only embeddings. You can also override with `model`, `dimensions`, and `baseUrl`.
 
@@ -185,13 +168,17 @@ zee client http://server:3210
 ZEE_URL=http://server:3210 zee
 ```
 
-**Web UI (in-repo app):**
+**OpenBB Workspace copilot:**
 
 ```bash
-zee web
-# custom backend URL:
-zee web --server-url http://127.0.0.1:3210
+zee daemon --hostname 127.0.0.1 --port 3210
 ```
+
+Then configure OpenBB Workspace to use Zee at:
+
+- agent metadata: `http://127.0.0.1:3210/openbb/agents.json`
+- query endpoint: `http://127.0.0.1:3210/openbb/query`
+- auth: `Authorization: Bearer $ZEE_SERVER_PASSWORD` or `X-Zee-Token: $ZEE_SERVER_PASSWORD`
 
 **Gateway control plane helpers:**
 
@@ -208,7 +195,7 @@ zee/
 ├── src/
 │   ├── agent/              # Assistant profiles and wiring
 │   ├── memory/             # Qdrant semantic memory
-│   └── domain/             # Domain tools (zee/, investing/)
+│   └── domain/             # Domain tools (zee/, learning/)
 └── .agents/skills/         # Skills
 ```
 

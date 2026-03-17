@@ -2,7 +2,7 @@
  * Surface Abstraction Layer
  *
  * The surface module provides a unified interface for connecting different UIs
- * (CLI, GUI, messaging platforms) to the Zee engine. Each surface adapter
+ * (CLI and messaging platforms) to the Zee engine. Each surface adapter
  * translates between the surface-specific protocols and the agent's message format.
  *
  * Architecture:
@@ -17,12 +17,12 @@
  *                             |
  *        +--------------------+--------------------+
  *        |                    |                    |
- * +------v------+      +------v------+      +------v------+
- * | CLI Surface |      | GUI Surface |      | Msg Surface |
- * +-------------+      +-------------+      +-------------+
- *        |                    |                    |
- *    Terminal           WebSocket           Platform APIs
- *                                           (WA)
+ * +------v------+      +------v------+
+ * | CLI Surface |      | Msg Surface |
+ * +-------------+      +-------------+
+ *        |                    |
+ *    Terminal           Platform APIs
+ *                        (WA)
  * ```
  *
  * Key Concepts:
@@ -35,10 +35,9 @@
  *
  * 3. **Permission Model**: Surfaces handle permission requests differently:
  *    - CLI: Interactive prompts with keyboard input
- *    - GUI: Modal dialogs via WebSocket
  *    - Messaging: Automatic resolution based on config (no interactive prompts)
  *
- * 4. **Streaming vs Batching**: Some surfaces (CLI, GUI) support streaming
+ * 4. **Streaming vs Batching**: Some surfaces (CLI) support streaming
  *    responses while others (messaging) require complete messages.
  *
  * @module surface
@@ -110,7 +109,6 @@ export type {
   PermissionPolicy,
   PermissionConfig,
   CLISurfaceConfig,
-  GUISurfaceConfig,
   MessagingSurfaceConfig,
   SurfaceConfig,
   UXAdaptations,
@@ -119,12 +117,10 @@ export type {
 export {
   DEFAULT_PERMISSION_CONFIG,
   DEFAULT_CLI_CONFIG,
-  DEFAULT_GUI_CONFIG,
   DEFAULT_MESSAGING_CONFIG,
   DEFAULT_UX_ADAPTATIONS,
   mergePermissionConfig,
   resolveCLISurfaceConfig,
-  resolveGUISurfaceConfig,
   resolveMessagingSurfaceConfig,
   buildSurfaceConfig,
   resolvePermission,
@@ -136,9 +132,6 @@ export {
 
 // CLI Surface
 export { CLISurface, createCLISurface } from "./cli.js"
-
-// GUI Surface
-export { GUISurface, createGUISurface } from "./gui.js"
 
 // Messaging Surfaces
 export type { MessagingPlatformHandler, PlatformMessage } from "./messaging.js"
@@ -161,12 +154,10 @@ export { SurfaceRouter, getSurfaceRouter, setSurfaceRouter, resetSurfaceRouter }
 // =============================================================================
 
 import { createCLISurface } from "./cli.js"
-import { createGUISurface } from "./gui.js"
 import type { Surface } from "./surface.js"
 import type { SurfaceCapabilities } from "./types.js"
 import {
   CLI_CAPABILITIES,
-  WEB_CAPABILITIES,
   WHATSAPP_CAPABILITIES,
   TELEGRAM_CAPABILITIES,
   API_CAPABILITIES,
@@ -179,12 +170,10 @@ import {
  * For messaging platforms (whatsapp), use createMessagingSurface()
  * with your own platform handler implementation instead.
  */
-export function createSurface(type: "cli" | "gui", config?: Record<string, unknown>): Surface {
+export function createSurface(type: "cli", config?: Record<string, unknown>): Surface {
   switch (type) {
     case "cli":
       return createCLISurface(config)
-    case "gui":
-      return createGUISurface(config)
     default:
       throw new Error(
         `Unknown surface type: ${type}. For messaging platforms, use createMessagingSurface() with your handler.`,
@@ -195,12 +184,10 @@ export function createSurface(type: "cli" | "gui", config?: Record<string, unkno
 /**
  * Get default capabilities for a surface type.
  */
-export function getDefaultCapabilities(type: "cli" | "gui" | "whatsapp" | "telegram" | "api"): SurfaceCapabilities {
+export function getDefaultCapabilities(type: "cli" | "whatsapp" | "telegram" | "api"): SurfaceCapabilities {
   switch (type) {
     case "cli":
       return CLI_CAPABILITIES
-    case "gui":
-      return WEB_CAPABILITIES
     case "whatsapp":
       return WHATSAPP_CAPABILITIES
     case "telegram":

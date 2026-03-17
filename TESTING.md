@@ -15,9 +15,6 @@ cd packages/zee && bun test --grep "hold mode"
 # zee unit/integration (pnpm + Vitest)
 cd packages/zee/Swabble && pnpm test
 
-# app e2e
-cd packages/app && npx playwright test
-
 # typecheck
 cd packages/zee && bun run typecheck
 ```
@@ -90,6 +87,7 @@ bun dev
 Smoke checklist:
 
 - TUI launches and renders without crashing
+- `GET /openbb/agents.json` responds from the daemon
 - `Ctrl+X H` toggles `HOLD`/`RELEASE` mode
 - `Ctrl+T` cycles model variants (for models that define variants)
 - Provider dialog accepts an API key and shows success toast

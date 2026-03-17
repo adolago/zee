@@ -45,7 +45,7 @@ export async function createSessionRuntimeProcessor(input: {
   model: Provider.Model
   abort: AbortSignal
   surface?: "cli" | "orchestration" | "gateway"
-  sessionSurface?: "cli" | "web" | "api" | "whatsapp" | "telegram"
+  sessionSurface?: "cli" | "web" | "api" | "openbb" | "whatsapp" | "telegram"
   source?: "prompt" | "compaction"
 }) {
   const surface =

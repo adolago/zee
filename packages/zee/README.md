@@ -123,16 +123,16 @@ Use this as your onboarding completion checklist:
 4. `zee debug skill-audit` shows curated skills loaded.
 5. `zee` opens and accepts a prompt.
 
-## Optional: Stanley investing module setup
+## Optional: OpenBB investing backend setup
 
-For local Stanley autostart, build the Rust runtime and point Zee at the binary:
+For investing workflows and the OpenBB Workspace copilot, point Zee at an OpenBB Platform API instance:
 
 ```bash
-cargo build --manifest-path packages/investing-core/Cargo.toml --release --features cli
-export ZEE_INVESTING_CORE_BIN=$PWD/packages/investing-core/target/release/stanley
+export ZEE_OPENBB_API_URL=http://127.0.0.1:6900
+export ZEE_OPENBB_API_CMD=openbb-api
 ```
 
-Alternatively, point `ZEE_INVESTING_API_URL` at an already-running Investing runtime.
+Alternatively, set `ZEE_OPENBB_API_URL` to an already-running remote OpenBB Platform API.
 
 ## Build from source
 

@@ -1,52 +1,47 @@
-# Control UI + WebChat as Primary Operator Surface
+# OpenBB Workspace as Primary Browser Surface
 
-This document defines the first-class operator path for Zee web control and webchat workflows (issue `#268`).
+This document defines the first-class browser operator path for Zee after the removal of the in-repo web UI and Rust GUI.
 
 Explicit HTTP operator scope assignments live in `docs/architecture/control-plane-scope-matrix.md`.
 
 ## Stable Entrypoints
 
-Primary commands:
+Primary entrypoints:
 
 ```bash
-zee control-ui start --server-url http://127.0.0.1:3210
-zee control-ui status --strict
+zee daemon --hostname 127.0.0.1 --port 3210
+GET /openbb/agents.json
+POST /openbb/query
 ```
-
-Compatibility:
-
-- `zee web` remains available.
-- `zee webchat` aliases `zee control-ui`.
 
 ## Core Operator Workflows
 
-`zee control-ui status` probes these core workflows over the server API:
+OpenBB Workspace now drives these workflows over the Zee daemon API:
 
+- agent discovery: `GET /openbb/agents.json`
+- stateless copilot streaming: `POST /openbb/query`
 - session visibility: `GET /session`
-- approvals queue: `GET /question`
-- pairing/gateway reachability: `GET /gateway/status`
 - system health: `GET /global/health/status`
-- channel state: `GET /gateway/channels/status`
+- memory-backed personalization: `GET /memory/*` and `POST /memory/search`
 
-These workflows are covered by API-surface tests to keep the web operator path stable.
+These workflows are covered by API-surface tests to keep the OpenBB path stable.
 
 ## Lifecycle Expectations
 
 - Start daemon: `zee daemon`
-- Start web control UI: `zee control-ui start`
-- Probe readiness and operator workflows: `zee control-ui status --strict`
+- Configure OpenBB Workspace against `http://127.0.0.1:3210/openbb/agents.json`
+- Verify streaming query flow against `POST /openbb/query`
 
 ## Security Guidance (Proxied Deployment)
 
 - Keep server auth enabled for non-loopback binds (`ZEE_ENABLE_SERVER_AUTH=1`, `ZEE_SERVER_PASSWORD`).
-- Use token-mode Control UI auth by default for browser clients:
+- Use token auth for browser clients:
   - `Authorization: Bearer <token>`
   - `X-Zee-Token: <token>`
-- Keep Control UI auth downgrade flags disabled unless explicitly break-glass acknowledged.
+- Keep browser-client auth downgrade flags disabled unless explicitly break-glass acknowledged.
 - Terminate TLS at the reverse proxy and keep trusted origins explicit (`gateway.controlUi.trustedOrigins`).
 - Use:
   - `zee security audit`
   - `zee security audit --deep --strict`
   - `zee doctor security --deep --strict`
   to validate control-plane and action-surface guardrails before production exposure.
-- Deep audit now reports paired-node state drift (`lastSeenAt`, revoke metadata, token-hash integrity) and emits Flux telemetry for operator dashboards.

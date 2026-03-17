@@ -519,7 +519,7 @@ export namespace Thread {
   /**
    * Map a thread channel to a session surface type.
    */
-  function channelToSurface(channel: Channel): "cli" | "web" | "api" | "whatsapp" | "telegram" {
+  function channelToSurface(channel: Channel): "cli" | "web" | "api" | "openbb" | "whatsapp" | "telegram" {
     switch (channel) {
       case "whatsapp":
         return "whatsapp"
@@ -539,7 +539,7 @@ export namespace Thread {
    */
   export async function resume(
     threadId: string,
-    surface: "cli" | "web" | "api" | "whatsapp" | "telegram",
+    surface: "cli" | "web" | "api" | "openbb" | "whatsapp" | "telegram",
     options?: { injectSummary?: boolean },
   ): Promise<Info | null> {
     const thread = await get(threadId)

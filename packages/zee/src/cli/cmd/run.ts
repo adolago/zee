@@ -11,7 +11,6 @@ import { Server } from "../../server/server"
 import { Provider } from "../../provider/provider"
 import { Agent } from "../../agent/agent"
 import { checkEnvironment } from "./check"
-import { Investing } from "../../paths"
 import { GlobalBus } from "../../bus/global"
 import { ExperimentalHooks } from "@/hooks/experimental-hooks"
 import { Instance } from "@/project/instance"
@@ -258,13 +257,6 @@ export const RunCommand = cmd({
   },
   handler: async (args) => {
     await checkEnvironment()
-
-    // Mandatory: Investing runtime must be reachable or ready for autostart
-    const investingErr = Investing.preflight()
-    if (investingErr) {
-      UI.error("Investing backend is not ready:\n" + investingErr)
-      process.exit(1)
-    }
 
     let message = [...args.message, ...(args["--"] || [])]
       .map((arg) => (arg.includes(" ") ? `"${arg.replace(/"/g, '\\"')}"` : arg))

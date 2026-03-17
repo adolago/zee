@@ -593,7 +593,7 @@ export const SessionRoute = new Hono()
       },
     }),
     validator("param", z.object({ sessionID: z.string() })),
-    validator("json", z.object({ targetSurface: z.enum(["cli", "web", "api", "whatsapp", "telegram"]) })),
+    validator("json", z.object({ targetSurface: z.enum(["cli", "web", "api", "openbb", "whatsapp", "telegram"]) })),
     async (c) => {
       const sessionID = c.req.valid("param").sessionID
       const { targetSurface } = c.req.valid("json")

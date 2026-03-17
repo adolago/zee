@@ -141,7 +141,7 @@ export namespace Session {
           reasoning: z.number(),
         })
         .optional(),
-      surface: z.enum(["cli", "web", "api", "whatsapp", "telegram"]).optional(),
+      surface: z.enum(["cli", "web", "api", "openbb", "whatsapp", "telegram"]).optional(),
       mode: ExecutionModeSchema.optional(),
       systemPrompt: z.string().optional(),
       skills: z.array(z.string()).optional(),
@@ -150,7 +150,7 @@ export namespace Session {
         .object({
           createdAt: z.number(),
           mode: ExecutionModeSchema,
-          surface: z.enum(["cli", "web", "api", "whatsapp", "telegram"]).optional(),
+          surface: z.enum(["cli", "web", "api", "openbb", "whatsapp", "telegram"]).optional(),
           agent: z.string().optional(),
           permission: PermissionNext.Ruleset.optional(),
         })

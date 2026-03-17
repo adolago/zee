@@ -272,12 +272,10 @@ test("built-in local MCP servers always run with bun runtime", async () => {
       expect(status.calendar?.status).toBe("connected")
       expect(status.consciousness?.status).toBe("connected")
       expect(status.memory?.status).toBe("connected")
-      expect(status.portfolio?.status).toBe("connected")
 
       expect(commandByServer.calendar).toBe("bun")
       expect(commandByServer.consciousness).toBe("bun")
       expect(commandByServer.memory).toBe("bun")
-      expect(commandByServer.portfolio).toBe("bun")
     },
   })
 })
@@ -434,7 +432,6 @@ test("local MCP startup is globally serialized across persona servers", async ()
   localFailurePlans.calendar = { connectDelayMs: 15 }
   localFailurePlans.consciousness = { connectDelayMs: 15 }
   localFailurePlans.memory = { connectDelayMs: 15 }
-  localFailurePlans.portfolio = { connectDelayMs: 15 }
 
   await using tmp = await tmpdir()
   await Instance.provide({
@@ -444,7 +441,6 @@ test("local MCP startup is globally serialized across persona servers", async ()
       expect(status.calendar?.status).toBe("connected")
       expect(status.consciousness?.status).toBe("connected")
       expect(status.memory?.status).toBe("connected")
-      expect(status.portfolio?.status).toBe("connected")
       expect(maxConcurrentConnects).toBe(1)
     },
   })
@@ -599,49 +595,6 @@ test("local MCP classifies parent-guard exit signature as runtime_crash", async 
   })
 })
 
-test("portfolio local MCP falls back to node+tsx when Bun runtime crashes", async () => {
-  localFailurePlans.portfolio = {
-    connectErrors: [
-      "panic(main thread): Illegal instruction. oh no: Bun has crashed. bun.report/abc",
-      "panic(main thread): Illegal instruction. oh no: Bun has crashed. bun.report/def",
-    ],
-  }
-  MCP.configureLocalMcpResilienceForTests({
-    startupMaxAttempts: 3,
-    startupBackoffMs: [0, 0, 0],
-  })
-
-  await using tmp = await tmpdir()
-  await Instance.provide({
-    directory: tmp.path,
-    fn: async () => {
-      const status = await MCP.status()
-      expect(status.portfolio?.status).toBe("connected")
-      expect(connectAttempts.portfolio).toBe(3)
-
-      const attempts = (transportRefsByServer.portfolio ?? []) as Array<{
-        command?: string
-        args?: string[]
-      }>
-      expect(attempts.length).toBe(3)
-      expect(attempts[0]?.command).toBe("bun")
-      expect(attempts[0]?.args?.[0]).toBe("run")
-      expect(attempts[1]?.command).toBe("bun")
-      expect(attempts[1]?.args?.length).toBe(1)
-      const third = attempts[2]
-      if ((third?.command ?? "").endsWith("/node_modules/.bin/tsx")) {
-        expect(third?.args?.length).toBe(1)
-        expect(third?.args?.[0]?.endsWith("/src/mcp/servers/portfolio.ts")).toBe(true)
-      } else {
-        expect(third?.command).toBe("node")
-        expect(third?.args?.[0]).toBe("--import")
-        expect(third?.args?.[1]).toBe("tsx")
-        expect(third?.args?.[2]?.endsWith("/src/mcp/servers/portfolio.ts")).toBe(true)
-      }
-    },
-  })
-})
-
 test("consciousness local MCP falls back to node+tsx after repeated connection_closed failures", async () => {
   localFailurePlans.consciousness = {
     connectErrors: ["MCP error -32000: Connection closed", "MCP error -32000: Connection closed"],
@@ -682,7 +635,7 @@ test("consciousness local MCP falls back to node+tsx after repeated connection_c
   })
 })
 
-test("non-portfolio local MCP does not use node+tsx fallback variants", async () => {
+test("memory local MCP does not use node+tsx fallback variants", async () => {
   localFailurePlans.memory = {
     connectErrors: [
       "panic(main thread): Illegal instruction. oh no: Bun has crashed. bun.report/abc",

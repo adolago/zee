@@ -26,7 +26,6 @@ import { HeartbeatRunner } from "../../heartbeat/runner"
 import { setHeartbeatRunner } from "../../server/route/heartbeat"
 import { startSkillWatcher, stopSkillWatcher } from "../../skill/watcher"
 import { syncBundledSkillsToMachine } from "../../skill/mirror"
-import { registerInvestingIngestionSchedules, resolveInvestingIngestionConfig } from "../../investing/ingestion"
 import { Config } from "../../config/config"
 import { GlobalBus } from "../../bus/global"
 import { Flag } from "../../flag/flag"
@@ -39,8 +38,8 @@ import {
   type OrchestrationVisualMode,
   type VisualOrchestrationSink,
 } from "@root/orchestration-visual"
-import { registerInvestingOpsSchedules } from "@root/domain/investing/ops-automation"
 import os from "os"
+import { shutdownOpenBBRuntime } from "../../openbb/runtime"
 
 const log = Log.create({ service: "always-on" })
 
@@ -427,6 +426,18 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
     })
   }
 
+  // Initialize memory backend (Qdrant)
+  try {
+    const { getMemory } = await import("../../../../../src/memory/unified.js")
+    const memory = getMemory()
+    await memory.init()
+    Output.log(`Memory:     ${memory.isAvailable() ? "Available" : "Unavailable (degraded)"}`)
+  } catch (error) {
+    log.error("Failed to initialize memory backend", {
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
+
   resolvedVisualMode = parseVisualMode(visualMode ?? process.env.ZEE_ORCH_VISUAL_MODE)
   resolvedVisualBackend = (visualBackend ?? process.env.ZEE_ORCH_VISUAL_BACKEND)?.trim().toLowerCase()
 
@@ -677,41 +688,6 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
     })
   }
 
-  // Start investing ingestion scheduler inside the resident daemon process.
-  try {
-    const ingestionConfig = resolveInvestingIngestionConfig(daemonConfig)
-    const registrations = registerInvestingIngestionSchedules({
-      config: ingestionConfig,
-      directory,
-      rawConfig: daemonConfig,
-    })
-    if (!ingestionConfig.enabled || registrations.length === 0) {
-      Output.log("Investing:  Ingestion scheduler disabled")
-    } else {
-      Output.log(`Investing:  Ingestion scheduler active (${registrations.length} connectors)`)
-    }
-  } catch (error) {
-    log.error("Failed to initialize investing ingestion scheduler", {
-      error: error instanceof Error ? error.message : String(error),
-    })
-  }
-
-  // Start investing portfolio and earnings research-op schedules inside the resident daemon process.
-  try {
-    const registrations = registerInvestingOpsSchedules({
-      directory,
-    })
-    if (registrations.length === 0) {
-      Output.log("Investing:  Research ops scheduler disabled")
-    } else {
-      Output.log(`Investing:  Research ops scheduler active (${registrations.length} workflows)`)
-    }
-  } catch (error) {
-    log.error("Failed to initialize investing research ops scheduler", {
-      error: error instanceof Error ? error.message : String(error),
-    })
-  }
-
   // Start gateway
   if (gateway) {
     gatewayStarted = await GatewaySupervisor.start({
@@ -809,6 +785,8 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
 
     // Stop skill watcher
     await stopSkillWatcher()
+
+    await shutdownOpenBBRuntime().catch((e) => log.error("OpenBB runtime shutdown error", { error: String(e) }))
 
     if (stopRuntimeGuard) {
       stopRuntimeGuard()

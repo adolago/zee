@@ -274,7 +274,7 @@ export const DEFAULT_CAPABILITIES: SurfaceCapabilities = {
 // Surface Type
 // =============================================================================
 
-export type SurfaceType = "cli" | "web" | "api" | "whatsapp" | "telegram"
+export type SurfaceType = "cli" | "web" | "api" | "openbb" | "whatsapp" | "telegram"
 
 // =============================================================================
 // Surface Adapter Interface

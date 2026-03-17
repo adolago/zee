@@ -2,13 +2,12 @@
  * Centralized Path Resolution
  *
  * All assistant and asset paths are resolved from ZEE_ROOT.
- * No need for env vars like ZEE_INVESTING_REPO, ZEE_REPO, etc.
+ * No need for repo env vars like ZEE_REPO, etc.
  */
 
 import path from "path"
 import fs from "fs"
 import os from "os"
-import { execFileSync } from "child_process"
 
 function findZeeRoot(startDir: string): string | undefined {
   let current = path.resolve(startDir)
@@ -50,6 +49,12 @@ export function getZeeRoot(): string {
   return process.cwd()
 }
 
+function getXdgDataDir(): string {
+  const xdgDataHome = process.env.XDG_DATA_HOME?.trim()
+  if (xdgDataHome) return path.join(xdgDataHome, "zee")
+  return path.join(os.homedir(), ".local", "share", "zee")
+}
+
 /**
  * Domain paths resolved from the repo root.
  */
@@ -62,90 +67,69 @@ export const Domains = {
     return path.join(this.root(), "src", "domain", "zee")
   },
 
-  investing(): string {
-    return path.join(this.root(), "src", "domain", "investing")
-  },
-
   learning(): string {
     return path.join(this.root(), "src", "domain", "learning")
   },
 
-  exists(name: "zee" | "investing" | "learning"): boolean {
+  exists(name: "zee" | "learning"): boolean {
     return fs.existsSync(this[name]())
   },
 }
 
-/**
- * Investing-specific paths
- */
-export const Investing = {
-  repo(): string {
-    return process.env.ZEE_INVESTING_REPO || path.join(getZeeRoot(), "investing")
-  },
-
-  coreProject(): string {
-    return path.join(getZeeRoot(), "packages", "investing-core")
-  },
-
-  coreBin(): string | undefined {
-    const configured = process.env.ZEE_INVESTING_CORE_BIN?.trim()
-    return configured || undefined
-  },
-  portfolioFile(): string {
-    return process.env.ZEE_INVESTING_PORTFOLIO_FILE || path.join(os.homedir(), ".zee", "investing", "portfolio.json")
-  },
-
-  /** Get the investing API base URL from env or default. */
+export const OpenBB = {
   apiUrl(): string {
-    return process.env.ZEE_INVESTING_API_URL || "http://127.0.0.1:8000"
+    return process.env.ZEE_OPENBB_API_URL || "http://127.0.0.1:6900"
   },
 
-  /**
-   * Preflight check — verify the investing core runtime is ready to run.
-   * Returns null if everything is OK, or an error message string.
-   */
+  apiUrlOverridden(): boolean {
+    return Boolean(process.env.ZEE_OPENBB_API_URL?.trim())
+  },
+
+  apiCommand(): string {
+    return process.env.ZEE_OPENBB_API_CMD?.trim() || "openbb-api"
+  },
+
+  installDir(): string {
+    return process.env.ZEE_OPENBB_HOME?.trim() || path.join(getXdgDataDir(), "openbb")
+  },
+
+  venvDir(): string {
+    return path.join(this.installDir(), ".venv")
+  },
+
+  managedBinDir(): string {
+    return process.platform === "win32" ? path.join(this.venvDir(), "Scripts") : path.join(this.venvDir(), "bin")
+  },
+
+  managedPythonPath(): string {
+    return process.platform === "win32"
+      ? path.join(this.managedBinDir(), "python.exe")
+      : path.join(this.managedBinDir(), "python")
+  },
+
+  managedApiCommandPath(): string {
+    return process.platform === "win32"
+      ? path.join(this.managedBinDir(), "openbb-api.exe")
+      : path.join(this.managedBinDir(), "openbb-api")
+  },
+
+  managedBuildCommandPath(): string {
+    return process.platform === "win32"
+      ? path.join(this.managedBinDir(), "openbb-build.exe")
+      : path.join(this.managedBinDir(), "openbb-build")
+  },
+
+  workspaceOrigins(): string[] {
+    return ["https://pro.openbb.co", "https://openbb.co", "https://my.openbb.co"]
+  },
+
   preflight(): string | null {
-    const configuredApiUrl = process.env.ZEE_INVESTING_API_URL?.trim()
-    if (configuredApiUrl) {
-      try {
-        new URL(configuredApiUrl)
-        return null
-      } catch {
-        return (
-          `Configured ZEE_INVESTING_API_URL is invalid: ${configuredApiUrl}.\n` +
-          `Set ZEE_INVESTING_API_URL to a valid investing base URL or configure ZEE_INVESTING_CORE_BIN for local autostart.`
-        )
-      }
-    }
-
-    const coreBin = this.coreBin()
-    if (!coreBin) {
-      return (
-        `Investing core binary is not configured.\n` +
-        `Set ZEE_INVESTING_CORE_BIN to a built investing executable path, or set ZEE_INVESTING_API_URL to an existing investing runtime.\n` +
-        `Example:\n` +
-        `  export ZEE_INVESTING_CORE_BIN=${path.join(this.coreProject(), "target", "release", "investing")}`
-      )
-    }
-
+    const configuredApiUrl = process.env.ZEE_OPENBB_API_URL?.trim() || this.apiUrl()
     try {
-      execFileSync(coreBin, ["--version"], {
-        timeout: 10_000,
-        stdio: "pipe",
-      })
+      new URL(configuredApiUrl)
       return null
-    } catch (error) {
-      const err = error as NodeJS.ErrnoException
-      if (err.code === "ENOENT" || err.code === "EACCES") {
-        return (
-          `Configured investing core binary is not executable: ${coreBin}.\n` +
-          `Set ZEE_INVESTING_CORE_BIN to a valid investing executable path.`
-        )
-      }
-      return (
-        `Configured investing core binary failed its startup probe: ${coreBin}.\n` +
-        `Run it manually to inspect the failure or rebuild packages/investing-core.`
-      )
+    } catch {
+      return `Configured ZEE_OPENBB_API_URL is invalid: ${configuredApiUrl}.\nSet ZEE_OPENBB_API_URL to a valid OpenBB Platform API base URL.`
     }
   },
 }

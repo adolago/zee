@@ -206,73 +206,6 @@ export function resolveCLISurfaceConfig(overrides: Partial<CLISurfaceConfig> = {
 }
 
 /**
- * GUI surface configuration.
- */
-export type GUISurfaceConfig = {
-  /** WebSocket server host */
-  host: string
-  /** WebSocket server port */
-  port: number
-  /** Whether to use TLS */
-  secure: boolean
-  /** TLS certificate path */
-  certPath?: string
-  /** TLS key path */
-  keyPath?: string
-  /** Authentication token */
-  authToken?: string
-  /** Reconnection settings */
-  reconnect: {
-    enabled: boolean
-    maxAttempts: number
-    backoffMs: number
-    maxBackoffMs: number
-  }
-  /** Permission overrides for GUI */
-  permissions: Partial<PermissionConfig>
-}
-
-/**
- * Default GUI configuration.
- */
-export const DEFAULT_GUI_CONFIG: GUISurfaceConfig = {
-  host: "127.0.0.1",
-  port: 18790,
-  secure: false,
-  reconnect: {
-    enabled: true,
-    maxAttempts: 10,
-    backoffMs: 1000,
-    maxBackoffMs: 30_000,
-  },
-  permissions: {
-    policies: {
-      file_write: {
-        defaultAction: "deny",
-        requireConfirmation: true,
-        timeoutMs: 60_000,
-      },
-    },
-  },
-}
-
-export function resolveGUISurfaceConfig(overrides: Partial<GUISurfaceConfig> = {}): GUISurfaceConfig {
-  return {
-    ...DEFAULT_GUI_CONFIG,
-    ...overrides,
-    reconnect: {
-      ...DEFAULT_GUI_CONFIG.reconnect,
-      ...overrides.reconnect,
-    },
-    permissions: mergePermissionConfig(
-      DEFAULT_PERMISSION_CONFIG,
-      DEFAULT_GUI_CONFIG.permissions,
-      overrides.permissions,
-    ),
-  }
-}
-
-/**
  * Messaging surface configuration (WhatsApp/Telegram).
  */
 export type MessagingSurfaceConfig = {
@@ -390,8 +323,6 @@ export type SurfaceConfig = {
   permissions: PermissionConfig
   /** CLI-specific configuration */
   cli: CLISurfaceConfig
-  /** GUI-specific configuration */
-  gui: GUISurfaceConfig
   /** Messaging platform configurations */
   messaging: {
     whatsapp?: MessagingSurfaceConfig
@@ -441,7 +372,6 @@ export function buildSurfaceConfig(overrides: Partial<SurfaceConfig> = {}): Surf
   return {
     permissions: mergePermissionConfig(DEFAULT_PERMISSION_CONFIG, overrides.permissions),
     cli: resolveCLISurfaceConfig(overrides.cli),
-    gui: resolveGUISurfaceConfig(overrides.gui),
     messaging: {
       whatsapp: overrides.messaging?.whatsapp ? resolveMessagingSurfaceConfig(overrides.messaging.whatsapp) : undefined,
       telegram: overrides.messaging?.telegram

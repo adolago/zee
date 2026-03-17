@@ -194,114 +194,6 @@ print_message() {
     echo -e "${color}${message}${NC}"
 }
 
-select_python_for_investing() {
-    local candidate=""
-    local version=""
-    local major=""
-    local minor=""
-
-    for candidate in python3.13 python3.12 python3.11 python3.10 python3; do
-        if ! command -v "$candidate" >/dev/null 2>&1; then
-            continue
-        fi
-
-        version=$("$candidate" - <<'PY'
-import sys
-print(f"{sys.version_info.major}.{sys.version_info.minor}")
-PY
-)
-        major="${version%%.*}"
-        minor="${version#*.}"
-
-        if [ "$major" = "3" ] && [ "$minor" -ge 10 ] && [ "$minor" -le 13 ]; then
-            echo "$candidate"
-            return 0
-        fi
-    done
-
-    return 1
-}
-
-investing_python_path=""
-install_investing_dependencies() {
-    print_message info "\n${MUTED}Installing Investing Python dependencies${NC}"
-
-    local python_cmd=""
-    python_cmd="$(select_python_for_investing || true)"
-    if [ -z "$python_cmd" ]; then
-        print_message error "No supported Python interpreter found (requires Python 3.10-3.13)."
-        print_message error "Install Python 3.12 and re-run the installer."
-        exit 1
-    fi
-
-    local requirements_lock_file=""
-    local requirements_main_file=""
-    requirements_lock_file="$(mktemp "${TMPDIR:-/tmp}/zee_investing_requirements_lock_XXXXXX.txt")"
-    requirements_main_file="$(mktemp "${TMPDIR:-/tmp}/zee_investing_requirements_main_XXXXXX.txt")"
-
-    if [ -f "./investing/requirements-lock.txt" ]; then
-        cp "./investing/requirements-lock.txt" "$requirements_lock_file"
-    fi
-
-    if [ -f "./investing/requirements.txt" ]; then
-        cp "./investing/requirements.txt" "$requirements_main_file"
-    fi
-
-    if [ ! -s "$requirements_lock_file" ] && [ ! -s "$requirements_main_file" ]; then
-        local repo="${github_repo:-$DEFAULT_GITHUB_REPO}"
-        local ref="main"
-        if [ -n "${specific_version:-}" ] && [ "$specific_version" != "local" ]; then
-            ref="v${specific_version}"
-        fi
-
-        local base_url="https://raw.githubusercontent.com/${repo}/${ref}/investing"
-        curl -fsSL "${base_url}/requirements-lock.txt" -o "$requirements_lock_file" || true
-        curl -fsSL "${base_url}/requirements.txt" -o "$requirements_main_file" || true
-    fi
-
-    if [ ! -s "$requirements_lock_file" ] && [ ! -s "$requirements_main_file" ]; then
-        rm -f "$requirements_lock_file" "$requirements_main_file"
-        print_message error "Failed to fetch Investing requirements."
-        exit 1
-    fi
-
-    local xdg_data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
-    local investing_root="${xdg_data_home}/zee/investing"
-    local venv_dir="${investing_root}/.venv"
-    mkdir -p "$investing_root"
-
-    if [ ! -x "${venv_dir}/bin/python" ]; then
-        "$python_cmd" -m venv "$venv_dir"
-    fi
-
-    local installed=false
-    local pip_install_cmd=("${venv_dir}/bin/pip" install --retries 8 --timeout 180)
-
-    if [ -s "$requirements_lock_file" ]; then
-        if "${pip_install_cmd[@]}" -r "$requirements_lock_file"; then
-            installed=true
-        else
-            print_message warning "Investing lockfile install failed; retrying with requirements.txt."
-        fi
-    fi
-
-    if [ "$installed" != "true" ] && [ -s "$requirements_main_file" ]; then
-        if "${pip_install_cmd[@]}" -r "$requirements_main_file"; then
-            installed=true
-        fi
-    fi
-
-    rm -f "$requirements_lock_file" "$requirements_main_file"
-
-    if [ "$installed" != "true" ]; then
-        print_message error "Failed to install Investing dependencies."
-        exit 1
-    fi
-
-    investing_python_path="${venv_dir}/bin/python"
-    print_message info "${MUTED}Investing dependencies installed at ${NC}${venv_dir}"
-}
-
 check_version() {
     if command -v "$APP" >/dev/null 2>&1; then
         ## Check the installed version
@@ -471,9 +363,6 @@ else
     download_and_install
 fi
 
-install_investing_dependencies
-
-
 add_to_path() {
     local config_file=$1
     local command=$2
@@ -565,15 +454,6 @@ if [[ "$no_modify_path" != "true" ]]; then
                 print_message info "  export PATH=$INSTALL_DIR:\$PATH"
             ;;
         esac
-    fi
-fi
-
-if [ -n "$investing_python_path" ]; then
-    if [[ "$no_modify_path" != "true" ]] && [[ -n "$config_file" ]]; then
-        add_export_to_shell "$config_file" "export ZEE_INVESTING_PYTHON=$investing_python_path"
-    else
-        print_message warning "Set Investing Python manually in your shell profile:"
-        print_message info "  export ZEE_INVESTING_PYTHON=$investing_python_path"
     fi
 fi
 

@@ -159,7 +159,7 @@ Runs as a background service (systemd/launchd) for always-on operation.
 
 Ships a desktop application distribution in addition to a CLI.
 
-- Zee: Yes | evidence: repo_path:packages/zee/src/cli/cmd/gui.ts, repo_path:packages/zee-gui/Cargo.toml
+- Zee: No | Zee removed the Rust GUI and keeps the TUI plus daemon/browser integrations only. | evidence: repo_path:packages/zee/src/index.ts
 - OpenCode: Yes | evidence: note:sst/opencode README (dev)
 - OpenClaw: Yes | macOS app plus iOS/Android nodes. | evidence: note:openclaw/openclaw README (main)
 
@@ -192,7 +192,7 @@ Interactive terminal UI beyond simple prompts.
 
 Ships a web UI/control surface in the core repo.
 
-- Zee: Yes | Zee ships the Solid web client in-repo and exposes a first-class `zee web` launcher command. | evidence: repo_path:packages/zee/src/cli/cmd/web.ts, repo_path:packages/app/src/app.tsx
+- Zee: No | Zee now integrates with external OpenBB Workspace instead of shipping an in-repo browser app. | evidence: repo_path:packages/zee/src/server/route/openbb.ts, doc:docs/architecture/control-ui-primary.md
 - OpenCode: Yes | Includes web/console packages and web surfaces. | evidence: note:sst/opencode README (dev)
 - OpenClaw: Yes | Control UI + WebChat. | evidence: note:openclaw/openclaw README (main)
 - Pi-mono: Partial | Provides pi-web-ui components, not a single product web app. | evidence: note:badlogic/pi-mono README (main)

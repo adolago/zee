@@ -2,7 +2,6 @@ import type { Argv } from "yargs"
 import { cmd } from "./cmd"
 import { bootstrap } from "../bootstrap"
 import { checkEnvironment } from "./check"
-import { Investing } from "../../paths"
 import { UI } from "../ui"
 import { reloadFlags } from "../../flag/flag"
 import { Session } from "../../session"
@@ -58,12 +57,6 @@ export const PromptCommand = cmd({
       }),
   handler: async (args) => {
     await checkEnvironment()
-
-    const investingErr = Investing.preflight()
-    if (investingErr) {
-      UI.error("Investing backend is not ready:\n" + investingErr)
-      process.exit(1)
-    }
 
     const agent = typeof args.agent === "string" ? args.agent : undefined
     const model = typeof args.model === "string" ? args.model : undefined

@@ -1,9 +1,9 @@
 /**
  * Domain Tools Index
  *
- * All domain tools (life admin, investing, learning) are registered
+ * All domain tools (life admin and learning) are registered
  * unconditionally under the unified Zee assistant. Tool namespaces
- * (zee:invest-*, zee:learn-*) are preserved for clarity.
+ * (`zee:*`, `zee:learn-*`) are preserved for clarity.
  *
  * This module bridges the MCP registry with the actual domain tool
  * implementations located in src/domain/.
@@ -13,8 +13,6 @@ import type { ToolDefinition } from '../types';
 import { getToolRegistry } from '../registry';
 import { Log } from '../../../packages/zee/src/util/log';
 
-// Full domain implementations
-import { INVESTING_TOOLS as FULL_INVESTING_TOOLS } from '../../domain/investing/tools.js';
 import { ZeeMemoryStoreTool, ZeeMemorySearchTool, ZeeMessagingTool, ZeeNotificationTool } from './zee';
 
 const log = Log.create({ service: 'domain-tools' });
@@ -22,13 +20,6 @@ const log = Log.create({ service: 'domain-tools' });
 // ============================================================================
 // Domain Tools Registry
 // ============================================================================
-
-/**
- * Investing domain tools (zee:invest-* namespace)
- */
-export const investingTools: ToolDefinition[] = [
-  ...(FULL_INVESTING_TOOLS as unknown as ToolDefinition[]),
-];
 
 /**
  * Life admin domain tools (zee: namespace) - MCP stubs
@@ -58,20 +49,11 @@ export const sharedTools: ToolDefinition[] = [];
 /**
  * All domain tools (static)
  */
-export const domainTools: ToolDefinition[] = [...investingTools, ...zeeTools, ...sharedTools];
+export const domainTools: ToolDefinition[] = [...zeeTools, ...sharedTools];
 
 // ============================================================================
 // Registration Functions
 // ============================================================================
-
-/**
- * Register investing tools (zee:invest-* namespace)
- */
-export function registerInvestingTools(): void {
-  const registry = getToolRegistry();
-  registry.registerAll(investingTools, { source: 'domain', enabled: true });
-  log.debug('Registered investing domain tools (zee:invest-*)', { count: investingTools.length });
-}
 
 /**
  * Register life admin tools (zee: namespace) - MCP stubs
@@ -136,10 +118,9 @@ export function registerSharedTools(): void {
 
 /**
  * Register all domain tools unconditionally.
- * All namespaces (zee:*, zee:invest-*, zee:learn-*) load for the unified Zee assistant.
+ * All namespaces (`zee:*`, `zee:learn-*`) load for the unified Zee assistant.
  */
 export async function registerAllDomainTools(): Promise<void> {
-  registerInvestingTools();
   registerZeeTools();
   registerSharedTools();
   
@@ -156,5 +137,4 @@ export async function registerAllDomainTools(): Promise<void> {
 // Re-exports
 // ============================================================================
 
-export * from './investing';
 export * from './zee';

@@ -75,10 +75,11 @@ const SAFE_VARS = new Set([
   // zee specific (non-sensitive)
   "ZEE_URL",
   "ZEE_LOG_LEVEL",
+  "ZEE_OPENBB_API_URL",
+  "ZEE_OPENBB_API_CMD",
   "ZEE_WEZTERM_ENABLED",
   "ZEE_DISABLE_TERMINAL_TITLE",
-  // Persona repos (paths only, not credentials)
-  "ZEE_INVESTING_REPO",
+  // Repo paths (paths only, not credentials)
   "ZEE_LEARNING_REPO",
   "ZEE_REPO",
 ]);

@@ -35,7 +35,7 @@ zee serve --cors http://localhost:5173 --cors https://app.example.com
 
 ### Authentication
 
-Set `ZEE_SERVER_PASSWORD` to protect the server with HTTP basic auth. The username defaults to `zee`, or set `ZEE_SERVER_USERNAME` to override it. This applies to both `zee serve` and `zee web`.
+Set `ZEE_SERVER_PASSWORD` to protect the server. Browser-originated clients typically use bearer auth (`Authorization: Bearer <token>`) or `X-Zee-Token: <token>`.
 
 ```bash
 ZEE_SERVER_PASSWORD=your-password zee serve

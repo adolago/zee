@@ -54,7 +54,7 @@ export async function getCommits(from: string, to: string): Promise<Commit[]> {
 
   // Get commits that touch the relevant packages
   const log =
-    await $`git log ${fromRef}..${toRef} --oneline --format="%H" -- packages/zee packages/investing-core packages/sdk packages/plugin sdks/vscode packages/extensions github`.text()
+    await $`git log ${fromRef}..${toRef} --oneline --format="%H" -- packages/zee packages/sdk packages/plugin sdks/vscode packages/extensions github`.text()
   const hashes = log.split("\n").filter(Boolean)
 
   const commits: Commit[] = []
@@ -71,7 +71,6 @@ export async function getCommits(from: string, to: string): Promise<Commit[]> {
     for (const file of files.split("\n").filter(Boolean)) {
       if (file.startsWith("packages/zee/src/cli/cmd/")) areas.add("tui")
       else if (file.startsWith("packages/zee/")) areas.add("core")
-      else if (file.startsWith("packages/investing-core/")) areas.add("desktop")
       else if (file.startsWith("packages/sdk/")) areas.add("sdk")
       else if (file.startsWith("packages/plugin/")) areas.add("plugin")
       else if (file.startsWith("packages/extensions/")) areas.add("extensions")

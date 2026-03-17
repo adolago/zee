@@ -27,6 +27,7 @@ import { Filesystem } from "../util/filesystem"
 import { MDNS } from "./mdns"
 import { ServerState } from "./state"
 import { Instance } from "../project/instance"
+import { OpenBB } from "../paths"
 import {
   AuthScope,
   assertSafeServerBind,
@@ -74,7 +75,7 @@ import { RegistryRoute } from "./route/registry"
 import { FluxRoute } from "./route/flux"
 import { SkillsRoute } from "./route/skills"
 import { LlmRoute } from "./route/llm"
-import { InvestingProxyRoute } from "./route/investing-proxy"
+import { OpenBBRoute } from "./route/openbb"
 import { RequestMeta } from "./request-meta"
 import { assertSafeOutboundUrl } from "@/security"
 
@@ -83,6 +84,7 @@ const DEFAULT_API_PORT = 3210
 const DEFAULT_BODY_LIMIT_BYTES = 10 * 1024 * 1024
 const DEFAULT_IDLE_TIMEOUT_SECONDS = 120
 const DEFAULT_MAX_INSTANCES_NON_LOOPBACK = 64
+const DEFAULT_BROWSER_CLIENT_ORIGINS = OpenBB.workspaceOrigins()
 
 function parseBodyLimitBytes(value?: string): number | undefined {
   if (!value) return undefined
@@ -334,6 +336,7 @@ export namespace Server {
 
               if (input.startsWith("http://localhost:")) return input
               if (input.startsWith("http://127.0.0.1:")) return input
+              if (DEFAULT_BROWSER_CLIENT_ORIGINS.includes(input)) return input
               if (_corsWhitelist.includes(input)) {
                 return input
               }
@@ -609,9 +612,7 @@ export namespace Server {
         .route("/stt", SttRoute)
         .route("/", CronRoute)
         .route("/", HeartbeatRoute)
-
-        // Investing API reverse proxy — forwards /api/* to the canonical Investing runtime
-        .route("/api", InvestingProxyRoute)
+        .route("/openbb", OpenBBRoute)
 
         // API Documentation
         .get(

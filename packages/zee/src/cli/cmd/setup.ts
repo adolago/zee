@@ -3,14 +3,17 @@ import { UI } from "../ui"
 import { Global } from "../../global"
 import path from "path"
 import fs from "fs"
-import { Log } from "../../util/log"
 import * as prompts from "@clack/prompts"
+import { ensureManagedOpenBBDirectories, type OpenBBRuntimeConfigLike } from "../../openbb/runtime"
+import { OpenBB } from "../../paths"
+import { Config } from "../../config/config"
 
 type SetupProfile = "assistant" | "engine"
 
 type SetupArgs = {
   profile?: SetupProfile
   "skip-profile"?: boolean
+  "skip-openbb"?: boolean
 }
 
 function buildOnboardingProfileConfig(profile: SetupProfile) {
@@ -114,7 +117,7 @@ async function maybeApplyOnboardingProfile(args: SetupArgs): Promise<boolean> {
 
 export const SetupCommand = cmd({
   command: "setup",
-  describe: "prepare onboarding profile and local environment (Docker, Qdrant)",
+  describe: "prepare onboarding profile and local environment (Qdrant, managed OpenBB)",
   builder: (yargs) =>
     yargs
       .option("profile", {
@@ -126,6 +129,11 @@ export const SetupCommand = cmd({
         type: "boolean",
         default: false,
         describe: "skip onboarding profile prompt/write",
+      })
+      .option("skip-openbb", {
+        type: "boolean",
+        default: false,
+        describe: "skip managed OpenBB install/setup",
       }),
   async handler(args) {
     const typedArgs = args as SetupArgs
@@ -133,6 +141,9 @@ export const SetupCommand = cmd({
 
     const onboardingApplied = await maybeApplyOnboardingProfile(typedArgs)
     if (!onboardingApplied) return
+    const config = await Config.get().catch(() => undefined)
+    const openbbConfig = config?.openbb
+    const hasConfiguredRemoteOpenBB = Boolean(openbbConfig?.apiUrl?.trim()) || OpenBB.apiUrlOverridden()
 
     // 1. Check Docker
     UI.info("Checking Docker availability...")
@@ -231,6 +242,87 @@ services:
       return
     }
 
+    if (!(typedArgs["skip-openbb"] || hasConfiguredRemoteOpenBB)) {
+      UI.info("Preparing managed OpenBB runtime...")
+      const openbbReady = await installManagedOpenBB(openbbConfig)
+      if (!openbbReady) {
+        UI.warn(
+          "OpenBB setup did not complete. Zee can still run, but investing features and Workspace copilot will stay degraded until OpenBB is installed.",
+        )
+      }
+    } else if (hasConfiguredRemoteOpenBB) {
+      UI.info(`Skipping managed OpenBB install because a remote OpenBB API is configured at ${openbbConfig?.apiUrl || OpenBB.apiUrl()}`)
+    }
+
     UI.success("Setup complete. You can now run 'zee daemon'.")
   },
 })
+
+async function installManagedOpenBB(config?: OpenBBRuntimeConfigLike): Promise<boolean> {
+  const resolution = await ensureManagedOpenBBDirectories(config)
+  const uv = Bun.which("uv")
+  const existingManagedRuntime = fs.existsSync(resolution.managedApiCommandPath)
+  if (!uv) {
+    if (existingManagedRuntime) {
+      UI.info(`Using existing managed OpenBB runtime at ${resolution.installDir}`)
+      return true
+    }
+    UI.warn("`uv` is not installed, so Zee cannot provision the managed OpenBB runtime automatically.")
+    UI.info("Install uv from https://docs.astral.sh/uv/ and rerun `zee setup`.")
+    return false
+  }
+
+  const commands: Array<{ label: string; cmd: string[] }> = []
+  if (!fs.existsSync(resolution.managedPythonPath)) {
+    commands.push({
+      label: "Creating OpenBB Python 3.12 environment",
+      cmd: [uv, "venv", "--python", "3.12", resolution.venvDir],
+    })
+  } else {
+    UI.info(`Using existing managed OpenBB environment at ${resolution.venvDir}`)
+  }
+
+  commands.push({
+    label: "Installing OpenBB packages",
+    cmd: [uv, "pip", "install", "--python", resolution.managedPythonPath, "openbb", "openbb-platform-api"],
+  })
+
+  for (const step of commands) {
+    UI.info(step.label)
+    const proc = Bun.spawn(step.cmd, {
+      stdout: "inherit",
+      stderr: "inherit",
+      stdin: "ignore",
+      env: {
+        ...process.env,
+        PYTHONUNBUFFERED: process.env.PYTHONUNBUFFERED || "1",
+      },
+    })
+    const exitCode = await proc.exited
+    if (exitCode !== 0) {
+      UI.error(`Failed while running: ${step.cmd.join(" ")}`)
+      return false
+    }
+  }
+
+  if (fs.existsSync(OpenBB.managedBuildCommandPath())) {
+    UI.info("Refreshing OpenBB extension build")
+    const buildProc = Bun.spawn([OpenBB.managedBuildCommandPath()], {
+      stdout: "inherit",
+      stderr: "inherit",
+      stdin: "ignore",
+      env: {
+        ...process.env,
+        PYTHONUNBUFFERED: process.env.PYTHONUNBUFFERED || "1",
+      },
+    })
+    const buildExitCode = await buildProc.exited
+    if (buildExitCode !== 0) {
+      UI.error(`Failed while running: ${OpenBB.managedBuildCommandPath()}`)
+      return false
+    }
+  }
+
+  UI.success(`Managed OpenBB runtime is ready at ${resolution.installDir}`)
+  return true
+}

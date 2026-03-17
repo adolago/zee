@@ -40,7 +40,7 @@ export namespace MCP {
   const HEALTH_MONITOR_INTERVAL_MS = 15_000
   const TOOL_CALL_CONNECT_ATTEMPTS = 2
   const TOOL_CALL_CONNECT_RETRY_DELAY_MS = 250
-  const LOCAL_NODE_FALLBACK_SERVERS = new Set(["portfolio", "consciousness"])
+  const LOCAL_NODE_FALLBACK_SERVERS = new Set(["consciousness"])
   const DEFAULT_LAZY_IDLE_TIMEOUT_MINUTES = 10
   const MCP_TOOL_CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
 
@@ -56,7 +56,7 @@ export namespace MCP {
   const serverLastUsedAt = new Map<string, number>()
   const toolCacheFilePath = path.join(Global.Path.state, "mcp", "tool-cache.json")
   let toolCacheHydratedFromDisk = false
-  const BUILTIN_LOCAL_MCP_SERVERS = new Set(["calendar", "consciousness", "memory", "portfolio"])
+  const BUILTIN_LOCAL_MCP_SERVERS = new Set(["calendar", "consciousness", "memory"])
 
   type LocalFailureClass =
     | "connection_closed"

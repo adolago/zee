@@ -48,7 +48,7 @@ Zee can spawn drones (background workers), uses Qdrant memory, and preserves con
 | What | Where |
 |------|-------|
 | Skills | `.agents/skills/@zee/` |
-| Domain tools | `src/domain/zee/`, `investing/`, `learning/` |
+| Domain tools | `src/domain/zee/`, `learning/` |
 | Swarm | `src/swarm/` (queen, workers, SPARC) |
 | Engine | `packages/zee/` |
 | Memory types | `src/memory/` |

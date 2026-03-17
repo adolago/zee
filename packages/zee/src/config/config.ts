@@ -1536,6 +1536,20 @@ export namespace Config {
       ref: "InvestingConfig",
     })
 
+  export const OpenBBConfig = z
+    .object({
+      apiUrl: z.string().optional().describe("Remote OpenBB Platform API base URL override"),
+      command: z.string().optional().describe("Local openbb-api command override"),
+      autoStart: z.boolean().optional().describe("Auto-start local OpenBB API when investing features need it"),
+      installDir: z.string().optional().describe("Managed OpenBB runtime directory"),
+      startupTimeoutMs: z.number().int().positive().optional().describe("OpenBB startup timeout in milliseconds"),
+      healthTimeoutMs: z.number().int().positive().optional().describe("OpenBB health check timeout in milliseconds"),
+    })
+    .strict()
+    .meta({
+      ref: "OpenBBConfig",
+    })
+
   export const Zee = z
     .object({
       splitwise: z
@@ -1745,6 +1759,7 @@ export namespace Config {
         .optional()
         .describe("MCP (Model Context Protocol) server configurations"),
       memory: Memory.optional().describe("Memory and storage configuration"),
+      openbb: OpenBBConfig.optional().describe("OpenBB Platform runtime configuration"),
       investing: Investing.optional().describe("Investing platform configuration"),
       zee: Zee.optional().describe("Zee integration configuration"),
       messages: Messages.optional().describe("Messaging and TTS configuration"),

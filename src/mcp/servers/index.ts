@@ -20,11 +20,6 @@ export const BUILTIN_MCP_SERVERS = {
     command: ["bun", "run", join(__dirname, "calendar.ts")],
     description: "Google Calendar integration for scheduling",
   },
-  "portfolio": {
-    type: "local" as const,
-    command: ["bun", "run", join(__dirname, "portfolio.ts")],
-    description: "Financial tools: portfolio, market data, SEC filings",
-  },
   "consciousness": {
     type: "local" as const,
     command: ["bun", "run", join(__dirname, "consciousness.ts")],

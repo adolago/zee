@@ -59,7 +59,7 @@ zee agent [command]
 
 ### attach
 
-Attach a terminal to an already running Zee backend server started via `serve` or `web` commands.
+Attach a terminal to an already running Zee backend server started via `serve` or `daemon`.
 
 ```bash
 zee attach [url]
@@ -68,8 +68,8 @@ zee attach [url]
 This allows using the TUI with a remote Zee backend. For example:
 
 ```bash
-# Start the backend server for web/mobile access
-zee web --port 4096 --hostname 0.0.0.0
+# Start the backend server for remote TUI access
+zee serve --port 4096 --hostname 0.0.0.0
 
 # In another terminal, attach the TUI to the running backend
 zee attach http://10.20.30.40:4096
@@ -443,27 +443,6 @@ You can import from a local file or an Zee share URL.
 zee import session.json
 zee import https://opncd.ai/s/abc123
 ```
-
----
-
-### web
-
-Start a headless Zee server with a web interface.
-
-```bash
-zee web
-```
-
-This starts an HTTP server and opens a web browser to access Zee through a web interface. Set `ZEE_SERVER_PASSWORD` to enable HTTP basic auth (username defaults to `zee`).
-
-#### Flags
-
-| Flag         | Description                                |
-| ------------ | ------------------------------------------ |
-| `--port`     | Port to listen on                          |
-| `--hostname` | Hostname to listen on                      |
-| `--mdns`     | Enable mDNS discovery                      |
-| `--cors`     | Additional browser origin(s) to allow CORS |
 
 ---
 

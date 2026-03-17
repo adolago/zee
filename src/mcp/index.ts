@@ -10,7 +10,7 @@
  * - permission.ts: Permission checking system
  * - server.ts: MCP server management
  * - builtin/: Built-in tool implementations
- * - domain/: Domain-specific tools (investing, learning, Zee)
+ * - domain/: Domain-specific tools (learning, Zee)
  */
 
 // ============================================================================
@@ -52,7 +52,7 @@ export * from './domain';
 import { getToolRegistry } from './registry';
 import { getMcpServerManager, resetMcpServerManager } from './server';
 import { registerBuiltinTools } from './builtin';
-import { registerInvestingTools, registerZeeTools, registerLearningTools, registerZeeFullTools, registerAllDomainTools } from './domain';
+import { registerZeeTools, registerLearningTools, registerZeeFullTools, registerAllDomainTools } from './domain';
 import type { McpServerConfig, SurfaceType, AgentInfo } from './types';
 
 /**
@@ -64,8 +64,6 @@ import type { McpServerConfig, SurfaceType, AgentInfo } from './types';
 export async function initializeMcp(options?: {
   /** MCP server configurations */
   mcpServers?: Record<string, McpServerConfig>;
-  /** Enable investing domain tools */
-  enableInvesting?: boolean;
   /** Enable Zee domain tools */
   enableZee?: boolean;
   /** Enable learning domain tools */

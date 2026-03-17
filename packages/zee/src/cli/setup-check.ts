@@ -14,6 +14,7 @@ import os from "os"
 
 import { CONFIG_FILE_NAMES, CONFIG_DIR_NAMES, getGlobalConfigDir } from "@root/config/defaults"
 import { interpolate } from "@root/config/interpolation"
+import { probeOpenBBAvailability, resolveOpenBBRuntime, type OpenBBRuntimeMode } from "../openbb/runtime"
 
 const log = Log.create({ service: "setup-check" })
 
@@ -28,6 +29,13 @@ export interface SetupCheckResult {
     available: boolean
     source?: "auth.json:data" | "auth.json:state" | "env:GOOGLE_API_KEY" | "env:GEMINI_API_KEY"
     error?: string
+  }
+  openbb: {
+    available: boolean
+    apiUrl: string
+    mode: OpenBBRuntimeMode
+    error?: string
+    action?: string
   }
   warnings: string[]
   errors: string[]
@@ -253,6 +261,8 @@ export async function runSetupCheck(): Promise<SetupCheckResult> {
   const qdrantUrl = getQdrantUrl()
   const qdrantCheck = await checkQdrantConnectivity(qdrantUrl)
   const googleCheck = await checkGoogleApiKey()
+  const openbbResolution = resolveOpenBBRuntime()
+  const openbbCheck = await probeOpenBBAvailability()
   const missingEnvWarnings = await scanMissingEnvPlaceholders().catch(() => [])
 
   if (!qdrantCheck.available) {
@@ -270,6 +280,12 @@ export async function runSetupCheck(): Promise<SetupCheckResult> {
     warnings.push(...missingEnvWarnings)
   }
 
+  if (!openbbCheck.available) {
+    warnings.push(`OpenBB Platform API unavailable at ${openbbResolution.apiUrl}`)
+    if (openbbCheck.error) warnings.push(`OpenBB detail: ${openbbCheck.error}`)
+    if (openbbCheck.action) warnings.push(`OpenBB remediation: ${openbbCheck.action}`)
+  }
+
   const ok = qdrantCheck.available && googleCheck.available
 
   const result: SetupCheckResult = {
@@ -284,6 +300,13 @@ export async function runSetupCheck(): Promise<SetupCheckResult> {
       source: googleCheck.source,
       error: googleCheck.error,
     },
+    openbb: {
+      available: openbbCheck.available,
+      apiUrl: openbbResolution.apiUrl,
+      mode: openbbResolution.mode,
+      error: openbbCheck.error,
+      action: openbbCheck.action,
+    },
     warnings,
     errors,
   }
@@ -292,6 +315,7 @@ export async function runSetupCheck(): Promise<SetupCheckResult> {
     log.info("Setup check passed", {
       qdrantUrl,
       googleSource: googleCheck.source,
+      openbbAvailable: openbbCheck.available,
       warnings: warnings.length,
     })
   } else {
@@ -323,6 +347,15 @@ export function formatSetupCheckResult(result: SetupCheckResult): string {
     lines.push(`Google:   OK (${result.googleApiKey.source})`)
   } else {
     lines.push("Google:   MISSING (API key for memory embeddings)")
+  }
+
+  if (result.openbb.available) {
+    lines.push(`OpenBB:   OK (${result.openbb.apiUrl}, ${result.openbb.mode})`)
+  } else {
+    lines.push(`OpenBB:   DEGRADED (${result.openbb.apiUrl}, ${result.openbb.mode})`)
+    if (result.openbb.error) {
+      lines.push(`          ${result.openbb.error}`)
+    }
   }
 
   lines.push("")

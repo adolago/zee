@@ -9,7 +9,8 @@ import * as os from "os"
 import * as path from "path"
 import type { CheckResult, CheckOptions } from "../types"
 import { resolveConfigDir, resolveLogsDir, resolveStateDir } from "../../global/dirs"
-import { Investing } from "../../paths"
+import { OpenBB } from "../../paths"
+import { probeOpenBBAvailability } from "../../openbb/runtime"
 
 /** Minimum required Bun version */
 const MIN_BUN_VERSION = "1.0.0"
@@ -347,8 +348,8 @@ export async function runRuntimeChecks(options: CheckOptions): Promise<CheckResu
   results.push(await checkDiskSpace())
   results.push(await checkMemory())
 
-  // Investing runtime
-  results.push(checkInvestingBackend())
+  // OpenBB runtime
+  results.push(await checkOpenBBBackend())
 
   // Extended checks (only in full mode)
   if (options.full) {
@@ -361,37 +362,50 @@ export async function runRuntimeChecks(options: CheckOptions): Promise<CheckResu
 /**
  * Check that the Investing runtime is properly configured
  */
-function checkInvestingBackend(): CheckResult {
+async function checkOpenBBBackend(): Promise<CheckResult> {
   const start = Date.now()
-  const apiUrl = Investing.apiUrl()
-  const coreBin = Investing.coreBin()
+  const apiUrl = OpenBB.apiUrl()
+  const err = OpenBB.preflight()
 
-  const err = Investing.preflight()
   if (err) {
     return {
-      id: "runtime.investing-backend",
-      name: "Investing Backend",
+      id: "runtime.openbb-backend",
+      name: "OpenBB Backend",
       category: "runtime",
-      status: "fail",
-      message: "Investing runtime not ready",
+      status: "warn",
+      message: "OpenBB backend is not configured",
       details: err,
-      severity: "critical",
+      severity: "warning",
       durationMs: Date.now() - start,
       autoFixable: false,
     }
   }
 
+  const probe = await probeOpenBBAvailability()
+  if (!probe.available) {
+    return {
+      id: "runtime.openbb-backend",
+      name: "OpenBB Backend",
+      category: "runtime",
+      status: "warn",
+      message: `OpenBB Platform API unavailable at ${apiUrl}`,
+      details: probe.error || probe.action,
+      severity: "warning",
+      durationMs: Date.now() - start,
+      autoFixable: false,
+      metadata: { apiUrl, mode: probe.mode },
+    }
+  }
+
   return {
-    id: "runtime.investing-backend",
-    name: "Investing Backend",
+    id: "runtime.openbb-backend",
+    name: "OpenBB Backend",
     category: "runtime",
     status: "pass",
-    message: coreBin
-      ? `Rust runtime ready via ${coreBin}`
-      : `External Investing runtime configured at ${apiUrl}`,
+    message: `OpenBB Platform API reachable at ${apiUrl}`,
     severity: "info",
     durationMs: Date.now() - start,
     autoFixable: false,
-    metadata: { apiUrl, coreBin: coreBin ?? null },
+    metadata: { apiUrl, mode: probe.mode, healthUrl: probe.healthUrl, statusCode: probe.statusCode },
   }
 }
