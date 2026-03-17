@@ -9,6 +9,7 @@ type Kind = "file" | "directory"
 type Options = {
   bypass?: boolean
   kind?: Kind
+  allowHardlinkedTargets?: boolean
 }
 
 async function resolvePromptParentDir(target: string, kind: Kind): Promise<string> {
@@ -32,9 +33,10 @@ export async function assertExternalDirectory(ctx: Tool.Context, target?: string
   if (options?.bypass) return
 
   const kind = options?.kind ?? "file"
+  const allowHardlinkedTargets = options?.allowHardlinkedTargets ?? false
 
   // Block hardlinked regular files to prevent workspace alias escapes.
-  if (kind === "file" && (await Filesystem.isSuspiciousHardlink(target))) {
+  if (kind === "file" && !allowHardlinkedTargets && (await Filesystem.isSuspiciousHardlink(target))) {
     throw new Error(`Refusing hardlinked file path outside workspace trust boundary: ${target}`)
   }
 

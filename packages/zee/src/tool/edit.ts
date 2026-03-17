@@ -46,7 +46,7 @@ export const EditTool = Tool.define("edit", {
     }
 
     const filePath = path.isAbsolute(params.filePath) ? params.filePath : path.join(Instance.directory, params.filePath)
-    await assertExternalDirectory(ctx, filePath)
+    await assertExternalDirectory(ctx, filePath, { allowHardlinkedTargets: true })
 
     let diff = ""
     let contentOld = ""

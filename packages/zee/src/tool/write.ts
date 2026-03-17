@@ -28,7 +28,7 @@ export const WriteTool = Tool.define("write", {
     }
 
     const filepath = path.isAbsolute(params.filePath) ? params.filePath : path.join(Instance.directory, params.filePath)
-    await assertExternalDirectory(ctx, filepath)
+    await assertExternalDirectory(ctx, filepath, { allowHardlinkedTargets: true })
 
     const file = Bun.file(filepath)
     const exists = await file.exists()
