@@ -59,6 +59,10 @@ import { MESH_TOOLS } from "./mesh.js";
 import { UX_TOOLS } from "./ux-tools.js";
 // reminder-status merged into banner-refresh
 import { bannerPushTool, bannerRefreshTool } from "./banner.js";
+import { CONTACTS_TOOLS } from "./contacts.js";
+import { NOTIFICATION_TOOLS } from "./notifications.js";
+import { NOTES_TOOLS } from "./notes.js";
+import { REMINDER_TOOLS } from "./reminders.js";
 
 // =============================================================================
 // Memory Store Tool
@@ -707,7 +711,6 @@ Troubleshooting:
   }),
 };
 
-// (notification tool removed -- was a stub)
 
 // =============================================================================
 // Calendar Tool
@@ -976,7 +979,6 @@ ${eventsList}`,
   }),
 };
 
-// (contacts tool removed -- was a stub)
 
 // =============================================================================
 // Splitwise Tool
@@ -1906,6 +1908,10 @@ export const ZEE_TOOLS = [
   ...GITHUB_LIBRARIAN_TOOLS,
   ...MESH_TOOLS,
   ...UX_TOOLS,
+  ...CONTACTS_TOOLS,
+  ...NOTIFICATION_TOOLS,
+  ...NOTES_TOOLS,
+  ...REMINDER_TOOLS,
 ];
 
 export function registerZeeTools(registry: { register: (tool: ToolDefinition, options: { source: string }) => void }): void {
