@@ -67,6 +67,8 @@ export ZEE_OPENBB_API_CMD=openbb-api
 Zee reads JSONC config from `~/.config/zee/zee.jsonc` or `.zee/zee.jsonc`.
 Environment variables are used only for secrets (Qdrant settings are config-only).
 
+For a step-by-step guide to local `.env` setup, OAuth flows, and live service dependencies, see `docs/integrations/README.md`.
+
 #### Paths and overrides
 
 Defaults follow XDG:
