@@ -33,7 +33,7 @@ export interface Plan {
 }
 
 // =============================================================================
-// In-memory plan cache (backed by Qdrant for persistence)
+// In-memory plan cache (backed by local memory for persistence)
 // =============================================================================
 
 const planCache = new Map<string, Plan>();

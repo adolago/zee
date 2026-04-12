@@ -7,8 +7,8 @@ import { mapWithConcurrency } from "./_util"
 export interface MemoryBenchContext {
   memory: Memory
   namespace: string
-  qdrantUrl: string
   collection: string
+  storageDir: string
   ftsDir: string
   queries: {
     keyword: string[]
@@ -18,74 +18,23 @@ export interface MemoryBenchContext {
   cleanup: () => Promise<void>
 }
 
-async function checkQdrant(url: string): Promise<boolean> {
-  try {
-    const res = await fetch(`${url.replace(/\/$/, "")}/collections`, {
-      signal: AbortSignal.timeout(1500),
-    })
-    return res.ok
-  } catch {
-    return false
-  }
-}
-
-function patchFetchWaitTrue(qdrantUrl: string): () => void {
-  const base = qdrantUrl.replace(/\/$/, "")
-  const originalFetch = globalThis.fetch
-
-  const patchedFetch = ((input, init) => {
-    const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : (input as Request).url
-    const method = (init?.method ?? "GET").toUpperCase()
-
-    if (url.startsWith(base) && (method === "PUT" || method === "POST" || method === "DELETE")) {
-      const isPointWrite =
-        url.includes("/points") &&
-        !url.includes("/points/scroll") &&
-        !url.includes("/points/search") &&
-        !url.includes("/points/count")
-
-      if (isPointWrite) {
-        const sep = url.includes("?") ? "&" : "?"
-        return originalFetch(`${url}${sep}wait=true`, init)
-      }
-    }
-
-    return originalFetch(input, init)
-  }) as typeof fetch
-
-  // Preserve Bun-specific fetch helpers (e.g. fetch.preconnect) for type + runtime compatibility.
-  ;(patchedFetch as any).preconnect = (originalFetch as any).preconnect
-
-  globalThis.fetch = patchedFetch
-  return () => {
-    globalThis.fetch = originalFetch
-  }
-}
-
 export async function createMemoryBenchContext(options: {
   seedCount: number
   concurrency: number
-  qdrantUrl?: string
   namespace?: string
 }): Promise<{ ctx: MemoryBenchContext | null; skipReason?: string }> {
-  const qdrantUrl = options.qdrantUrl ?? process.env.QDRANT_URL ?? "http://localhost:6333"
-  const ok = await checkQdrant(qdrantUrl)
-  if (!ok) {
-    return {
-      ctx: null,
-      skipReason: `Qdrant not reachable at ${qdrantUrl} (set QDRANT_URL to override)`,
-    }
-  }
-
   const namespace = options.namespace ?? "bench"
+  const storageDir = fs.mkdtempSync(path.join(os.tmpdir(), "zee-bench-memory-"))
   const ftsDir = fs.mkdtempSync(path.join(os.tmpdir(), "zee-bench-fts-"))
   const collection = `bench_mem_${Date.now()}_${Math.random().toString(16).slice(2)}`
-  const restoreFetch = patchFetchWaitTrue(qdrantUrl)
 
   resetMemory()
   const memory = new Memory({
-    qdrant: { url: qdrantUrl, collection },
-    embedding: { provider: "google", dimensions: 384 },
+    storage: {
+      collection,
+      dbPath: path.join(storageDir, "memory.sqlite"),
+    },
+    embedding: { provider: "local", dimensions: 384 },
     namespace,
     localIndex: {
       enabled: true,
@@ -100,10 +49,9 @@ export async function createMemoryBenchContext(options: {
   try {
     await memory.init()
     if (!memory.isAvailable()) {
-      restoreFetch()
       return {
         ctx: null,
-        skipReason: "Memory unavailable after init (Qdrant reachable but init failed)",
+        skipReason: "Memory unavailable after local SQLite init failed",
       }
     }
 
@@ -145,23 +93,16 @@ export async function createMemoryBenchContext(options: {
     const hybrid = ["zee issue 206 memory search", "topic_2 sub_2 tag beta", "bucket_3 tag gamma"]
 
     const cleanup = async () => {
-      restoreFetch()
-
       try {
-        await fetch(`${qdrantUrl.replace(/\/$/, "")}/collections/${collection}`, {
-          method: "DELETE",
-          signal: AbortSignal.timeout(5000),
-        })
+        fs.rmSync(storageDir, { recursive: true, force: true })
       } catch {
         // ignore
       }
-
       try {
         fs.rmSync(ftsDir, { recursive: true, force: true })
       } catch {
         // ignore
       }
-
       resetMemory()
     }
 
@@ -169,15 +110,19 @@ export async function createMemoryBenchContext(options: {
       ctx: {
         memory,
         namespace,
-        qdrantUrl,
         collection,
+        storageDir,
         ftsDir,
         queries: { keyword, semantic, hybrid },
         cleanup,
       },
     }
   } catch (e) {
-    restoreFetch()
+    try {
+      fs.rmSync(storageDir, { recursive: true, force: true })
+    } catch {
+      // ignore
+    }
     try {
       fs.rmSync(ftsDir, { recursive: true, force: true })
     } catch {

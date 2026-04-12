@@ -2,11 +2,11 @@
  * Markdown Source-of-Truth Layer
  *
  * Syncs memory entries to human-readable Markdown files:
- * - Daily logs: ~/.local/state/zee/memory/YYYY-MM-DD.md
- * - Entity pages: ~/.local/state/zee/memory/bank/entities/{entity-name}.md
+ * - Daily logs: <zee-workspace>/memory/YYYY-MM-DD.md
+ * - Entity pages: <zee-workspace>/memory/bank/entities/{entity-name}.md
  *
  * These files are git-auditable and human-editable.
- * Qdrant remains the primary query engine; Markdown is the audit trail.
+ * Local memory remains the primary query engine; Markdown is the audit trail.
  */
 
 import {
@@ -29,7 +29,7 @@ const log = Log.create({ service: "memory-markdown" })
 // =============================================================================
 
 export interface MarkdownSyncConfig {
-  /** Base directory for markdown files. Default: ~/.local/state/zee/memory */
+  /** Base directory for markdown files. Default: <zee-workspace>/memory */
   baseDir?: string
   /** Whether markdown sync is enabled. Default: true */
   enabled?: boolean

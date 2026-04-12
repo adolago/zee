@@ -1,7 +1,7 @@
 /**
  * Embedding client for generating vector representations of text.
  *
- * Zee currently supports Google (Gemini) embeddings only.
+ * Zee memory defaults to local embeddings.
  *
  * Includes LRU caching to avoid redundant API calls.
  *
@@ -16,9 +16,7 @@ import type {
   EmbeddingTaskType,
   MediaType,
   MultimodalContent,
-  MultimodalInput,
 } from "./types";
-import { getAuthApiKeySync } from "../config/providers";
 import { EMBEDDING_DIMENSIONS, EMBEDDING_MODEL } from "../config/constants";
 import { setCurrentEmbeddingModel } from "./stats";
 
@@ -42,6 +40,8 @@ export interface EmbeddingConfig {
   title?: string;
   /** Base URL for the embedding API */
   baseUrl?: string;
+  /** Local model/cache directory, when the provider needs one. */
+  modelPath?: string;
 }
 
 // =============================================================================
@@ -190,300 +190,86 @@ class EmbeddingCache {
 // Provider Implementations
 // =============================================================================
 
-const GOOGLE_EMBEDDING_TASK_TYPES = new Set<EmbeddingTaskType>([
-  "SEMANTIC_SIMILARITY",
-  "CLASSIFICATION",
-  "CLUSTERING",
-  "RETRIEVAL_DOCUMENT",
-  "RETRIEVAL_QUERY",
-  "QUESTION_ANSWERING",
-  "FACT_VERIFICATION",
-  "CODE_RETRIEVAL_QUERY",
-]);
-
-const GOOGLE_MULTIMODAL_MEDIA_TYPES: MediaType[] = ["text", "image", "video", "audio", "pdf"];
-
-function isGeminiEmbedding2Model(model: string): boolean {
-  return model.trim().replace(/^models\//, "").toLowerCase() === "gemini-embedding-2-preview";
+function normalizeVector(vector: number[]): number[] {
+  const mag = Math.sqrt(vector.reduce((sum, value) => sum + value * value, 0));
+  return mag > 0 ? vector.map((value) => value / mag) : vector;
 }
 
-function assertSupportedEmbeddingModel(model?: string): string {
-  const resolved = (model ?? EMBEDDING_MODEL).trim();
-  if (!isGeminiEmbedding2Model(resolved)) {
-    throw new Error(
-      `Unsupported embedding model "${resolved}". Zee memory always uses "${EMBEDDING_MODEL}".`,
-    );
-  }
-  return EMBEDDING_MODEL;
+function stableHash(input: string): number {
+  const hash = crypto.createHash("sha256").update(input).digest();
+  return hash.readUInt32BE(0);
 }
 
-function assertSupportedEmbeddingDimensions(dimensions?: number): number {
-  if (dimensions !== undefined && dimensions !== EMBEDDING_DIMENSIONS) {
-    throw new Error(
-      `Unsupported embedding dimensions "${dimensions}". Zee memory always uses ${EMBEDDING_DIMENSIONS}.`,
-    );
-  }
-  return EMBEDDING_DIMENSIONS;
-}
-
-function normalizeTaskType(taskType?: string): EmbeddingTaskType | undefined {
-  if (!taskType) return undefined;
-  const normalized = taskType.trim().toUpperCase() as EmbeddingTaskType;
-  if (!GOOGLE_EMBEDDING_TASK_TYPES.has(normalized)) {
-    throw new Error(`Unsupported Google embedding task type: ${taskType}`);
-  }
-  return normalized;
-}
-
-function stripBase64Prefix(data: string): string {
-  const trimmed = data.trim();
-  const marker = ";base64,";
-  const idx = trimmed.indexOf(marker);
-  return idx >= 0 ? trimmed.slice(idx + marker.length) : trimmed;
-}
-
-function parseDataUrl(url: string): { mimeType: string; data: string } | null {
-  const match = url.match(/^data:([^;,]+)?;base64,(.+)$/i);
-  if (!match) return null;
-  return {
-    mimeType: match[1] || "application/octet-stream",
-    data: match[2],
-  };
-}
-
-function defaultMimeType(input: Exclude<MultimodalInput, { type: "text" }>): string {
-  switch (input.type) {
-    case "image":
-      return "image/jpeg";
-    case "video":
-      return "video/mp4";
-    case "audio":
-      return "audio/mpeg";
-    case "pdf":
-      return "application/pdf";
-  }
-}
-
-function resolveMimeType(input: Exclude<MultimodalInput, { type: "text" }>): string {
-  if (input.mimeType?.trim()) return input.mimeType.trim();
-  if ("url" in input && input.url) {
-    const parsed = parseDataUrl(input.url);
-    if (parsed) return parsed.mimeType;
-  }
-  return defaultMimeType(input);
-}
-
-function toGooglePart(input: Exclude<MultimodalInput, { type: "text" }>): Record<string, unknown> {
-  const mimeType = resolveMimeType(input);
-  if ("base64" in input && typeof input.base64 === "string" && input.base64.trim()) {
-    return {
-      inlineData: {
-        mimeType,
-        data: stripBase64Prefix(input.base64),
-      },
-    };
-  }
-
-  if ("url" in input && typeof input.url === "string" && input.url.trim()) {
-    const parsed = parseDataUrl(input.url);
-    if (parsed) {
-      return {
-        inlineData: {
-          mimeType: parsed.mimeType,
-          data: parsed.data,
-        },
-      };
-    }
-
-    return {
-      fileData: {
-        mimeType,
-        fileUri: input.url,
-      },
-    };
-  }
-
-  throw new Error(`Multimodal ${input.type} input requires either url or base64 data`);
-}
-
-function multimodalToGoogleParts(content: MultimodalContent): Array<Record<string, unknown>> {
-  const parts: Array<Record<string, unknown>> = [];
-
-  for (const input of content.contents) {
-    if (input.type === "text") {
-      parts.push({ text: input.content });
-      continue;
-    }
-
-    parts.push(toGooglePart(input));
-
-    if (input.type === "video" && (input.startTime !== undefined || input.endTime !== undefined)) {
-      const timeRange = [
-        input.startTime !== undefined ? `start=${input.startTime}s` : undefined,
-        input.endTime !== undefined ? `end=${input.endTime}s` : undefined,
-      ]
-        .filter(Boolean)
-        .join(", ");
-      if (timeRange) {
-        parts.push({ text: `Focus on video segment (${timeRange}).` });
-      }
+function tokenizeEmbeddingText(text: string): string[] {
+  const normalized = text.toLowerCase().normalize("NFKC");
+  const words = normalized.match(/[\p{L}\p{N}_-]+/gu) ?? [];
+  const shingles: string[] = [];
+  for (const word of words) {
+    if (word.length < 4) continue;
+    for (let i = 0; i <= word.length - 3; i++) {
+      shingles.push(word.slice(i, i + 3));
     }
   }
+  return [...words, ...shingles];
+}
 
-  return parts;
+function multimodalToLocalText(content: MultimodalContent): string {
+  return content.contents
+    .map((input) => {
+      if (input.type === "text") return input.content;
+      if ("url" in input && input.url) return `[${input.type}:${input.url}]`;
+      if ("base64" in input && input.base64) return `[${input.type}:inline:${stableHash(input.base64)}]`;
+      return `[${input.type}]`;
+    })
+    .join("\n");
 }
 
 /**
- * Google embedding client using Generative Language API
+ * Deterministic local embedding provider.
+ *
+ * This is intentionally dependency-free so package installs do not need Google,
+ * Docker, Python, or a native embedding service before Zee can run.
  */
-class GoogleEmbeddingProvider implements EmbeddingProvider {
-  readonly id = "google";
+class LocalEmbeddingProvider implements EmbeddingProvider {
+  readonly id = "local";
   readonly model: string;
-  readonly supportsMultimodal?: boolean;
-  readonly supportedMediaTypes?: MediaType[];
   dimension: number;
-  private readonly apiKey: string;
-  private readonly baseUrl: string;
-  private readonly outputDimensionality?: number;
-  private readonly taskType?: EmbeddingTaskType;
-  private readonly title?: string;
+  readonly supportsMultimodal = true;
+  readonly supportedMediaTypes: MediaType[] = ["text", "image", "video", "audio", "pdf"];
 
   constructor(config: EmbeddingConfig) {
-    // Single source of truth: global auth store (`zee auth login google`).
-    this.apiKey = getAuthApiKeySync("google") ?? "";
-    this.model = assertSupportedEmbeddingModel(config.model);
-    this.outputDimensionality = assertSupportedEmbeddingDimensions(config.dimensions);
-    this.dimension = this.outputDimensionality;
-    this.taskType = normalizeTaskType(config.taskType);
-    this.title = config.title?.trim() || undefined;
-    this.baseUrl = (config.baseUrl ?? "https://generativelanguage.googleapis.com/v1beta").replace(
-      /\/$/,
-      ""
-    );
-    this.supportsMultimodal = true;
-    this.supportedMediaTypes = GOOGLE_MULTIMODAL_MEDIA_TYPES;
-
-    if (!this.apiKey) {
-      throw new Error(
-        "Google API key required: run `zee auth login google`"
-      );
-    }
+    this.model = config.model?.trim() || EMBEDDING_MODEL;
+    this.dimension = config.dimensions ?? EMBEDDING_DIMENSIONS;
   }
 
-  private resolveModel(): string {
-    return this.model.startsWith("models/") ? this.model : `models/${this.model}`;
-  }
+  async embed(text: string, _options?: EmbeddingRequestOptions): Promise<number[]> {
+    const vector = new Array(this.dimension).fill(0);
+    const tokens = tokenizeEmbeddingText(text);
+    if (tokens.length === 0) return vector;
 
-  private resolveOptions(options?: EmbeddingRequestOptions): EmbeddingRequestOptions {
-    return {
-      taskType: normalizeTaskType(options?.taskType ?? this.taskType),
-      title: options?.title?.trim() || this.title,
-    };
-  }
-
-  private buildRequest(
-    parts: Array<Record<string, unknown>>,
-    options?: EmbeddingRequestOptions,
-  ): {
-    model: string;
-    content: { role: "user"; parts: Array<Record<string, unknown>> };
-    outputDimensionality?: number;
-    taskType?: EmbeddingTaskType;
-    title?: string;
-  } {
-    const request: {
-      model: string;
-      content: { role: "user"; parts: Array<Record<string, unknown>> };
-      outputDimensionality?: number;
-      taskType?: EmbeddingTaskType;
-      title?: string;
-    } = {
-      model: this.resolveModel(),
-      content: { role: "user", parts },
-    };
-    const resolved = this.resolveOptions(options);
-    if (this.outputDimensionality) {
-      request.outputDimensionality = this.outputDimensionality;
-    }
-    if (resolved.taskType) {
-      request.taskType = resolved.taskType;
-    }
-    if (resolved.title) {
-      request.title = resolved.title;
-    }
-    return request;
-  }
-
-  private async requestEmbeddings(
-    requests: Array<{
-      model: string;
-      content: { role: "user"; parts: Array<Record<string, unknown>> };
-      outputDimensionality?: number;
-      taskType?: EmbeddingTaskType;
-      title?: string;
-    }>,
-  ): Promise<number[][]> {
-    if (requests.length === 0) return [];
-
-    const model = this.resolveModel();
-    const response = await fetch(
-      `${this.baseUrl}/${model}:batchEmbedContents?key=${encodeURIComponent(
-        this.apiKey
-      )}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ requests }),
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(
-        `Google embedding failed (${response.status}): ${errorText}`
-      );
+    for (const token of tokens) {
+      const hash = stableHash(token);
+      const index = hash % this.dimension;
+      const sign = (hash & 1) === 0 ? 1 : -1;
+      vector[index] += sign;
     }
 
-    const data = (await response.json()) as {
-      embeddings?: Array<{ values?: number[] }>;
-    };
-
-    const vectors = (data.embeddings ?? []).map((item) => item.values ?? []);
-    if (vectors.length === 0) {
-      throw new Error("Google embedding returned no vectors");
-    }
-    return vectors;
-  }
-
-  async embed(text: string, options?: EmbeddingRequestOptions): Promise<number[]> {
-    const result = await this.embedBatch([text], options);
-    return result[0] ?? [];
+    return normalizeVector(vector);
   }
 
   async embedBatch(texts: string[], options?: EmbeddingRequestOptions): Promise<number[][]> {
-    if (texts.length === 0) return [];
-    const requests = texts.map((text) => this.buildRequest([{ text }], options));
-    return this.requestEmbeddings(requests);
+    return Promise.all(texts.map((text) => this.embed(text, options)));
   }
 
-  async embedMultimodal(
-    content: MultimodalContent,
-    options?: EmbeddingRequestOptions,
-  ): Promise<number[]> {
-    const result = await this.embedMultimodalBatch([content], options);
-    return result[0] ?? [];
+  async embedMultimodal(content: MultimodalContent, options?: EmbeddingRequestOptions): Promise<number[]> {
+    return this.embed(multimodalToLocalText(content), options);
   }
 
   async embedMultimodalBatch(
     contents: MultimodalContent[],
     options?: EmbeddingRequestOptions,
   ): Promise<number[][]> {
-    if (contents.length === 0) return [];
-
-    const requests = contents.map((content) => this.buildRequest(multimodalToGoogleParts(content), options));
-    return this.requestEmbeddings(requests);
+    return Promise.all(contents.map((content) => this.embedMultimodal(content, options)));
   }
 }
 
@@ -623,14 +409,14 @@ class CachedEmbeddingProvider implements EmbeddingProvider {
 /**
  * Create an embedding provider based on configuration.
  *
- * Zee currently supports Google embeddings only.
+ * Zee memory defaults to local embeddings.
  * Includes LRU caching to avoid redundant API calls.
  */
 export function createEmbeddingProvider(
   config: EmbeddingConfig,
   options?: { cacheSize?: number; noCache?: boolean }
 ): EmbeddingProvider {
-  const provider = new GoogleEmbeddingProvider(config);
+  const provider = new LocalEmbeddingProvider(config);
 
   // Track current model for max context lookup
   setCurrentEmbeddingModel(provider.model);
@@ -650,7 +436,7 @@ export async function createEmbeddingProviderAsync(
   config: EmbeddingConfig,
   options?: { cacheSize?: number; noCache?: boolean }
 ): Promise<EmbeddingProvider> {
-  const provider = new GoogleEmbeddingProvider(config);
+  const provider = new LocalEmbeddingProvider(config);
 
   // Track current model for max context lookup
   setCurrentEmbeddingModel(provider.model);
@@ -668,6 +454,6 @@ export async function createEmbeddingProviderAsync(
 
 export {
   EmbeddingCache,
-  GoogleEmbeddingProvider,
+  LocalEmbeddingProvider,
   CachedEmbeddingProvider,
 };

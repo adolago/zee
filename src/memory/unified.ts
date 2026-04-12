@@ -7,11 +7,11 @@
  * - Conversation continuity (fact extraction, session chaining)
  * - Cross-session context injection
  *
- * Uses a single Qdrant collection with `type` field for discrimination.
+ * Uses a single local SQLite collection with `type` field for discrimination.
  */
 
 import { randomUUID } from "node:crypto";
-import { QdrantVectorStorage } from "./qdrant";
+import { SqliteVectorStorage } from "./sqlite-vector";
 import { createEmbeddingProvider, type EmbeddingConfig } from "./embedding";
 import type {
   EmbeddingRequestOptions,
@@ -31,23 +31,19 @@ import type {
   LocalIndexBackend,
   LocalIndexDegradedReadMode,
 } from "./types";
-import type { Reranker, RerankerConfig, RerankResult } from "./reranker";
 import {
-  QDRANT_URL,
-  QDRANT_COLLECTION_AGENT_MEMORY,
-  QDRANT_COLLECTION_MEMORY_PREVIEW_LEGACY,
-  QDRANT_COLLECTION_PERSONAS_MEMORY,
+  LOCAL_MEMORY_COLLECTION,
+  LOCAL_MEMORY_COLLECTION_PREVIEW_LEGACY,
+  LOCAL_MEMORY_COLLECTION_PERSONAS_LEGACY,
   CONTINUITY_MAX_KEY_FACTS,
   EMBEDDING_DIMENSIONS,
   EMBEDDING_MODEL,
 } from "../config/constants";
-import { getAuthApiKeySync } from "../config/providers";
 import {
   getMemoryEmbeddingConfig,
   getMemoryLocalIndexConfig,
   getMemoryMigrationHints,
-  getMemoryQdrantConfig,
-  getMemoryRerankerConfig,
+  getMemoryStorageConfig,
   type MemoryLocalIndexConfig,
 } from "../config/runtime";
 import { Log } from "../../packages/zee/src/util/log";
@@ -119,18 +115,16 @@ export interface AgentsState {
   };
 }
 
-/** Memory configuration (Qdrant is local-only, no remote/cloud support) */
+/** Memory configuration. */
 export interface MemoryConfig {
-  qdrant: {
-    url?: string;
+  storage: {
     collection?: string;
+    dbPath?: string;
   };
   embedding: EmbeddingConfig;
-  /** Reranker configuration for two-stage retrieval */
-  reranker?: RerankerConfig;
   namespace?: string;
   maxKeyFacts?: number;
-  /** Secondary local index (Qdrant remains source-of-truth). */
+  /** Secondary local keyword index. */
   localIndex?: {
     enabled?: boolean;
     backend?: LocalIndexBackend;
@@ -365,22 +359,20 @@ export function formatContextForPrompt(state: ConversationState): string {
  *
  * Replaces:
  * - MemoryStore (store.ts)
- * - QdrantMemoryStore (qdrant.ts)
- * - QdrantMemoryBridge (memory-bridge.ts)
+ * - Remote vector memory stores
+ * - Memory bridge layers
  * - ContinuityManager (continuity.ts)
  */
 export class Memory {
-  private readonly storage: QdrantVectorStorage;
+  private readonly storage: SqliteVectorStorage;
   private readonly embedding: EmbeddingProvider;
   private readonly namespace: string;
   private collection: string;
   private readonly migrationSourceCollections: string[];
   private readonly instanceId: string;
   private readonly maxKeyFacts: number;
-  private readonly rerankerConfig?: RerankerConfig;
   private embeddingDimension?: number;
   private initialized = false;
-  private reranker?: Reranker;
 
   // SQLite FTS for hybrid keyword search
   private ftsStore?: SqliteFtsStore;
@@ -396,10 +388,10 @@ export class Memory {
 
   constructor(config: Partial<MemoryConfig> = {}) {
     const fileEmbedding = getMemoryEmbeddingConfig();
-    const fileQdrant = getMemoryQdrantConfig();
+    const fileStorage = getMemoryStorageConfig();
     const fileLocalIndex = getMemoryLocalIndexConfig();
     const migrationHints = getMemoryMigrationHints();
-    const explicitCollection = config.qdrant?.collection?.trim() || undefined;
+    const explicitCollection = config.storage?.collection?.trim() || fileStorage.collection?.trim() || undefined;
     const allowTestCollectionOverride =
       Boolean(explicitCollection) &&
       (process.env.NODE_ENV === "test" ||
@@ -408,10 +400,10 @@ export class Memory {
     const activeCollection =
       allowTestCollectionOverride && explicitCollection
         ? explicitCollection
-        : QDRANT_COLLECTION_AGENT_MEMORY;
-    const qdrantConfig = {
-      url: config.qdrant?.url ?? fileQdrant.url ?? QDRANT_URL,
+        : LOCAL_MEMORY_COLLECTION;
+    const storageConfig = {
       collection: activeCollection,
+      dbPath: config.storage?.dbPath ?? fileStorage.dbPath,
     };
 
     this.collection = activeCollection;
@@ -420,31 +412,30 @@ export class Memory {
       : Array.from(
           new Set(
             [
-              QDRANT_COLLECTION_AGENT_MEMORY,
-              QDRANT_COLLECTION_MEMORY_PREVIEW_LEGACY,
-              QDRANT_COLLECTION_PERSONAS_MEMORY,
+              LOCAL_MEMORY_COLLECTION,
+              LOCAL_MEMORY_COLLECTION_PREVIEW_LEGACY,
+              LOCAL_MEMORY_COLLECTION_PERSONAS_LEGACY,
               explicitCollection,
               migrationHints.configuredCollection,
             ].filter((value): value is string => Boolean(value && value.trim()))
           )
         );
-    this.storage = new QdrantVectorStorage(qdrantConfig);
+    this.storage = new SqliteVectorStorage(storageConfig);
     this.namespace = config.namespace ?? "default";
     this.instanceId = generateInstanceId();
     this.maxKeyFacts = config.maxKeyFacts ?? CONTINUITY_MAX_KEY_FACTS;
-    this.rerankerConfig = config.reranker ?? getMemoryRerankerConfig();
 
-    const provider = "google" as EmbeddingConfig["provider"];
-    const apiKey = getAuthApiKeySync("google");
+    const provider = config.embedding?.provider ?? fileEmbedding.provider ?? "local";
     const embeddingConfig: EmbeddingConfig = {
       provider,
-      model: EMBEDDING_MODEL,
-      dimensions: EMBEDDING_DIMENSIONS,
+      model: config.embedding?.model ?? fileEmbedding.model ?? EMBEDDING_MODEL,
+      dimensions: config.embedding?.dimensions ?? fileEmbedding.dimensions ?? EMBEDDING_DIMENSIONS,
       taskType: config.embedding?.taskType ?? fileEmbedding.taskType,
       title: config.embedding?.title ?? fileEmbedding.title,
       baseUrl: config.embedding?.baseUrl ?? fileEmbedding.baseUrl,
+      modelPath: config.embedding?.modelPath ?? fileEmbedding.modelPath,
     };
-    this.embeddingDimension = EMBEDDING_DIMENSIONS;
+    this.embeddingDimension = embeddingConfig.dimensions ?? EMBEDDING_DIMENSIONS;
 
     this.warnIgnoredEmbeddingHints(
       config.embedding?.model,
@@ -456,15 +447,8 @@ export class Memory {
       migrationHints.configuredCollection,
     );
 
-    // Use mock embeddings if no API key available
-    const usesMock = !apiKey;
-    if (usesMock) {
-      this.embedding = new MockEmbeddingProvider();
-      log.debug("Using mock embeddings (no API key)");
-    } else {
-      this.embedding = createEmbeddingProvider(embeddingConfig);
-    }
-    this.embedding.dimension = EMBEDDING_DIMENSIONS;
+    this.embedding = createEmbeddingProvider(embeddingConfig);
+    this.embedding.dimension = this.embeddingDimension;
 
     const explicitLocalIndex = config.localIndex ?? {};
     const localIndexEnabled =
@@ -545,7 +529,7 @@ export class Memory {
       return;
     }
 
-    // Initialize local keyword index first so degraded reads can work if Qdrant is down.
+    // Initialize local keyword index first so keyword reads work even if vector search is unavailable.
     await this.initLocalIndex();
 
     const maxRetries = this.localIndex.enabled ? 1 : 3;
@@ -657,11 +641,11 @@ export class Memory {
     ) {
       ignored.push(`memory.embedding.dimensions=${configuredDimensions}`);
     }
-    if (explicitCollection && explicitCollection.trim() !== QDRANT_COLLECTION_AGENT_MEMORY) {
-      ignored.push(`constructor qdrant.collection=${explicitCollection.trim()}`);
+    if (explicitCollection && explicitCollection.trim() !== LOCAL_MEMORY_COLLECTION) {
+      ignored.push(`constructor storage.collection=${explicitCollection.trim()}`);
     }
-    if (configuredCollection && configuredCollection.trim() !== QDRANT_COLLECTION_AGENT_MEMORY) {
-      ignored.push(`memory.qdrant.collection=${configuredCollection.trim()}`);
+    if (configuredCollection && configuredCollection.trim() !== LOCAL_MEMORY_COLLECTION) {
+      ignored.push(`memory.storage.collection=${configuredCollection.trim()}`);
     }
 
     if (ignored.length === 0) return;
@@ -669,7 +653,7 @@ export class Memory {
     log.warn("Ignoring deprecated memory embedding configuration", {
       enforcedModel: EMBEDDING_MODEL,
       enforcedDimensions: EMBEDDING_DIMENSIONS,
-      enforcedCollection: QDRANT_COLLECTION_AGENT_MEMORY,
+      enforcedCollection: LOCAL_MEMORY_COLLECTION,
       ignored,
     });
   }
@@ -815,8 +799,8 @@ export class Memory {
 
   private async scrollCollection(
     collection: string,
-    options: Parameters<QdrantVectorStorage["scroll"]>[0] = {},
-  ): Promise<Awaited<ReturnType<QdrantVectorStorage["scroll"]>>> {
+    options: Parameters<SqliteVectorStorage["scroll"]>[0] = {},
+  ): Promise<Awaited<ReturnType<SqliteVectorStorage["scroll"]>>> {
     return this.withStorageCollection(collection, async () => this.storage.scroll(options));
   }
 
@@ -1291,19 +1275,19 @@ export class Memory {
 
         if (!payloadModel || !payloadDimensions) {
           throw new Error(
-            `Qdrant collection "${this.collection}" contains points without embedding signature metadata. Re-run memory migration or re-embed the collection.`,
+            `Memory collection "${this.collection}" contains points without embedding signature metadata. Re-run memory migration or re-embed the collection.`,
           );
         }
 
         if (this.normalizeStoredEmbeddingModel(payloadModel) !== this.normalizeStoredEmbeddingModel(signature.model)) {
           throw new Error(
-            `Qdrant collection "${this.collection}" contains embeddings for model "${payloadModel}", but Zee memory requires "${signature.model}". Re-run memory migration or re-embed the collection.`,
+            `Memory collection "${this.collection}" contains embeddings for model "${payloadModel}", but Zee memory requires "${signature.model}". Re-run memory migration or re-embed the collection.`,
           );
         }
 
         if (payloadDimensions !== signature.dimensions) {
           throw new Error(
-            `Qdrant collection "${this.collection}" contains embeddings with dimension ${payloadDimensions}, but Zee memory requires ${signature.dimensions}. Re-run memory migration or re-embed the collection.`,
+            `Memory collection "${this.collection}" contains embeddings with dimension ${payloadDimensions}, but Zee memory requires ${signature.dimensions}. Re-run memory migration or re-embed the collection.`,
           );
         }
       }
@@ -1315,7 +1299,7 @@ export class Memory {
     }
   }
 
-  /** Convert a Qdrant point payload to a MemoryEntry */
+  /** Convert a stored point payload to a MemoryEntry */
   private pointToEntry(point: {
     id: string;
     payload: Record<string, unknown>;
@@ -1875,7 +1859,7 @@ export class Memory {
       return results.map((r) => ({
         entry: this.pointToEntry({ id: r.id, payload: r.payload }),
         score: r.score,
-        source: "qdrant",
+        source: "local-vector",
       }));
     }
 
@@ -1890,7 +1874,7 @@ export class Memory {
       return {
         entry: point ? this.pointToEntry(point) : this.pointToEntry({ id: r.id, payload: r.payload }),
         score: r.score,
-        source: "qdrant",
+        source: "local-vector",
       };
     });
   }
@@ -1941,7 +1925,7 @@ export class Memory {
           entry,
           score: meta.score,
           snippet: includeSnippets ? meta.snippet : undefined,
-          source: "qdrant",
+          source: "local-vector",
         });
         if (out.length >= limit) break;
       }
@@ -2001,7 +1985,7 @@ export class Memory {
         entry,
         score: item.score,
         snippet: includeSnippets ? item.snippet : undefined,
-        source: "qdrant",
+        source: "local-vector",
       });
 
       if (out.length >= limit) break;
@@ -2102,7 +2086,7 @@ export class Memory {
       try {
         this.ftsStore.deleteBatch(batch);
       } catch (ftsErr) {
-        log.warn("FTS batch delete failed after Qdrant delete (non-fatal)", {
+        log.warn("FTS batch delete failed after local vector delete (non-fatal)", {
           batchSize: batch.length,
           error: ftsErr instanceof Error ? ftsErr.message : String(ftsErr),
         });
@@ -2120,12 +2104,12 @@ export class Memory {
   }): Promise<number> {
     await this.init();
 
-    const qdrantFilter: Record<string, unknown> = { type: "memory" };
-    if (filter.category) qdrantFilter.category = filter.category;
-    if (filter.namespace) qdrantFilter.namespace = filter.namespace;
-    if (filter.olderThan) qdrantFilter.createdAt = { $lt: filter.olderThan };
+    const storageFilter: Record<string, unknown> = { type: "memory" };
+    if (filter.category) storageFilter.category = filter.category;
+    if (filter.namespace) storageFilter.namespace = filter.namespace;
+    if (filter.olderThan) storageFilter.createdAt = { $lt: filter.olderThan };
 
-    return this.deleteByFilterAndMirror(qdrantFilter);
+    return this.deleteByFilterAndMirror(storageFilter);
   }
 
   /** Delete expired memories */
@@ -2272,7 +2256,7 @@ export class Memory {
   // ===========================================================================
 
   /**
-   * Hybrid search combining Qdrant vector similarity with SQLite BM25 keyword search.
+   * Hybrid search combining local vector similarity with SQLite BM25 keyword search.
    * Falls back to pure vector search if FTS is not available.
    *
    * @param params - Standard memory search parameters
@@ -2821,72 +2805,6 @@ export class Memory {
     }));
   }
 
-  /**
-   * Two-stage retrieval: embedding search (recall) + reranking (precision).
-   * Fetches more candidates than needed, then reranks for better precision.
-   */
-  async searchWithRerank(
-    query: string | MultimodalContent,
-    params?: Omit<MemorySearchParams, "query"> & {
-      /** Enable reranking (requires configured reranker) */
-      rerank?: boolean;
-      /** Recall multiplier: how many extra candidates to fetch for reranking */
-      recallMultiplier?: number;
-      /** Filter by media type */
-      mediaType?: "text" | "image" | "video" | "audio" | "pdf";
-    }
-  ): Promise<MemorySearchResult[]> {
-    const limit = params?.limit ?? 10;
-    const recallMultiplier = params?.recallMultiplier ?? 3;
-
-    // Stage 1: Embedding-based recall (fetch more candidates)
-    const candidates = await this.searchMultimodal(query, {
-      ...params,
-      limit: params?.rerank ? limit * recallMultiplier : limit,
-    });
-
-    if (!params?.rerank || candidates.length === 0) {
-      return candidates.slice(0, limit);
-    }
-
-    // Initialize reranker if needed
-    if (!this.reranker && this.rerankerConfig?.enabled) {
-      const { createReranker } = await import("./reranker");
-      this.reranker = createReranker(this.rerankerConfig) ?? undefined;
-    }
-
-    if (!this.reranker) {
-      log.debug("Rerank requested but no reranker configured");
-      return candidates.slice(0, limit);
-    }
-
-    // Stage 2: Rerank candidates
-    try {
-      const documents = candidates.map((c) => c.entry.content);
-      const queryText = typeof query === "string" ? query : this.extractTextFromMultimodal(query);
-
-      const reranked = await this.reranker.rerank(queryText, documents, { topK: limit });
-
-      return reranked.map((r) => ({
-        ...candidates[r.index],
-        score: r.score, // Replace embedding score with rerank score
-      }));
-    } catch (error) {
-      log.warn("Reranking failed, returning original results", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      return candidates.slice(0, limit);
-    }
-  }
-
-  /** Extract text content from multimodal content */
-  private extractTextFromMultimodal(content: MultimodalContent): string {
-    return content.contents
-      .filter((c): c is { type: "text"; content: string } => c.type === "text")
-      .map((c) => c.content)
-      .join(" ");
-  }
-
   /** Check if the embedding provider supports multimodal */
   supportsMultimodal(): boolean {
     return this.embedding.supportsMultimodal ?? false;
@@ -3150,7 +3068,7 @@ export class Memory {
       updatedAt: Date.now(),
     };
 
-    // Save to Qdrant
+    // Save to local vector storage
     await this.saveConversation(this.currentConversation);
 
     // Store individual facts as memories (agent-isolated)

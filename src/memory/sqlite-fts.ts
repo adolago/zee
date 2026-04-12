@@ -1,11 +1,11 @@
 /**
  * SQLite Full-Text Search (FTS5) for Memory
  *
- * Provides BM25-based keyword search as a complement to Qdrant vector search.
+ * Provides BM25-based keyword search as a complement to local vector search.
  * SQLite FTS is used as a fast-path for exact/keyword queries and combined
  * with vector results in hybrid search mode.
  *
- * The FTS index mirrors Qdrant data - on store, entries are indexed in both.
+ * The FTS index mirrors local vector data - on store, entries are indexed in both.
  * On search, FTS results are merged with vector results using configurable weights.
  *
  * @module memory/sqlite-fts
@@ -62,7 +62,7 @@ export interface FtsConfig {
 // ---------------------------------------------------------------------------
 
 export interface FtsEntry {
-  /** Unique ID matching the Qdrant point ID */
+  /** Unique ID matching the local vector point ID */
   id: string
   /** Searchable text content */
   content: string

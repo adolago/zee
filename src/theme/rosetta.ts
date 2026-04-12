@@ -404,7 +404,7 @@ export function generateDesktopAssistantTheme(assistantId: AssistantId = "zee"):
   };
 
   return {
-    $schema: "https://zee-bot.com/desktop-theme.json",
+    $schema: "https://zee.dev/desktop-theme.json",
     name: assistantNames[id],
     id,
     light: {

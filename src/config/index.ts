@@ -10,7 +10,7 @@
  * - Zee-specific types (AssistantConfig, SurfaceConfigs)
  */
 
-// Shared constants (Qdrant URLs, timeouts, ports, etc.)
+// Shared constants (local memory, timeouts, ports, etc.)
 export * from "./constants";
 
 // Shared types (DmPolicy, GroupPolicy, LogLevel, RetryConfig)

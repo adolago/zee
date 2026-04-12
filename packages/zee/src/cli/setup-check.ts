@@ -6,29 +6,31 @@
  */
 
 import { Log } from "../util/log"
-import { Global } from "../global"
 import path from "path"
 import fs from "fs/promises"
-import net from "net"
 import os from "os"
 
 import { CONFIG_FILE_NAMES, CONFIG_DIR_NAMES, getGlobalConfigDir } from "@root/config/defaults"
 import { interpolate } from "@root/config/interpolation"
 import { probeOpenBBAvailability, resolveOpenBBRuntime, type OpenBBRuntimeMode } from "../openbb/runtime"
+import { getLocalMemoryStatus } from "../../../../src/memory/local-runtime"
+import { Auth } from "../auth"
+import { Config } from "../config/config"
+import { ModelsDev } from "../provider/models"
 
 const log = Log.create({ service: "setup-check" })
 
 export interface SetupCheckResult {
   ok: boolean
   strict: boolean
-  qdrant: {
+  memory: {
     available: boolean
-    url: string
-    error?: string
-  }
-  googleApiKey: {
-    available: boolean
-    source?: "auth.json:data" | "auth.json:state" | "env:GOOGLE_API_KEY" | "env:GEMINI_API_KEY"
+    prepared: boolean
+    scope: "user" | "machine"
+    vectorDbPath: string
+    ftsDbPath: string
+    embeddingModel: string
+    embeddingDimensions: number
     error?: string
   }
   openbb: {
@@ -38,13 +40,64 @@ export interface SetupCheckResult {
     error?: string
     action?: string
   }
+  agentProvider: AgentProviderSetupStatus
   warnings: string[]
   errors: string[]
 }
 
-const AUTH_JSON_DATA_PATH = path.join(Global.Path.data, "auth.json")
-const AUTH_JSON_STATE_PATH = path.join(Global.Path.state, "auth.json")
 const CONFIG_DISPLAY_MAX = 3
+const REMOVED_AGENT_PROVIDER_IDS = new Set(["kernel", "voyage", "splitwise", "gemini-cli"])
+const AGENT_PROVIDER_PRIORITY = [
+  "google-antigravity",
+  "google",
+  "anthropic",
+  "openai",
+  "openrouter",
+  "zai-coding-plan",
+  "minimax-coding-plan",
+  "kimi-for-coding",
+  "minimax",
+  "xai",
+  "groq",
+  "mistral",
+  "deepinfra",
+  "cohere",
+  "togetherai",
+  "perplexity",
+  "azure",
+  "ollama",
+  "lmstudio",
+  "llamacpp",
+  "vllm",
+  "tgi",
+] as const
+
+const FALLBACK_PROVIDER_ENV_KEYS: Record<string, string[]> = {
+  anthropic: ["ANTHROPIC_API_KEY"],
+  openai: ["OPENAI_API_KEY"],
+  google: ["GOOGLE_GENERATIVE_AI_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY"],
+  "google-antigravity": ["GOOGLE_ANTIGRAVITY_ACCESS_TOKEN"],
+  openrouter: ["OPENROUTER_API_KEY"],
+  "zai-coding-plan": ["ZAI_API_KEY", "ZHIPUAI_API_KEY"],
+  "minimax-coding-plan": ["MINIMAX_API_KEY"],
+  minimax: ["MINIMAX_API_KEY"],
+  "kimi-for-coding": ["MOONSHOT_API_KEY", "KIMI_API_KEY"],
+  xai: ["XAI_API_KEY"],
+  groq: ["GROQ_API_KEY"],
+  mistral: ["MISTRAL_API_KEY"],
+  deepinfra: ["DEEPINFRA_API_KEY"],
+  cohere: ["COHERE_API_KEY"],
+  togetherai: ["TOGETHER_API_KEY"],
+  perplexity: ["PERPLEXITY_API_KEY"],
+  azure: ["AZURE_OPENAI_API_KEY"],
+}
+
+export interface AgentProviderSetupStatus {
+  available: boolean
+  providerId?: string
+  source?: "auth" | "env" | "config"
+  action?: string
+}
 
 async function findProjectConfigDirs(startDir: string): Promise<string[]> {
   const dirs: string[] = []
@@ -145,111 +198,64 @@ async function scanMissingEnvPlaceholders(): Promise<string[]> {
   return warnings
 }
 
-/**
- * Check if Qdrant is reachable at the given URL
- */
-async function checkQdrantConnectivity(url: string): Promise<{ available: boolean; error?: string }> {
-  try {
-    const parsed = new URL(url)
-    const host = parsed.hostname
-    const port = Number.parseInt(parsed.port || "6333", 10)
-
-    return new Promise((resolve) => {
-      const socket = new net.Socket()
-      const timeout = setTimeout(() => {
-        socket.destroy()
-        resolve({ available: false, error: "Connection timeout (3s)" })
-      }, 3000)
-
-      socket.once("connect", () => {
-        clearTimeout(timeout)
-        socket.end()
-        resolve({ available: true })
-      })
-
-      socket.once("error", (err) => {
-        clearTimeout(timeout)
-        const code = (err as NodeJS.ErrnoException).code
-        const errorMsg =
-          code === "ECONNREFUSED"
-            ? "Connection refused"
-            : code === "ENOTFOUND"
-              ? "Host not found"
-              : err.message || code || "Connection failed"
-        resolve({ available: false, error: errorMsg })
-      })
-
-      socket.connect(port, host)
-    })
-  } catch (err) {
-    return { available: false, error: err instanceof Error ? err.message : String(err) }
-  }
+function readConfigProviderAuth(providerConfig: unknown): boolean {
+  if (!providerConfig || typeof providerConfig !== "object") return false
+  const record = providerConfig as Record<string, unknown>
+  const options = record.options && typeof record.options === "object" ? (record.options as Record<string, unknown>) : {}
+  const apiKey = options.apiKey
+  if (typeof apiKey === "string" && apiKey.trim()) return true
+  const baseURL = options.baseURL ?? record.api
+  if (typeof baseURL === "string" && baseURL.trim()) return true
+  return false
 }
 
-/**
- * Check if Google API key is available from the Zee auth store.
- */
-async function checkGoogleApiKey(): Promise<{
-  available: boolean
-  source?: "auth.json:data" | "auth.json:state" | "env:GOOGLE_API_KEY" | "env:GEMINI_API_KEY"
-  error?: string
-}> {
-  const googleEnvKey = process.env.GOOGLE_API_KEY?.trim()
-  if (googleEnvKey) {
-    return { available: true, source: "env:GOOGLE_API_KEY" }
-  }
-  const geminiEnvKey = process.env.GEMINI_API_KEY?.trim()
-  if (geminiEnvKey) {
-    return { available: true, source: "env:GEMINI_API_KEY" }
-  }
+export async function checkAgentProviderReady(): Promise<AgentProviderSetupStatus> {
+  const [auth, config, models] = await Promise.all([
+    Auth.all().catch(() => ({})),
+    Config.get().catch(() => undefined),
+    ModelsDev.get().catch(() => ({})),
+  ])
 
-  const candidates: Array<{ source: "auth.json:data" | "auth.json:state"; path: string }> = [
-    { source: "auth.json:data", path: AUTH_JSON_DATA_PATH },
-    { source: "auth.json:state", path: AUTH_JSON_STATE_PATH },
-  ]
+  const modelProviderIds = new Set(
+    Object.entries(models)
+      .filter(([id, provider]) => !REMOVED_AGENT_PROVIDER_IDS.has(id) && Object.keys(provider.models ?? {}).length > 0)
+      .map(([id]) => id),
+  )
 
-  for (const candidate of candidates) {
-    try {
-      const content = await fs.readFile(candidate.path, "utf-8")
-      const auth = JSON.parse(content)
-      const googleAuth = auth.google as { type?: string; key?: string; refresh?: string; access?: string } | undefined
+  const configProviders = Object.keys(config?.provider ?? {})
+  const authProviders = Object.keys(auth)
+  const candidates = [
+    ...AGENT_PROVIDER_PRIORITY,
+    ...configProviders,
+    ...authProviders,
+    ...modelProviderIds,
+  ].filter((id, index, all) => all.indexOf(id) === index && !REMOVED_AGENT_PROVIDER_IDS.has(id))
 
-      const hasApiKey = googleAuth?.type === "api" && typeof googleAuth.key === "string" && googleAuth.key.trim()
+  for (const providerId of candidates) {
+    if (!modelProviderIds.has(providerId) && !configProviders.includes(providerId) && !authProviders.includes(providerId)) {
+      continue
+    }
 
-      // Embeddings require API-key auth. OAuth access/refresh tokens are insufficient.
-      if (hasApiKey) {
-        return { available: true, source: candidate.source }
-      }
-    } catch {
-      // auth.json doesn't exist or can't be read
+    if (auth[providerId]) {
+      return { available: true, providerId, source: "auth" }
+    }
+
+    const envKeys = models[providerId]?.env ?? FALLBACK_PROVIDER_ENV_KEYS[providerId] ?? []
+    if (envKeys.some((key) => Boolean(process.env[key]?.trim()))) {
+      return { available: true, providerId, source: "env" }
+    }
+
+    const providerConfig = (config?.provider as Record<string, unknown> | undefined)?.[providerId]
+    if (readConfigProviderAuth(providerConfig)) {
+      return { available: true, providerId, source: "config" }
     }
   }
 
   return {
     available: false,
-    error: "No Google/Gemini API key found. Set GEMINI_API_KEY (or GOOGLE_API_KEY) or run `zee auth login google`",
+    action:
+      "Configure at least one LLM provider, for example: zee auth login google-antigravity, zee auth login google, zee auth login anthropic, or zee auth login openai.",
   }
-}
-
-/**
- * Get the default Qdrant URL
- */
-function getQdrantUrl(): string {
-  const configUrl = process.env.QDRANT_URL?.trim()
-  if (configUrl) return configUrl
-
-  // Try to read from config file
-  const configPath = path.join(Global.Path.config, "zee.jsonc")
-  try {
-    const content = require("fs").readFileSync(configPath, "utf-8")
-    // Simple regex to extract qdrant URL - not full JSONC parser
-    const match = content.match(/"qdrantUrl"\s*:\s*"([^"]+)"/)
-    if (match?.[1]) return match[1]
-  } catch {
-    // Config file doesn't exist
-  }
-
-  return "http://localhost:6333"
 }
 
 /**
@@ -260,29 +266,18 @@ export async function runSetupCheck(): Promise<SetupCheckResult> {
   const errors: string[] = []
   const strict = process.env.ZEE_STRICT_SETUP === "1" || process.env.ZEE_REQUIRE_MEMORY === "1"
 
-  const qdrantUrl = getQdrantUrl()
-  const qdrantCheck = await checkQdrantConnectivity(qdrantUrl)
-  const googleCheck = await checkGoogleApiKey()
+  const memoryStatus = await getLocalMemoryStatus()
   const openbbResolution = resolveOpenBBRuntime()
   const openbbCheck = await probeOpenBBAvailability()
+  const agentProvider = await checkAgentProviderReady()
   const missingEnvWarnings = await scanMissingEnvPlaceholders().catch(() => [])
 
-  if (!qdrantCheck.available) {
-    const message = `Qdrant not available at ${qdrantUrl}: ${qdrantCheck.error}`
+  if (!memoryStatus.ok) {
+    const detail = memoryStatus.sqlite.error || memoryStatus.embedding.error || "run `zee memory prepare`"
+    const message = `Local memory is not prepared: ${detail}`
     if (strict) {
       errors.push(message)
-      errors.push("  Run: docker compose up -d   OR   zee setup --services")
-    } else {
-      warnings.push(`${message}; semantic memory will use local file/SQLite mode until Qdrant is configured.`)
-    }
-  }
-
-  if (!googleCheck.available) {
-    const message = "Google/Gemini API key not found; embeddings will stay disabled until configured."
-    if (strict) {
-      errors.push("Google/Gemini API key not found (required for strict semantic memory)")
-      errors.push("  Run: zee auth login google")
-      errors.push(`  Stores in: ${AUTH_JSON_DATA_PATH} (or ${AUTH_JSON_STATE_PATH})`)
+      errors.push("  Run: zee memory prepare")
     } else {
       warnings.push(message)
     }
@@ -298,20 +293,31 @@ export async function runSetupCheck(): Promise<SetupCheckResult> {
     if (openbbCheck.action) warnings.push(`OpenBB remediation: ${openbbCheck.action}`)
   }
 
-  const ok = strict ? qdrantCheck.available && googleCheck.available : true
+  if (!agentProvider.available) {
+    const message = "No usable LLM provider is configured for agent runs."
+    if (strict) {
+      errors.push(message)
+      if (agentProvider.action) errors.push(`  ${agentProvider.action}`)
+    } else {
+      warnings.push(message)
+      if (agentProvider.action) warnings.push(agentProvider.action)
+    }
+  }
+
+  const ok = strict ? memoryStatus.ok && agentProvider.available : true
 
   const result: SetupCheckResult = {
     ok,
     strict,
-    qdrant: {
-      available: qdrantCheck.available,
-      url: qdrantUrl,
-      error: qdrantCheck.error,
-    },
-    googleApiKey: {
-      available: googleCheck.available,
-      source: googleCheck.source,
-      error: googleCheck.error,
+    memory: {
+      available: memoryStatus.ok,
+      prepared: memoryStatus.prepared,
+      scope: memoryStatus.scope,
+      vectorDbPath: memoryStatus.sqlite.vectorDbPath,
+      ftsDbPath: memoryStatus.sqlite.ftsDbPath,
+      embeddingModel: memoryStatus.embedding.model,
+      embeddingDimensions: memoryStatus.embedding.dimensions,
+      error: memoryStatus.sqlite.error || memoryStatus.embedding.error,
     },
     openbb: {
       available: openbbCheck.available,
@@ -320,14 +326,14 @@ export async function runSetupCheck(): Promise<SetupCheckResult> {
       error: openbbCheck.error,
       action: openbbCheck.action,
     },
+    agentProvider,
     warnings,
     errors,
   }
 
   if (ok) {
     log.info("Setup check passed", {
-      qdrantUrl,
-      googleSource: googleCheck.source,
+      memoryPrepared: memoryStatus.prepared,
       openbbAvailable: openbbCheck.available,
       warnings: warnings.length,
     })
@@ -347,19 +353,14 @@ export function formatSetupCheckResult(result: SetupCheckResult): string {
   lines.push("Setup Check")
   lines.push("===========")
 
-  // Qdrant status
-  if (result.qdrant.available) {
-    lines.push(`Qdrant:   OK (${result.qdrant.url})`)
+  // Memory status
+  if (result.memory.available) {
+    lines.push(`Memory:   OK (${result.memory.embeddingModel}, ${result.memory.embeddingDimensions} dims)`)
+    lines.push(`          ${result.memory.vectorDbPath}`)
   } else {
-    lines.push(`Qdrant:   MISSING (${result.qdrant.url})`)
-    lines.push(`          ${result.qdrant.error}`)
-  }
-
-  // Google API key status
-  if (result.googleApiKey.available) {
-    lines.push(`Google:   OK (${result.googleApiKey.source})`)
-  } else {
-    lines.push("Google:   MISSING (API key for memory embeddings)")
+    lines.push("Memory:   MISSING (local SQLite/embedding preparation)")
+    if (result.memory.error) lines.push(`          ${result.memory.error}`)
+    lines.push("          Run: zee memory prepare")
   }
 
   if (result.openbb.available) {
@@ -369,6 +370,13 @@ export function formatSetupCheckResult(result: SetupCheckResult): string {
     if (result.openbb.error) {
       lines.push(`          ${result.openbb.error}`)
     }
+  }
+
+  if (result.agentProvider.available) {
+    lines.push(`Provider: OK (${result.agentProvider.providerId}, ${result.agentProvider.source})`)
+  } else {
+    lines.push("Provider: MISSING (no configured LLM provider)")
+    if (result.agentProvider.action) lines.push(`          ${result.agentProvider.action}`)
   }
 
   lines.push("")

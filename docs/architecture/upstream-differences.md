@@ -23,7 +23,7 @@ Current upstream pins (OpenCode and Pi-mono refreshed 2026-02-26; OpenClaw uncha
 
 ## Summary (what each repo is)
 
-- **zee**: a CLI agent engine that powers the Personas system (**Zee**, **Stanley**, **Johny**). It adds persona routing, semantic memory (Qdrant), orchestration, and an optional always-on messaging gateway.
+- **zee**: a CLI agent engine that powers the Personas system (**Zee**, **Stanley**, **Johny**). It adds persona routing, local semantic memory, orchestration, and an optional always-on messaging gateway.
 - **opencode**: an open source AI coding agent (TUI-first) with a client/server architecture and LSP support.
 - **openclaw**: a personal AI assistant with a Gateway WebSocket control plane, multi-channel messaging (WhatsApp/Slack/Discord/etc), device nodes (macOS/iOS/Android), and a large skill catalog.
 
@@ -106,7 +106,7 @@ The command entrypoints live in `src/commands/`.
 | Global config | `~/.config/zee/zee.json{,c}` | `~/.config/opencode/opencode.json{,c}` | `~/.openclaw/openclaw.json` (or `$OPENCLAW_STATE_DIR/openclaw.json`) |
 | Project config | `.zee/` in project root | `.opencode/` in project root | not the primary model; uses the state dir + “workspace” repo |
 | Secrets | env vars only (config JSONC references `{env:...}`) | env vars + config | `~/.openclaw/.env` plus env vars; config can fill defaults |
-| State | `~/.local/state/zee/` (plus Qdrant) | `~/.local/state/opencode/` (plus app/server state) | `~/.openclaw/` (agents, creds, logs, sessions, skills, workspace) |
+| State | `~/.local/state/zee/` with local SQLite memory | `~/.local/state/opencode/` (plus app/server state) | `~/.openclaw/` (agents, creds, logs, sessions, skills, workspace) |
 
 ## Providers / model backends (practical differences)
 
@@ -114,7 +114,7 @@ The command entrypoints live in `src/commands/`.
 
 `packages/zee` keeps a smaller provider surface and adds memory + messaging:
 
-- Present in zee deps, not in opencode deps: `@qdrant/js-client-rest`, `@whiskeysockets/baileys`, `whatsapp-web.js`, `google-auth-library`, `croner`, `yaml`
+- Present in zee deps, not in opencode deps: `@whiskeysockets/baileys`, `whatsapp-web.js`, `google-auth-library`, `croner`, `yaml`
 - Present in opencode deps, not in zee deps: many additional `@ai-sdk/*` provider packages (Bedrock/Azure/Groq/Mistral/etc), `ai-gateway-provider`, `partial-json`, plus opencode workspace packages (`@opencode-ai/*`)
 
 ### openclaw (provider stack)
@@ -224,8 +224,8 @@ Overlap is mostly in "utility" skills (for example `weather`, `spotify-player`),
 
 ## Memory / persistence
 
-- **zee**: semantic memory is a first-class feature (Qdrant-backed vector memory, embedding profiles in config, shared memory types under `src/memory/`).
-- **opencode**: focuses on sessions, project worktrees, and coding workflows; it does not ship a Qdrant-backed semantic memory subsystem in the same way.
+- **zee**: semantic memory is a first-class feature (local SQLite vector memory, local embeddings, shared memory types under `src/memory/`).
+- **opencode**: focuses on sessions, project worktrees, and coding workflows; it does not ship the same semantic memory subsystem.
 - **openclaw**: treats `~/.openclaw/workspace/` as the canonical “human-readable memory” surface, with optional local indexing (`sqlite-vec`) and extensive operational state (channels, allowlists, pairing, approvals).
 
 ## Concrete diff metrics (zee vs opencode)

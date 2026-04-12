@@ -26,6 +26,7 @@ import {
   resolveStateDir,
   resolveWorkspaceDir,
 } from "../../global/dirs"
+import { prepareLocalMemory } from "../../../../../src/memory/local-runtime"
 
 const log = Log.create({ service: "daemon-install" })
 
@@ -414,6 +415,16 @@ async function installSystemdService(binaryPath: string, options: DaemonInstallO
       error: `Failed to create directories: ${err}`,
     }
   }
+
+  const memoryStatus = await prepareLocalMemory({ scope: "user" })
+  if (!memoryStatus.ok) {
+    return {
+      success: false,
+      platform: "linux",
+      error: `Failed to prepare local memory: ${memoryStatus.sqlite.error || memoryStatus.embedding.error || "unknown error"}`,
+    }
+  }
+  hints.push(`Local memory prepared: ${memoryStatus.paths.memoryDir}`)
 
   // Mirror bundled curated skills to machine-level skill directory.
   try {
@@ -885,6 +896,21 @@ async function installWindowsService(binaryPath: string, options: DaemonInstallO
       error: `Failed to prepare Windows service directories: ${error instanceof Error ? error.message : String(error)}`,
     }
   }
+
+  const memoryStatus = await prepareLocalMemory({
+    scope: options.scope === "user" ? "user" : "machine",
+    platform: "win32",
+    env: scopedWindowsServiceEnv(options),
+  })
+  if (!memoryStatus.ok) {
+    return {
+      success: false,
+      platform: "windows",
+      servicePath: WINDOWS_SERVICE_REGISTRY_KEY,
+      error: `Failed to prepare local memory: ${memoryStatus.sqlite.error || memoryStatus.embedding.error || "unknown error"}`,
+    }
+  }
+  hints.push(`Local memory prepared: ${memoryStatus.paths.memoryDir}`)
 
   try {
     const mirror = await syncBundledSkillsToMachine({ reason: "windows-daemon-install" })

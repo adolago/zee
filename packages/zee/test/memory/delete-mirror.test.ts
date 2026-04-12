@@ -26,8 +26,8 @@ function createHarness(options: {
   ftsThrows?: boolean
 }): Harness {
   const memory = new Memory({
-    qdrant: { url: "http://localhost:6333", collection: "delete-mirror-test" },
-    embedding: { provider: "google", dimensions: 384 },
+    storage: { collection: "delete-mirror-test" },
+    embedding: { provider: "local", dimensions: 384 },
     namespace: "test",
   })
 
@@ -72,7 +72,7 @@ function createHarness(options: {
 }
 
 describe("Memory bulk-delete mirror sync", () => {
-  test("deleteWhere removes matching IDs from Qdrant and SQLite FTS", async () => {
+  test("deleteWhere removes matching IDs from local vector storage and SQLite FTS", async () => {
     const { memory, calls } = createHarness({
       pages: [{ points: [point("a"), point("b")], nextOffset: null }],
       withFts: true,
@@ -161,7 +161,7 @@ describe("Memory bulk-delete mirror sync", () => {
     }
   })
 
-  test("continues when FTS batch delete fails (Qdrant remains source of truth)", async () => {
+  test("continues when FTS batch delete fails (local vector storage remains source of truth)", async () => {
     const ids = Array.from({ length: 250 }, (_, i) => point(`id-${i}`))
     const { memory, calls } = createHarness({
       pages: [{ points: ids, nextOffset: null }],
@@ -182,7 +182,7 @@ describe("Memory bulk-delete mirror sync", () => {
     ])
   })
 
-  test("still bulk-deletes from Qdrant when local index is unavailable", async () => {
+  test("still bulk-deletes from local vector storage when local index is unavailable", async () => {
     const { memory, calls } = createHarness({
       pages: [{ points: [point("q-only")], nextOffset: null }],
       withFts: false,

@@ -48,6 +48,7 @@ import { DmuxCommand } from "./cli/cmd/dmux"
 import { V3Command } from "./cli/cmd/v3"
 import { BenchmarkCommand } from "./cli/cmd/benchmark"
 import { PromptCommand } from "./cli/cmd/prompt"
+import { MemoryCommand } from "./cli/cmd/memory"
 import path from "node:path"
 import fs from "node:fs"
 import os from "node:os"
@@ -169,6 +170,7 @@ const cli = yargs(hideBin(process.argv))
   .command(DmuxCommand)
   .command(RunCommand)
   .command(PromptCommand)
+  .command(MemoryCommand)
   .command(CheckCommand)
   .command(DoctorCommand)
   .command(InspectCommand)

@@ -1,7 +1,7 @@
 /**
  * Markdown Sync Tests (Gap 1)
  *
- * Pure filesystem tests using tmpdir (no Qdrant required):
+ * Pure filesystem tests using tmpdir:
  * - appendToDailyLog(): creates dated file, appends entries
  * - Multiple entries same day -> same file
  * - writeEntityPage() / readEntityPage() round-trip
@@ -11,23 +11,6 @@
  */
 
 import { describe, it, expect, afterAll, vi } from "vitest"
-
-// Mock Bun-dependent modules before any imports that trigger them
-vi.mock("../../packages/zee/src/global/index", () => ({
-  Global: {
-    Path: {
-      home: "/tmp/test",
-      source: "/tmp/test",
-      data: "/tmp/test/data",
-      bin: "/tmp/test/bin",
-      log: "/tmp/test/log",
-      cache: "/tmp/test/cache",
-      config: "/tmp/test/config",
-      state: "/tmp/test/state",
-      tmp: "/tmp/test/tmp",
-    },
-  },
-}))
 
 vi.mock("../../packages/zee/src/util/log", () => {
   const noop = () => {}
@@ -54,9 +37,10 @@ vi.mock("../../packages/zee/src/util/log", () => {
 
 import { mkdtempSync, existsSync, readFileSync, rmSync } from "node:fs"
 import { join } from "node:path"
-import { homedir, tmpdir } from "node:os"
+import { tmpdir } from "node:os"
 import { MarkdownSync } from "./markdown-sync"
 import type { MemoryEntry } from "./types"
+import { Global } from "../../packages/zee/src/global"
 
 const testDir = mkdtempSync(join(tmpdir(), "memv2-md-sync-"))
 let mdSync: MarkdownSync
@@ -83,9 +67,9 @@ afterAll(() => {
 })
 
 describe("MarkdownSync", () => {
-  it("uses XDG state path as default baseDir", () => {
+  it("uses the Zee workspace memory path as default baseDir", () => {
     const defaultSync = new MarkdownSync()
-    expect(defaultSync.getBaseDir()).toBe(join(homedir(), ".local", "state", "zee", "memory"))
+    expect(defaultSync.getBaseDir()).toBe(join(Global.Path.workspace, "memory"))
   })
 
   it("creates instance with custom baseDir", () => {
@@ -207,8 +191,8 @@ describe("MarkdownSync", () => {
 
   describe("writeEntityPage / readEntityPage", () => {
     it("writes and reads an entity page round-trip", () => {
-      mdSync.writeEntityPage("Qdrant", {
-        summary: "Qdrant is a vector database",
+      mdSync.writeEntityPage("Local Memory", {
+        summary: "Local memory is a vector database",
         facts: [
           { content: "Written in Rust", confidence: 0.95, date: "2025-01-01" },
           { content: "Supports filtering", date: "2025-01-02" },
@@ -216,10 +200,10 @@ describe("MarkdownSync", () => {
         relationships: [{ target: "Rust", type: "built_with" }],
       })
 
-      const content = mdSync.readEntityPage("Qdrant")
+      const content = mdSync.readEntityPage("Local Memory")
       expect(content).not.toBeNull()
-      expect(content).toContain("# Qdrant")
-      expect(content).toContain("Qdrant is a vector database")
+      expect(content).toContain("# Local Memory")
+      expect(content).toContain("Local memory is a vector database")
       expect(content).toContain("Written in Rust")
       expect(content).toContain("95% confidence")
       expect(content).toContain("Supports filtering")
@@ -240,7 +224,7 @@ describe("MarkdownSync", () => {
       })
 
       const pages = mdSync.listEntityPages()
-      expect(pages).toContain("qdrant")
+      expect(pages).toContain("local-memory")
       expect(pages).toContain("testentity")
     })
   })

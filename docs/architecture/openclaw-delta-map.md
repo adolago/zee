@@ -214,7 +214,7 @@ Upstream PR triage (OpenClaw):
 | openclaw/openclaw#9903 | security | port | Coerce bare-string exec-approval allowlist entries (hardening). | Done (already implemented in infra/exec-approvals.ts) |
 | openclaw/openclaw#10000 | reliability | adapt | Payload caps needed, but storage/session model differs. | Done (limitHistoryBytes in history.ts, wired into attempt.ts and compact.ts) |
 | openclaw/openclaw#9870 | reliability | adapt | Ollama streaming/config/env fixes may apply, but provider stack differs. | Done (already implemented: Ollama provider in provider stack with streaming) |
-| openclaw/openclaw#7078 | feature | non-goal | Zee uses Google-only embeddings for semantic memory to keep a single provider and auth source of truth. | None |
+| openclaw/openclaw#7078 | feature | port | Zee memory now uses local-only embeddings by default. | Done |
 | openclaw/openclaw#10146 | security | non-goal | Control UI asset/update hardening not actionable unless Zee ships those assets. | None |
 | openclaw/openclaw#10072 | feature | adapt | Implemented usage visibility via CLI and consolidated ops report (no control UI dependency). | Done (`zee usage`, `zee inspect ops`) |
 | openclaw/openclaw#9806 | security | adapt | Skill scanner integration differs. | Done (already implemented: skill-scanner.ts) |
@@ -270,7 +270,7 @@ Lane artifact: `docs/architecture/openclaw-lanes/lane-09-memory-indexing.md`.
 
 Implementation focus (Zee):
 
-- `src/memory` (Qdrant-backed)
+- `src/memory` (local SQLite vector storage + SQLite FTS)
 - `packages/zee/Swabble/src/memory`
 - `packages/zee/Swabble/extensions/memory-core`
 - `packages/zee/Swabble/extensions/memory-lancedb`
@@ -279,12 +279,12 @@ Upstream PR triage (OpenClaw):
 
 | Upstream PR | Category | Decision | Rationale | Zee follow-up |
 | --- | --- | --- | --- | --- |
-| openclaw/openclaw#10818 | performance | non-goal | Voyage embeddings are not supported (Google-only embeddings). | None |
+| openclaw/openclaw#10818 | performance | non-goal | Voyage embeddings are not needed for Zee memory because embeddings are local-only by default. | None |
 | openclaw/openclaw#5332 | performance | adapt | L2-normalize embedding vectors to fix semantic search quality. | Done (ported: sanitizeAndNormalizeEmbedding in `src/memory/embeddings.ts` + normalization tests in `src/memory/embeddings.test.ts`) |
-| openclaw/openclaw#2576 | reliability | non-goal | Zee does not support embedding provider "auto" selection (Google-only embeddings). | None |
+| openclaw/openclaw#2576 | reliability | non-goal | Zee does not need embedding provider "auto" selection for the default local memory path. | None |
 | openclaw/openclaw#1272 | security | adapt | Enforce plugin config schemas; Zee plugin system differs. | Done (already implemented: schema-validator.ts with AJV in loader.ts) |
-| openclaw/openclaw#7078 | feature | non-goal | Zee uses Google-only embeddings for semantic memory to keep a single provider and auth source of truth. | None |
-| openclaw/openclaw#819 | feature | adapt | Remote overrides are useful for proxies but Zee enforces Google-only embeddings and auth-store-only API keys. | Done (memorySearch.remote.baseUrl/headers supported; API key comes from `zee auth login google`) |
+| openclaw/openclaw#7078 | feature | port | Zee memory now uses local-only embeddings by default. | Done |
+| openclaw/openclaw#819 | feature | non-goal | Remote embedding overrides are not needed for the default local memory path. | None |
 | openclaw/openclaw#3600 | chore | non-goal | Upstream-only local updates without clear mapping. | None |
 | openclaw/openclaw#1439 | feature | non-goal | BlueBubbles typing behavior out of scope for memory lane. | None |
 

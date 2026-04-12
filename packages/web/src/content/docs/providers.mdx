@@ -35,7 +35,7 @@ You can customize the base URL for any provider by setting the `baseURL` option.
 
 ```json title="zee.json" {6}
 {
-  "$schema": "https://zee-bot.com/config.json",
+  "$schema": "https://zee.dev/config.json",
   "provider": {
     "anthropic": {
       "options": {
@@ -57,7 +57,7 @@ tested and verified to work well with Zee. [Learn more](/docs/zen).
 If you are new, we recommend starting with Opencode Zen.
 :::
 
-1. Run the `/connect` command in the TUI, select opencode, and head to [zee-bot.com/auth](https://zee-bot.com/providers/opencode-zen).
+1. Run the `/connect` command in the TUI, select opencode, and head to [zee.dev/auth](https://zee.dev/providers/opencode-zen).
 
    ```txt
    /connect
@@ -163,7 +163,7 @@ To use Amazon Bedrock with Zee:
 
    ```json title="zee.json"
    {
-     "$schema": "https://zee-bot.com/config.json",
+     "$schema": "https://zee.dev/config.json",
      "provider": {
        "amazon-bedrock": {
          "options": {
@@ -190,7 +190,7 @@ To use Amazon Bedrock with Zee:
 
    ```json title="zee.json"
    {
-     "$schema": "https://zee-bot.com/config.json",
+     "$schema": "https://zee.dev/config.json",
      "provider": {
        "amazon-bedrock": {
          "options": {
@@ -234,7 +234,7 @@ For custom inference profiles, use the model and provider name in the key and se
 
 ```json title="zee.json"
 {
-  "$schema": "https://zee-bot.com/config.json",
+  "$schema": "https://zee.dev/config.json",
   "provider": {
     "amazon-bedrock": {
       // ...
@@ -486,7 +486,7 @@ Cloudflare AI Gateway lets you access models from OpenAI, Anthropic, Workers AI,
 
    ```json title="zee.json"
    {
-     "$schema": "https://zee-bot.com/config.json",
+     "$schema": "https://zee.dev/config.json",
      "provider": {
        "cloudflare-ai-gateway": {
          "models": {
@@ -692,7 +692,7 @@ to only use your own GitLab-hosted instance, add the following to your
 
 ```json
 {
-  "$schema": "https://zee-bot.com/config.json",
+  "$schema": "https://zee.dev/config.json",
   "small_model": "gitlab/duo-chat-haiku-4-5",
   "share": "disabled"
 }
@@ -754,7 +754,7 @@ Customize through `zee.json`:
 
 ```json title="zee.json"
 {
-  "$schema": "https://zee-bot.com/config.json",
+  "$schema": "https://zee.dev/config.json",
   "provider": {
     "gitlab": {
       "options": {
@@ -775,7 +775,7 @@ To access GitLab tools (merge requests, issues, pipelines, CI/CD, etc.):
 
 ```json title="zee.json"
 {
-  "$schema": "https://zee-bot.com/config.json",
+  "$schema": "https://zee.dev/config.json",
   "plugin": ["@gitlab/opencode-gitlab-plugin"]
 }
 ```
@@ -958,7 +958,7 @@ Here's [Helicone's Model Directory](https://helicone.ai/models), you'll need thi
 
 ```jsonc title="~/.config/zee/zee.jsonc"
 {
-  "$schema": "https://zee-bot.com/config.json",
+  "$schema": "https://zee.dev/config.json",
   "provider": {
     "helicone": {
       "npm": "@ai-sdk/openai-compatible",
@@ -986,7 +986,7 @@ Helicone supports custom headers for features like caching, user tracking, and s
 
 ```jsonc title="~/.config/zee/zee.jsonc"
 {
-  "$schema": "https://zee-bot.com/config.json",
+  "$schema": "https://zee.dev/config.json",
   "provider": {
     "helicone": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1040,7 +1040,7 @@ You can configure zee to use local models through [llama.cpp's](https://github.c
 
 ```json title="zee.json" "llama.cpp" {5, 6, 8, 10-15}
 {
-  "$schema": "https://zee-bot.com/config.json",
+  "$schema": "https://zee.dev/config.json",
   "provider": {
     "llama.cpp": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1107,7 +1107,7 @@ You can configure zee to use local models through LM Studio.
 
 ```json title="zee.json" "lmstudio" {5, 6, 8, 10-14}
 {
-  "$schema": "https://zee-bot.com/config.json",
+  "$schema": "https://zee.dev/config.json",
   "provider": {
     "lmstudio": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1191,33 +1191,6 @@ To use Kimi K2 from Moonshot AI:
 
 ---
 
-### Nebius Token Factory
-
-1. Head over to the [Nebius Token Factory console](https://tokenfactory.nebius.com/), create an account, and click **Add Key**.
-
-2. Run the `/connect` command and search for **Nebius Token Factory**.
-
-   ```txt
-   /connect
-   ```
-
-3. Enter your Nebius Token Factory API key.
-
-   ```txt
-   ┌ API key
-   │
-   │
-   └ enter
-   ```
-
-4. Run the `/models` command to select a model like _Kimi K2 Instruct_.
-
-   ```txt
-   /models
-   ```
-
----
-
 ### Ollama
 
 You can configure zee to use local models through Ollama.
@@ -1228,7 +1201,7 @@ Ollama can automatically configure itself for Zee. See the [Ollama integration d
 
 ```json title="zee.json" "ollama" {5, 6, 8, 10-14}
 {
-  "$schema": "https://zee-bot.com/config.json",
+  "$schema": "https://zee.dev/config.json",
   "provider": {
     "ollama": {
       "npm": "@ai-sdk/openai-compatible",
@@ -1280,7 +1253,7 @@ You can configure Zee to use local or self-hosted vLLM through the OpenAI-compat
 
    ```json title="zee.json"
    {
-     "$schema": "https://zee-bot.com/config.json",
+     "$schema": "https://zee.dev/config.json",
      "model": "vllm/your-model-id"
    }
    ```
@@ -1421,7 +1394,7 @@ Opencode Zen is a list of tested and verified models provided by the Zee team. [
 
    ```json title="zee.json" {6}
    {
-     "$schema": "https://zee-bot.com/config.json",
+     "$schema": "https://zee.dev/config.json",
      "provider": {
        "openrouter": {
          "models": {
@@ -1436,7 +1409,7 @@ Opencode Zen is a list of tested and verified models provided by the Zee team. [
 
    ```json title="zee.json"
    {
-     "$schema": "https://zee-bot.com/config.json",
+     "$schema": "https://zee.dev/config.json",
      "provider": {
        "openrouter": {
          "models": {
@@ -1652,7 +1625,7 @@ You can also customize models through your zee config. Here's an example of spec
 
 ```json title="zee.json"
 {
-  "$schema": "https://zee-bot.com/config.json",
+  "$schema": "https://zee.dev/config.json",
   "provider": {
     "vercel": {
       "models": {
@@ -1762,7 +1735,7 @@ Some useful routing options:
 
    ```json title="zee.json" {6}
    {
-     "$schema": "https://zee-bot.com/config.json",
+     "$schema": "https://zee.dev/config.json",
      "provider": {
        "zenmux": {
          "models": {
@@ -1830,7 +1803,7 @@ You can use any OpenAI-compatible provider with zee. Most modern AI providers of
 
    ```json title="zee.json" ""myprovider"" {5-15}
    {
-     "$schema": "https://zee-bot.com/config.json",
+     "$schema": "https://zee.dev/config.json",
      "provider": {
        "myprovider": {
          "npm": "@ai-sdk/openai-compatible",
@@ -1868,7 +1841,7 @@ Here's an example setting the `apiKey`, `headers`, and model `limit` options.
 
 ```json title="zee.json" {9,11,17-20}
 {
-  "$schema": "https://zee-bot.com/config.json",
+  "$schema": "https://zee.dev/config.json",
   "provider": {
     "myprovider": {
       "npm": "@ai-sdk/openai-compatible",

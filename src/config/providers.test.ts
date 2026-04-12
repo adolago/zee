@@ -13,22 +13,23 @@ import {
 
 describe("providers registry", () => {
   describe("PROVIDERS", () => {
-    it("should have expected providers defined", () => {
-      expect(PROVIDERS.google).toBeDefined();
+    it("keeps only core service providers", () => {
+      expect(PROVIDERS.wisprflow).toBeDefined();
       expect(PROVIDERS.openai).toBeDefined();
-      expect(PROVIDERS.voyage).toBeDefined();
-      expect(PROVIDERS.elevenlabs).toBeDefined();
       expect(PROVIDERS.minimax).toBeDefined();
       expect(PROVIDERS["minimax-tts"]).toBeDefined();
-      expect(PROVIDERS.splitwise).toBeDefined();
       expect(PROVIDERS["alpha-vantage"]).toBeDefined();
       expect(PROVIDERS.fmp).toBeDefined();
       expect(PROVIDERS.sec).toBeDefined();
-      expect(PROVIDERS.vllm).toBeDefined();
-      expect(PROVIDERS.edge).toBeDefined();
+
+      expect(PROVIDERS.voyage).toBeUndefined();
+      expect(PROVIDERS.splitwise).toBeUndefined();
+      expect(PROVIDERS.elevenlabs).toBeUndefined();
+      expect(PROVIDERS.vllm).toBeUndefined();
+      expect(PROVIDERS.edge).toBeUndefined();
     });
 
-    it("each provider should have required fields", () => {
+    it("each provider has required fields", () => {
       for (const [id, provider] of Object.entries(PROVIDERS)) {
         expect(provider.id).toBe(id);
         expect(provider.name).toBeTruthy();
@@ -40,76 +41,52 @@ describe("providers registry", () => {
   });
 
   describe("getProvidersForService", () => {
-    it("should return embedding providers", () => {
-      const providers = getProvidersForService("embedding");
-      const ids = providers.map((p) => p.id);
-      expect(ids).toContain("google");
-      expect(ids).not.toContain("openai");
-      expect(ids).not.toContain("voyage");
-      expect(ids).not.toContain("vllm");
+    it("does not expose embedding, reranking, or expenses providers", () => {
+      expect(getProvidersForService("embedding" as ServiceType)).toEqual([]);
+      expect(getProvidersForService("reranking" as ServiceType)).toEqual([]);
+      expect(getProvidersForService("expenses" as ServiceType)).toEqual([]);
     });
 
-    it("should return reranking providers", () => {
-      const providers = getProvidersForService("reranking");
-      const ids = providers.map((p) => p.id);
-      expect(ids).toContain("voyage");
-      expect(ids).toContain("vllm");
+    it("returns only messaging TTS providers", () => {
+      const ids = getProvidersForService("tts").map((p) => p.id);
+      expect(ids).toEqual(["minimax", "minimax-tts"]);
     });
 
-    it("should return tts providers", () => {
-      const providers = getProvidersForService("tts");
-      const ids = providers.map((p) => p.id);
-      expect(ids).toContain("openai");
-      expect(ids).toContain("elevenlabs");
-      expect(ids).toContain("minimax");
-      expect(ids).toContain("minimax-tts");
-      expect(ids).toContain("edge");
+    it("returns Wispr Flow as the only STT provider", () => {
+      const ids = getProvidersForService("stt").map((p) => p.id);
+      expect(ids).toEqual(["wisprflow"]);
     });
 
-    it("should return stt providers", () => {
-      const providers = getProvidersForService("stt");
-      const ids = providers.map((p) => p.id);
-      expect(ids).toContain("wisprflow");
-      expect(ids).not.toContain("google");
+    it("returns OpenAI for image generation", () => {
+      const ids = getProvidersForService("image").map((p) => p.id);
+      expect(ids).toEqual(["openai"]);
     });
 
-    it("should return image providers", () => {
-      const providers = getProvidersForService("image");
-      const ids = providers.map((p) => p.id);
-      expect(ids).toContain("openai");
-    });
-
-    it("should return expenses providers", () => {
-      const providers = getProvidersForService("expenses");
-      const ids = providers.map((p) => p.id);
-      expect(ids).toContain("splitwise");
-    });
-
-    it("should return market data providers", () => {
-      const providers = getProvidersForService("market_data");
-      const ids = providers.map((p) => p.id);
+    it("keeps OpenBB-compatible market data providers", () => {
+      const ids = getProvidersForService("market_data").map((p) => p.id);
       expect(ids).toContain("alpha-vantage");
       expect(ids).toContain("fmp");
       expect(ids).toContain("sec");
     });
 
-    it("should return empty array for non-existent service", () => {
-      const providers = getProvidersForService("nonexistent" as ServiceType);
-      expect(providers).toEqual([]);
+    it("returns empty array for non-existent service", () => {
+      expect(getProvidersForService("nonexistent" as ServiceType)).toEqual([]);
     });
   });
 
   describe("getProvider", () => {
-    it("should return provider by ID", () => {
-      const google = getProvider("google");
-      expect(google).toBeDefined();
-      expect(google?.id).toBe("google");
-      expect(google?.name).toBe("Google AI");
+    it("returns provider by ID", () => {
+      const openai = getProvider("openai");
+      expect(openai).toBeDefined();
+      expect(openai?.id).toBe("openai");
+      expect(openai?.name).toBe("OpenAI");
     });
 
-    it("should return undefined for non-existent provider", () => {
-      const nonexistent = getProvider("nonexistent");
-      expect(nonexistent).toBeUndefined();
+    it("returns undefined for pruned and unknown providers", () => {
+      expect(getProvider("voyage")).toBeUndefined();
+      expect(getProvider("splitwise")).toBeUndefined();
+      expect(getProvider("kernel")).toBeUndefined();
+      expect(getProvider("nonexistent")).toBeUndefined();
     });
   });
 
@@ -124,27 +101,20 @@ describe("providers registry", () => {
       process.env = originalEnv;
     });
 
-    it("should return true for local providers", () => {
-      const vllm = PROVIDERS.vllm;
-      expect(hasCredentials(vllm)).toBe(true);
-
-      const edge = PROVIDERS.edge;
-      expect(hasCredentials(edge)).toBe(true);
-    });
-
-    it("should return true when primary env var is set", () => {
+    it("returns true when primary env var is set", () => {
       process.env.OPENAI_API_KEY = "test-key";
       expect(hasCredentials(PROVIDERS.openai)).toBe(true);
     });
 
-    it("should return true when alias env var is set", () => {
-      process.env.GEMINI_API_KEY = "test-key";
-      expect(hasCredentials(PROVIDERS.google)).toBe(true);
+    it("returns true when alias env var is set", () => {
+      delete process.env.TRADIER_API_KEY;
+      process.env.TRADIER_TOKEN = "test-key";
+      expect(hasCredentials(PROVIDERS.tradier)).toBe(true);
     });
 
-    it("should return false when no credentials are set", () => {
-      delete process.env.OPENAI_API_KEY;
-      expect(hasCredentials(PROVIDERS.openai)).toBe(false);
+    it("returns false when no credentials are set", () => {
+      delete process.env.WISPRFLOW_API_KEY;
+      expect(hasCredentials(PROVIDERS.wisprflow)).toBe(false);
     });
   });
 
@@ -159,70 +129,63 @@ describe("providers registry", () => {
       process.env = originalEnv;
     });
 
-    it("should return undefined for non-existent provider", () => {
+    it("returns undefined for non-existent provider", () => {
       expect(getApiKeySync("nonexistent")).toBeUndefined();
     });
 
-    it("should return primary env var value", () => {
+    it("returns primary env var value", () => {
       process.env.OPENAI_API_KEY = "primary-key";
       expect(getApiKeySync("openai")).toBe("primary-key");
     });
 
-    it("should return alias env var value when primary not set", () => {
-      delete process.env.GOOGLE_API_KEY;
-      process.env.GEMINI_API_KEY = "alias-key";
-      expect(getApiKeySync("google")).toBe("alias-key");
+    it("returns alias env var value when primary is not set", () => {
+      delete process.env.TRADIER_API_KEY;
+      process.env.TRADIER_TOKEN = "alias-key";
+      expect(getApiKeySync("tradier")).toBe("alias-key");
     });
 
-    it("should prefer primary over alias", () => {
-      process.env.GOOGLE_API_KEY = "primary-key";
-      process.env.GEMINI_API_KEY = "alias-key";
-      expect(getApiKeySync("google")).toBe("primary-key");
-    });
-
-    it("should return undefined when no env vars are set", () => {
-      delete process.env.VOYAGE_API_KEY;
-      expect(getApiKeySync("voyage")).toBeUndefined();
+    it("prefers primary over alias", () => {
+      process.env.TRADIER_API_KEY = "primary-key";
+      process.env.TRADIER_TOKEN = "alias-key";
+      expect(getApiKeySync("tradier")).toBe("primary-key");
     });
   });
 
   describe("listProvidersByService", () => {
-    it("should return providers grouped by service", () => {
+    it("returns providers grouped by retained services", () => {
       const byService = listProvidersByService();
 
-      expect(byService.embedding).toBeInstanceOf(Array);
-      expect(byService.reranking).toBeInstanceOf(Array);
       expect(byService.tts).toBeInstanceOf(Array);
       expect(byService.stt).toBeInstanceOf(Array);
       expect(byService.image).toBeInstanceOf(Array);
-      expect(byService.expenses).toBeInstanceOf(Array);
       expect(byService.market_data).toBeInstanceOf(Array);
 
-      expect(byService.embedding.length).toBeGreaterThan(0);
-      expect(byService.reranking.length).toBeGreaterThan(0);
+      expect("embedding" in byService).toBe(false);
+      expect("reranking" in byService).toBe(false);
+      expect("expenses" in byService).toBe(false);
       expect(byService.tts.length).toBeGreaterThan(0);
-      expect(byService.stt.length).toBeGreaterThan(0);
-      expect(byService.image.length).toBeGreaterThan(0);
-      expect(byService.expenses.length).toBeGreaterThan(0);
+      expect(byService.stt).toHaveLength(1);
+      expect(byService.image).toHaveLength(1);
       expect(byService.market_data.length).toBeGreaterThan(0);
     });
   });
 
   describe("getAllProviderIds", () => {
-    it("should return all provider IDs", () => {
+    it("returns retained provider IDs", () => {
       const ids = getAllProviderIds();
-      expect(ids).toContain("google");
       expect(ids).toContain("openai");
-      expect(ids).toContain("voyage");
-      expect(ids).toContain("elevenlabs");
+      expect(ids).toContain("wisprflow");
       expect(ids).toContain("minimax");
       expect(ids).toContain("minimax-tts");
-      expect(ids).toContain("splitwise");
       expect(ids).toContain("alpha-vantage");
       expect(ids).toContain("fmp");
       expect(ids).toContain("sec");
-      expect(ids).toContain("vllm");
-      expect(ids).toContain("edge");
+
+      expect(ids).not.toContain("voyage");
+      expect(ids).not.toContain("splitwise");
+      expect(ids).not.toContain("elevenlabs");
+      expect(ids).not.toContain("vllm");
+      expect(ids).not.toContain("edge");
     });
   });
 
@@ -237,53 +200,29 @@ describe("providers registry", () => {
       process.env = originalEnv;
     });
 
-    it("should return 'local' for local providers", () => {
-      expect(getProviderStatus(PROVIDERS.vllm)).toBe("local");
-      expect(getProviderStatus(PROVIDERS.edge)).toBe("local");
-    });
-
-    it("should return 'configured' when env var is set", () => {
+    it("returns configured when env var is set", () => {
       process.env.OPENAI_API_KEY = "test-key";
       expect(getProviderStatus(PROVIDERS.openai)).toBe("configured");
     });
 
-    it("should return 'configured' when auth store has credential", () => {
+    it("returns configured when auth store has credential", () => {
       delete process.env.OPENAI_API_KEY;
       expect(getProviderStatus(PROVIDERS.openai, true)).toBe("configured");
     });
 
-    it("should return 'not configured' when no credentials", () => {
-      delete process.env.VOYAGE_API_KEY;
-      expect(getProviderStatus(PROVIDERS.voyage, false)).toBe("not configured");
+    it("returns not configured when no credentials are available", () => {
+      delete process.env.WISPRFLOW_API_KEY;
+      expect(getProviderStatus(PROVIDERS.wisprflow, false)).toBe("not configured");
     });
   });
 
   describe("provider service coverage", () => {
-    it("voyage should support reranking", () => {
-      const voyage = PROVIDERS.voyage;
-      expect(voyage.services).toContain("reranking");
+    it("openai supports image generation only in the service registry", () => {
+      expect(PROVIDERS.openai.services).toEqual(["image"]);
     });
 
-    it("openai should support tts and image", () => {
-      const openai = PROVIDERS.openai;
-      expect(openai.services).toContain("tts");
-      expect(openai.services).toContain("image");
-    });
-
-    it("google should support embedding only", () => {
-      const google = PROVIDERS.google;
-      expect(google.services).toContain("embedding");
-      expect(google.services).not.toContain("stt");
-    });
-
-    it("wisprflow should support stt", () => {
-      const wisprflow = PROVIDERS.wisprflow;
-      expect(wisprflow.services).toContain("stt");
-    });
-
-    it("splitwise should support expenses", () => {
-      const splitwise = PROVIDERS.splitwise;
-      expect(splitwise.services).toContain("expenses");
+    it("wisprflow supports stt", () => {
+      expect(PROVIDERS.wisprflow.services).toEqual(["stt"]);
     });
   });
 });

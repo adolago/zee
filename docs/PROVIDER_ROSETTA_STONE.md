@@ -10,14 +10,11 @@ Complete reference for zee providers, authentication, and models.
 
 | Provider ID | Display Name | Auth Type | Status | Use Case |
 |-------------|--------------|-----------|--------|----------|
-| `google` | Google | API key | **200 OK** | Gemini 2.0 Flash |
 | `zai-coding-plan` | Z.AI Coding Plan | API key | **200 OK** | GLM-4.7 |
 | `xai` | xAI | API key | **200 OK** | Grok models |
-| `nebius` | Nebius Token Factory | API key | **200 OK** | DeepSeek, Llama, Qwen |
 | `minimax` | MiniMax (minimax.io) | API key | **200 OK** | **TTS only** |
 | `minimax-coding-plan` | MiniMax Coding Plan | API key | **200 OK** | M2.1 chat (free tier) |
 | `vllm` | vLLM | API key | **200 OK** | Local inference |
-| `voyage` | Voyage AI | API key | **200 OK** | Reranking |
 | `kimi-for-coding` | Kimi For Coding | OAuth | **Agent-only** | K2.5, K2.5-thinking |
 
 ### Providers with Issues
@@ -34,7 +31,8 @@ Complete reference for zee providers, authentication, and models.
 - **anthropic**: OAuth token may need refresh - run `zee auth login anthropic`
 - **openai**: Quota exceeded - check billing at https://platform.openai.com/account/billing
 - **minimax**: Pay-as-you-go account has no chat balance, but TTS works fine
-- **embeddings**: Zee uses Google-only embeddings and reads the API key from the auth store: run `zee auth login google`
+- **embeddings**: Zee memory uses local embeddings by default
+- **google**: Gemini is a normal LLM provider; prefer `zee auth login google-antigravity` for Antigravity auth, or `zee auth login google` for direct API-key auth
 
 ## Authentication Commands
 
@@ -63,8 +61,8 @@ zee auth login zai-coding-plan  # API key prompt
 |-------------|-----|-------------|------------|
 | `anthropic` | @ai-sdk/anthropic | OAuth or API key | Claude 4.5 Opus/Sonnet |
 | `openai` | @ai-sdk/openai | OAuth or API key | GPT-5.5, o3, Codex |
-| `google` | @ai-sdk/google | API key (AI Studio) | Gemini 3 Pro/Flash |
-| `google-antigravity` | @ai-sdk/google | OAuth (Antigravity) | Claude Opus 4.5 Thinking, Gemini 3 |
+| `google` | @ai-sdk/google | API key | Gemini |
+| `google-antigravity` | @ai-sdk/google | Antigravity auth | Gemini |
 
 ### Tier 2: Coding Plan Providers (Free/Subscription)
 
@@ -78,7 +76,6 @@ zee auth login zai-coding-plan  # API key prompt
 
 | Provider ID | SDK | Auth | Use Case |
 |-------------|-----|------|----------|
-| `nebius` | @ai-sdk/openai-compatible | API key | DeepSeek, Llama, Qwen hosting |
 | `openrouter` | @openrouter/ai-sdk-provider | API key | Multi-provider routing |
 | `vllm` | @ai-sdk/openai-compatible | API key | Local inference |
 
@@ -87,7 +84,6 @@ zee auth login zai-coding-plan  # API key prompt
 | Provider ID | SDK | Auth | Use Case |
 |-------------|-----|------|----------|
 | `xai` | @ai-sdk/xai | API key | Grok models |
-| `voyage` | N/A | API key | Reranking |
 | `minimax` | @ai-sdk/anthropic | API key | TTS only |
 
 ## SDK Types
@@ -95,9 +91,9 @@ zee auth login zai-coding-plan  # API key prompt
 | SDK Package | Protocol | Providers Using It |
 |-------------|----------|-------------------|
 | `@ai-sdk/anthropic` | Anthropic Messages API | anthropic, minimax, minimax-coding-plan, kimi-for-coding |
+| `@ai-sdk/google` | Google Gemini API | google, google-antigravity |
 | `@ai-sdk/openai` | OpenAI Chat/Responses API | openai |
-| `@ai-sdk/google` | Google GenerativeAI | google |
-| `@ai-sdk/openai-compatible` | OpenAI-compatible | nebius, zai-coding-plan, deepseek, vllm, etc. |
+| `@ai-sdk/openai-compatible` | OpenAI-compatible | zai-coding-plan, deepseek, vllm, etc. |
 | `@ai-sdk/xai` | xAI native | xai |
 | `@openrouter/ai-sdk-provider` | OpenRouter | openrouter |
 
@@ -109,14 +105,12 @@ Each provider can be authenticated via environment variable OR `zee auth login`:
 |----------|---------------------|
 | anthropic | `ANTHROPIC_API_KEY` |
 | openai | `OPENAI_API_KEY` |
-| google | `GOOGLE_API_KEY` or `GEMINI_API_KEY` |
 | xai | `XAI_API_KEY` |
-| nebius | `NEBIUS_API_KEY` |
+| google | `GEMINI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY` |
 | kimi-for-coding | `KIMI_API_KEY` |
 | zai-coding-plan | `ZHIPU_API_KEY` |
 | minimax | `MINIMAX_API_KEY` |
 | minimax-coding-plan | `MINIMAX_API_KEY` |
-| voyage | `VOYAGE_API_KEY` |
 | openrouter | `OPENROUTER_API_KEY` |
 | vllm | `VLLM_API_KEY` (optional for local) |
 
@@ -245,7 +239,6 @@ These are disabled in your config (`disabled_providers`):
 
 These providers are permanently hidden:
 
-- `nebius` - Permanently disabled
 - `venice` - Privacy proxy removed
 - `alibaba` - Removed per request
 - `synthetic` - Redundant HuggingFace proxy
@@ -325,11 +318,6 @@ curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flas
   -H "Content-Type: application/json" \
   -d '{"contents":[{"parts":[{"text":"hi"}]}]}'
 
-# Nebius
-NEBIUS_KEY=$(jq -r '.nebius.key' ~/.local/share/zee/auth.json)
-curl -s -X POST "https://api.tokenfactory.nebius.com/v1/chat/completions" \
-  -H "Authorization: Bearer $NEBIUS_KEY" -H "Content-Type: application/json" \
-  -d '{"model":"meta-llama/Llama-3.3-70B-Instruct","messages":[{"role":"user","content":"hi"}],"max_tokens":5}'
 ```
 
 ### Full Health Check Script

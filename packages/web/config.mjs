@@ -1,10 +1,10 @@
 const stage = process.env.SST_STAGE || "dev"
 
 export default {
-  url: stage === "production" ? "https://zee-bot.com" : `https://${stage}.zee-bot.com`,
-  console: stage === "production" ? "https://zee-bot.com/providers/opencode-zen" : `https://${stage}.zee-bot.com/providers/opencode-zen`,
-  email: "support@zee-bot.com",
-  socialCard: "https://zee-bot.com/social-card.png",
+  url: stage === "production" ? "https://zee.dev" : `https://${stage}.zee.dev`,
+  console: stage === "production" ? "https://zee.dev/providers/opencode-zen" : `https://${stage}.zee.dev/providers/opencode-zen`,
+  email: "support@zee.dev",
+  socialCard: "https://zee.dev/social-card.png",
   github: "https://github.com/adolago/zee",
   discord: "https://github.com/adolago/zee/discussions",
   headerLinks: [

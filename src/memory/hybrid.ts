@@ -1,12 +1,12 @@
 /**
  * Hybrid Memory Search
  *
- * Combines Qdrant vector similarity search with SQLite BM25 keyword search.
+ * Combines local vector similarity search with SQLite BM25 keyword search.
  * The vector path excels at semantic similarity while BM25 excels at exact
  * keyword matching. Merging both provides better recall than either alone.
  *
  * Algorithm:
- *   1. Run vector search (Qdrant) and keyword search (SQLite FTS) in parallel
+ *   1. Run vector search and keyword search (SQLite FTS) in parallel
  *   2. Normalize scores to [0, 1] range
  *   3. Merge by ID, combining scores with configurable weights
  *   4. Sort by combined score, return top-N
@@ -68,7 +68,7 @@ export interface HybridSearchResult {
 /**
  * Merge vector and keyword results into a single ranked list.
  *
- * @param vectorResults - Results from Qdrant vector search
+ * @param vectorResults - Results from local vector search
  * @param keywordResults - Results from SQLite FTS search
  * @param config - Hybrid search configuration
  */
@@ -103,7 +103,7 @@ export function mergeHybridResults(
       if (kr.snippet) existing.snippet = kr.snippet
     } else {
       merged.set(kr.id, {
-        entry: null, // no vector result; caller can fetch from Qdrant if needed
+        entry: null, // no vector result; caller can hydrate from local storage if needed
         score: 0,
         components: { vector: 0, keyword: kr.score },
         snippet: kr.snippet,

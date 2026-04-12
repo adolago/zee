@@ -23,7 +23,7 @@ function makeLocalRow(overrides: Partial<FtsSearchResult> = {}): FtsSearchResult
 
 function makeDegradedMemory(rows: FtsSearchResult[]): Memory {
   const memory = new Memory({
-    embedding: { provider: "google", dimensions: 384 },
+    embedding: { provider: "local", dimensions: 384 },
     localIndex: {
       enabled: true,
       backend: "sqlite-fts",
@@ -45,7 +45,7 @@ function makeDegradedMemory(rows: FtsSearchResult[]): Memory {
 }
 
 describe("memory local index degraded reads", () => {
-  it("serves keyword results from local index when Qdrant is unavailable", async () => {
+  it("serves keyword results from local index when vector storage is unavailable", async () => {
     const memory = makeDegradedMemory([makeLocalRow()]);
 
     const results = await memory.search({
@@ -74,7 +74,7 @@ describe("memory local index degraded reads", () => {
     expect(results).toEqual([]);
   });
 
-  it("reports local index status in stats when Qdrant is unavailable", async () => {
+  it("reports local index status in stats when vector storage is unavailable", async () => {
     const rows = [makeLocalRow(), makeLocalRow({ id: "mem-local-2" })];
     const memory = makeDegradedMemory(rows);
 
@@ -91,11 +91,11 @@ describe("memory local index degraded reads", () => {
     expect(stats.fts?.totalEntries).toBe(2);
   });
 
-  it("saves to the local index when Qdrant is unavailable", async () => {
+  it("saves to the local index when vector storage is unavailable", async () => {
     resetMarkdownSync();
     const indexed: Array<{ id: string; content: string; category?: string }> = [];
     const memory = new Memory({
-      embedding: { provider: "google", dimensions: 384 },
+      embedding: { provider: "local", dimensions: 384 },
       localIndex: {
         enabled: true,
         backend: "sqlite-fts",

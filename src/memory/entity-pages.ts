@@ -1,7 +1,7 @@
 /**
  * Entity Page Auto-Generation
  *
- * Scans entity-tagged memories in Qdrant and produces
+ * Scans entity-tagged memories in local memory and produces
  * bank/entities/{entity-name}.md files with:
  * - Entity summary (aggregated from facts)
  * - Related facts with confidence scores

@@ -7,7 +7,7 @@ Detailed analysis of providers with hidden/deprecated models.
 ## Table of Contents
 
 1. [OpenAI](#openai)
-2. [Google](#google)
+2. [Google](#google-optional-disabled-by-default)
 3. [xAI (Grok)](#xai-grok)
 4. [Anthropic](#anthropic)
 5. [Kimi (Moonshot)](#kimi-moonshot)
@@ -52,7 +52,9 @@ OPENAI_BASE_URL=https://api.openai.com/v1
 
 ## Google
 
-### Active Models (Recommended)
+Google/Gemini is a normal LLM provider. STT remains Wispr Flow-only and memory embeddings remain local-only.
+
+### Optional Models
 
 | Model | Tier | Capabilities | Context | Use Case |
 |-------|------|--------------|---------|----------|
@@ -71,6 +73,7 @@ OPENAI_BASE_URL=https://api.openai.com/v1
 ### Environment Variables
 
 ```bash
+# Only for explicit Google-backed LLM/STT integrations.
 GOOGLE_API_KEY=...
 # Or alias:
 GEMINI_API_KEY=...
@@ -78,8 +81,8 @@ GEMINI_API_KEY=...
 
 ### Auth Methods
 
-1. **API Key** (default): `GOOGLE_API_KEY`
-2. **OAuth** (Antigravity): `google-antigravity`
+1. **API Key** (explicit opt-in only): `GOOGLE_API_KEY`
+2. **OAuth** (explicit opt-in only): `google-antigravity`
 
 ---
 

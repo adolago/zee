@@ -10,7 +10,7 @@
 
 import { ToolRegistry } from "../../packages/zee/src/tool/registry"
 import type { Agent } from "../../packages/zee/src/agent/agent"
-import { getZeeSplitwiseConfig, getZeeCodexbarConfig } from "../config/runtime"
+import { getZeeCodexbarConfig } from "../config/runtime"
 
 export interface ToolCatalogEntry {
   id: string
@@ -34,7 +34,6 @@ const AGENT_PRIMARY_TOOLS: Record<string, string[]> = {
     // Life admin
     "zee:browser",
     "zee:browser-standalone",
-    "zee:splitwise",
     "zee:calendar",
     "zee:memory-query",
     "zee:email",
@@ -78,7 +77,6 @@ const CORE_TOOLS = [
 
 // Usage examples for primary tools - makes models assertive
 const TOOL_EXAMPLES: Record<string, string> = {
-  "zee:splitwise": 'Use { action: "create-expense", group: "Apartment", amount: 50, description: "Groceries" }',
   "zee:browser": 'Use { action: "open", url: "https://example.com" } then { action: "snapshot", format: "ai" } for read-only web tasks.',
   "zee:browser-standalone":
     'Use { action: "start", profile: "default" } then { action: "navigate", url: "https://example.com" } for direct browser control.',
@@ -306,15 +304,6 @@ function groupByCategory(tools: ToolCatalogEntry[]): Record<string, ToolCatalogE
 
 function getEnabledServices(_agentName: string): string[] {
   const services: string[] = []
-
-  try {
-    const splitwise = getZeeSplitwiseConfig()
-    if (splitwise.enabled) {
-      services.push("Splitwise (expenses, payments, groups)")
-    }
-  } catch {
-    // Config not available
-  }
 
   try {
     const codexbar = getZeeCodexbarConfig()

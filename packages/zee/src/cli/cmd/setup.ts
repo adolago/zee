@@ -8,6 +8,8 @@ import { ensureManagedOpenBBDirectories, type OpenBBRuntimeConfigLike } from "..
 import { OpenBB } from "../../paths"
 import { Config } from "../../config/config"
 import { runOnboard } from "./onboard"
+import { prepareLocalMemory } from "../../../../../src/memory/local-runtime"
+import { checkAgentProviderReady } from "../setup-check"
 
 type SetupProfile = "assistant" | "engine" | "investment-research" | "dcm"
 
@@ -15,6 +17,7 @@ type SetupArgs = {
   profile?: SetupProfile
   "skip-profile"?: boolean
   "skip-openbb"?: boolean
+  "skip-provider-check"?: boolean
   services?: boolean
 }
 
@@ -48,6 +51,15 @@ function buildOnboardingProfileConfig(profile: SetupProfile) {
       },
       memory: {
         required: false,
+        backend: "sqlite",
+        embedding: {
+          provider: "local",
+        },
+        localIndex: {
+          enabled: true,
+          backend: "sqlite-fts",
+          degradedRead: "keyword_only",
+        },
       },
     }
   }
@@ -119,9 +131,24 @@ async function maybeApplyOnboardingProfile(args: SetupArgs): Promise<boolean> {
   return true
 }
 
+async function ensureAgentProviderReady(args: SetupArgs): Promise<boolean> {
+  if (args["skip-provider-check"]) return true
+
+  const provider = await checkAgentProviderReady()
+  if (provider.available) {
+    UI.success(`LLM provider ready: ${provider.providerId} (${provider.source})`)
+    return true
+  }
+
+  UI.error("No usable LLM provider is configured for agent runs.")
+  UI.info(provider.action ?? "Run `zee auth login <provider>` and rerun `zee setup`.")
+  process.exitCode = 1
+  return false
+}
+
 export const SetupCommand = cmd({
   command: "setup",
-  describe: "run lightweight onboarding; use --services for local Qdrant/OpenBB setup",
+  describe: "run onboarding and prepare Zee's local runtime",
   builder: (yargs) =>
     yargs
       .option("profile", {
@@ -139,19 +166,34 @@ export const SetupCommand = cmd({
         default: false,
         describe: "skip managed OpenBB install/setup",
       })
+      .option("skip-provider-check", {
+        type: "boolean",
+        default: false,
+        describe: "skip the final LLM provider readiness check",
+      })
       .option("services", {
         type: "boolean",
         default: false,
-        describe: "run advanced local service setup for Qdrant and managed OpenBB",
+        describe: "also prepare managed OpenBB when no remote OpenBB API is configured",
       }),
   async handler(args) {
     const typedArgs = args as SetupArgs
     UI.header("Zee Setup")
 
+    UI.info("Preparing local memory runtime...")
+    const memoryStatus = await prepareLocalMemory()
+    if (!memoryStatus.ok) {
+      UI.error(memoryStatus.sqlite.error || memoryStatus.embedding.error || "Local memory preparation failed.")
+      process.exitCode = 1
+      return
+    }
+    UI.success(`Local memory is ready at ${memoryStatus.paths.memoryDir}`)
+
     if (!typedArgs.services) {
       if (typedArgs.profile === "assistant" || typedArgs.profile === "engine") {
         const onboardingApplied = await maybeApplyOnboardingProfile(typedArgs)
         if (!onboardingApplied) return
+        if (!(await ensureAgentProviderReady(typedArgs))) return
         UI.info("Run `zee onboard --profile dcm` when you want finance workspace files and OpenBB provider setup.")
         return
       }
@@ -166,7 +208,8 @@ export const SetupCommand = cmd({
       UI.success(`Onboarding complete: ${result.profile}`)
       UI.info(`Config: ${result.configPath}`)
       UI.info(`Workspace: ${result.workspace}`)
-      UI.info("Run `zee setup --services` only if you want local Qdrant/OpenBB services on this machine.")
+      if (!(await ensureAgentProviderReady(typedArgs))) return
+      UI.info("Run `zee setup --services` only if you want managed OpenBB on this machine.")
       return
     }
 
@@ -175,103 +218,6 @@ export const SetupCommand = cmd({
     const config = await Config.get().catch(() => undefined)
     const openbbConfig = config?.openbb
     const hasConfiguredRemoteOpenBB = Boolean(openbbConfig?.apiUrl?.trim()) || OpenBB.apiUrlOverridden()
-
-    // 1. Check Docker
-    UI.info("Checking Docker availability...")
-    try {
-      const dockerCheck = Bun.spawnSync(["docker", "info"])
-      if (dockerCheck.exitCode !== 0) {
-        UI.error("Docker is not running or not installed.")
-        UI.info("Please install Docker Desktop or start the docker service.")
-        return
-      }
-    } catch (e) {
-      UI.error("Docker executable not found in PATH.")
-      UI.info("Please install Docker: https://docs.docker.com/get-docker/")
-      return
-    }
-    UI.success("Docker is running.")
-
-    // 2. Locate docker-compose.yml
-    // We expect it in the project root or Global.Path.source
-    // Since this is running from compiled code potentially, we look in known locations or cwd
-    const candidates = [
-      path.join(process.cwd(), "docker-compose.yml"),
-      path.join(Global.Path.source, "docker-compose.yml"),
-      // If we are in the source tree:
-      path.resolve(__dirname, "../../../../../docker-compose.yml"),
-    ]
-
-    let composeFile = candidates.find((p) => fs.existsSync(p))
-
-    if (!composeFile) {
-      // Fallback: Create it in current directory if not found
-      UI.warn("docker-compose.yml not found. Creating a default one in current directory...")
-      composeFile = path.join(process.cwd(), "docker-compose.yml")
-      const content = `version: '3.8'
-
-services:
-  qdrant:
-    image: qdrant/qdrant:latest
-    container_name: zee-qdrant
-    restart: always
-    ports:
-      - "6333:6333"
-    volumes:
-      - \${HOME}/.local/share/zee/qdrant:/qdrant/storage
-    environment:
-      - QDRANT__SERVICE__GRPC_PORT=6334
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-`
-      fs.writeFileSync(composeFile, content)
-      UI.success(`Created ${composeFile}`)
-    } else {
-      UI.info(`Using ${composeFile}`)
-    }
-
-    // 3. Run Docker Compose
-    UI.info("Starting services (Qdrant)...")
-    const composeCmd = ["docker", "compose", "-f", composeFile, "up", "-d"]
-    const proc = Bun.spawn(composeCmd, {
-      stdout: "inherit",
-      stderr: "inherit",
-    })
-
-    const exitCode = await proc.exited
-    if (exitCode !== 0) {
-      UI.error("Failed to start docker-compose.")
-      return
-    }
-
-    // 4. Verify Health
-    UI.info("Waiting for Qdrant health check...")
-    let attempts = 0
-    const maxAttempts = 10
-    while (attempts < maxAttempts) {
-      try {
-        const resp = await fetch("http://localhost:6333/healthz")
-        if (resp.ok) {
-          UI.success("Qdrant is healthy and ready!")
-          break
-        }
-      } catch (e) {
-        // ignore
-      }
-      await Bun.sleep(2000)
-      attempts++
-      process.stdout.write(".")
-    }
-
-    if (attempts >= maxAttempts) {
-      UI.error("Qdrant health check timed out. Setup is incomplete.")
-      UI.info("Run `docker compose ps` and `docker compose logs qdrant` to diagnose startup.")
-      process.exitCode = 1
-      return
-    }
 
     if (!(typedArgs["skip-openbb"] || hasConfiguredRemoteOpenBB)) {
       UI.info("Preparing managed OpenBB runtime...")
@@ -287,6 +233,7 @@ services:
       )
     }
 
+    if (!(await ensureAgentProviderReady(typedArgs))) return
     UI.success("Setup complete. You can now run 'zee daemon'.")
   },
 })

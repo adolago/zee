@@ -561,7 +561,7 @@ echo -e "\033[1;33m[ac] Checking memory health...\033[0m" >&2
 restart_test_daemon_if_dead
 MEM_STATUS=$(curl -sf -m 5 "$DAEMON_URL/memory/health" 2>/dev/null || true)
 if ! echo "$MEM_STATUS" | jq -e '.available == true' >/dev/null 2>&1; then
-    ac_test_fail "memory backend unavailable (check memory.embedding credentials and Qdrant)"
+    ac_test_fail "memory backend unavailable (run zee memory prepare and check local storage permissions)"
 fi
 echo -e "\033[1;32m[ac] Memory OK\033[0m" >&2
 

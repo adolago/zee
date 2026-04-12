@@ -12,14 +12,6 @@ import { z } from "zod";
 import type { ToolDefinition, ToolRuntime, ToolExecutionContext, ToolExecutionResult } from "../../mcp/types";
 import { Log } from "../../../packages/zee/src/util/log";
 import { validateMediaPath, PathValidationError } from "../../../packages/zee/src/security/validate-path.js";
-import {
-  SPLITWISE_ACTIONS,
-  buildSplitwiseRequest,
-  callSplitwiseApi,
-  resolveSplitwiseConfig,
-  type SplitwiseAction,
-  type SplitwiseValue,
-} from "./splitwise.js";
 import { resolveCodexbarConfig, runCodexbar } from "./codexbar.js";
 import { withRetry, suggestRecovery, buildEscalation } from "../../swarm/recovery.js";
 import { sendWhatsAppMessage, type WacliSendErrorCode } from "./whatsapp-send.js";
@@ -564,7 +556,7 @@ Recent by time: mode=search (or filter), since="7d".`,
           return {
             title: "Memory Unavailable",
             metadata: { error: "connection_failed" },
-            output: `Could not connect to memory storage (Qdrant). Error: ${errorMsg}`,
+            output: `Could not connect to local memory storage. Error: ${errorMsg}`,
           };
         }
         return {
@@ -979,140 +971,6 @@ ${eventsList}`,
   }),
 };
 
-
-// =============================================================================
-// Splitwise Tool
-// =============================================================================
-
-const SplitwiseValueSchema = z.union([z.string(), z.number(), z.boolean()]);
-
-const SplitwiseParams = z.object({
-  action: z.enum(SPLITWISE_ACTIONS)
-    .describe("Splitwise action to perform"),
-  groupId: z.number().optional().describe("Group ID for group actions"),
-  friendId: z.number().optional().describe("Friend ID for friend actions"),
-  expenseId: z.number().optional().describe("Expense ID for expense actions"),
-  endpoint: z.string().optional().describe("Endpoint for request action (e.g., get_expenses)"),
-  method: z.enum(["GET", "POST", "PUT", "DELETE"]).optional().describe("HTTP method for request action"),
-  query: z.record(z.string(), SplitwiseValueSchema).optional().describe("Query parameters"),
-  payload: z.record(z.string(), SplitwiseValueSchema).optional().describe("Request payload"),
-  payloadFormat: z.enum(["json", "form"]).default("json").describe("Payload encoding for POST/PUT"),
-  timeoutMs: z.number().optional().describe("Override timeout in ms"),
-});
-
-export const splitwiseTool: ToolDefinition = {
-  id: "zee:splitwise",
-  category: "domain",
-  init: async () => ({
-    description: `Access Splitwise API for shared expenses and balances. Search memory for group/friend IDs before asking the user. Actions: current-user, groups, friends, expenses, create-expense, balances, request (custom endpoint).`,
-    parameters: SplitwiseParams,
-    execute: async (args, ctx): Promise<ToolExecutionResult> => {
-      ctx.metadata({ title: `Splitwise: ${args.action}` });
-
-      const config = resolveSplitwiseConfig();
-      if (!config.enabled) {
-        return {
-          title: "Splitwise Disabled",
-          metadata: { action: args.action, enabled: false },
-          output: `Splitwise tooling is disabled.
-
-Enable it in zee.jsonc:
-{
-  "zee": {
-    "splitwise": {
-      "enabled": true,
-      "token": "{env:SPLITWISE_TOKEN}"
-    }
-  }
-}`,
-        };
-      }
-
-      if (config.error) {
-        return {
-          title: "Splitwise Configuration Error",
-          metadata: { action: args.action, enabled: true },
-          output: config.error,
-        };
-      }
-
-      if (!config.token) {
-        return {
-          title: "Splitwise Token Missing",
-          metadata: { action: args.action, enabled: true },
-          output: `Splitwise token is not configured.
-
-Set one of:
-- zee.splitwise.token in zee.jsonc
-- zee.splitwise.tokenFile in zee.jsonc
-- SPLITWISE_TOKEN environment variable`,
-        };
-      }
-
-      const requestResult = buildSplitwiseRequest({
-        action: args.action,
-        groupId: args.groupId,
-        friendId: args.friendId,
-        expenseId: args.expenseId,
-        endpoint: args.endpoint,
-        method: args.method,
-        query: args.query as Record<string, SplitwiseValue> | undefined,
-        payload: args.payload as Record<string, SplitwiseValue> | undefined,
-        payloadFormat: args.payloadFormat,
-        timeoutMs: args.timeoutMs,
-      });
-
-      if (requestResult.error || !requestResult.request) {
-        return {
-          title: "Splitwise Request Error",
-          metadata: { action: args.action },
-          output: requestResult.error || "Invalid Splitwise request.",
-        };
-      }
-
-      try {
-        const response = await callSplitwiseApi(requestResult.request, config);
-        const output =
-          typeof response.data === "string"
-            ? response.data
-            : JSON.stringify(response.data, null, 2);
-
-        if (!response.ok) {
-          return {
-            title: `Splitwise Error (${response.status})`,
-            metadata: {
-              action: args.action,
-              endpoint: requestResult.request.endpoint,
-              status: response.status,
-            },
-            output: output || response.raw || "Splitwise request failed.",
-          };
-        }
-
-        return {
-          title: `Splitwise ${args.action}`,
-          metadata: {
-            action: args.action,
-            endpoint: requestResult.request.endpoint,
-            status: response.status,
-          },
-          output: output || "Splitwise request succeeded.",
-        };
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        const isTimeout = error instanceof Error && error.name === "AbortError";
-        return {
-          title: "Splitwise Request Failed",
-          metadata: { action: args.action, error: errorMsg },
-          output: isTimeout
-            ? `Splitwise request timed out.`
-            : `Splitwise request failed: ${errorMsg}`,
-        };
-      }
-    },
-  }),
-};
-
 // =============================================================================
 // CodexBar Tool
 // =============================================================================
@@ -1390,7 +1248,7 @@ Current content: "${result.content.substring(0, 150)}${result.content.length > 1
           return {
             title: "Memory Unavailable",
             metadata: { error: "connection_failed" },
-            output: `Could not connect to memory storage (Qdrant). Error: ${errorMsg}`,
+            output: `Could not connect to local memory storage. Error: ${errorMsg}`,
           };
         }
         return {
@@ -1891,7 +1749,6 @@ export const ZEE_TOOLS = [
   memoryReflectTool,
   messagingTool,
   calendarTool,
-  splitwiseTool,
   codexbarTool,
   whatsappReactionTool,
   bannerRefreshTool,

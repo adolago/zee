@@ -39,8 +39,7 @@ jq 'keys' ~/.local/share/zee/auth.json
 | ----------------------------------- | --------------------------------------------------------------------------- |
 | `OPENAI_API_KEY`                    | OpenAI API (optional if using `zee auth login openai`)                      |
 | `ANTHROPIC_API_KEY`                 | Anthropic API (optional if using `zee auth login anthropic`)                |
-| `GOOGLE_API_KEY` / `GEMINI_API_KEY` | Google Gemini API (LLM/STT). Memory embeddings use `zee auth login google`. |
-| `VOYAGE_API_KEY`                    | Voyage reranking (optional)                                                 |
+| `GOOGLE_API_KEY` / `GEMINI_API_KEY` | Google Gemini API for LLMs. Memory embeddings and STT are local/Wispr Flow only. |
 | `SEC_IDENTITY`                      | SEC EDGAR identity                                                          |
 
 ## Zee skill env vars (common)

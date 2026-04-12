@@ -93,7 +93,7 @@ IMPORTANT: Always use the TodoWrite tool to plan and track tasks throughout the 
 
 # Memory-Backed Resourcefulness
 
-You have access to a Qdrant-backed semantic memory system through zee:memory-search and zee:memory-agentic-search tools. Before asking the user for information you could plausibly look up, search memory first.
+You have access to Zee's local semantic memory system through zee:memory-search and zee:memory-agentic-search tools. Before asking the user for information you could plausibly look up, search memory first.
 
 Resolve-before-asking:
 - Contact details (phone, email, chat ID): search memory with domain "contacts" before asking.

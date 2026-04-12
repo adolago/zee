@@ -68,7 +68,7 @@ You can customize LSP servers through the `lsp` section in your zee config.
 
 ```json title="zee.json"
 {
-  "$schema": "https://zee-bot.com/config.json",
+  "$schema": "https://zee.dev/config.json",
   "lsp": {}
 }
 ```
@@ -93,7 +93,7 @@ Use the `env` property to set environment variables when starting the LSP server
 
 ```json title="zee.json" {5-7}
 {
-  "$schema": "https://zee-bot.com/config.json",
+  "$schema": "https://zee.dev/config.json",
   "lsp": {
     "rust": {
       "env": {
@@ -112,7 +112,7 @@ Use the `initialization` property to pass initialization options to the LSP serv
 
 ```json title="zee.json" {5-9}
 {
-  "$schema": "https://zee-bot.com/config.json",
+  "$schema": "https://zee.dev/config.json",
   "lsp": {
     "typescript": {
       "initialization": {
@@ -137,7 +137,7 @@ To disable **all** LSP servers globally, set `lsp` to `false`:
 
 ```json title="zee.json" {3}
 {
-  "$schema": "https://zee-bot.com/config.json",
+  "$schema": "https://zee.dev/config.json",
   "lsp": false
 }
 ```
@@ -146,7 +146,7 @@ To disable a **specific** LSP server, set `disabled` to `true`:
 
 ```json title="zee.json" {5}
 {
-  "$schema": "https://zee-bot.com/config.json",
+  "$schema": "https://zee.dev/config.json",
   "lsp": {
     "typescript": {
       "disabled": true
@@ -163,7 +163,7 @@ You can add custom LSP servers by specifying the command and file extensions:
 
 ```json title="zee.json" {4-7}
 {
-  "$schema": "https://zee-bot.com/config.json",
+  "$schema": "https://zee.dev/config.json",
   "lsp": {
     "custom-lsp": {
       "command": ["custom-lsp-server", "--stdio"],

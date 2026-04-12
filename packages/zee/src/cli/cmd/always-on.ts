@@ -269,8 +269,7 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
       log.error("strict setup validation failed; refusing to start", {
         errors: setupResult.errors,
         warnings: setupResult.warnings,
-        qdrantAvailable: setupResult.qdrant.available,
-        googleApiKeyAvailable: setupResult.googleApiKey.available,
+        memoryAvailable: setupResult.memory.available,
       })
       throw new Error(`Startup blocked: required dependencies missing.\n${setupResult.errors.join("\n")}`)
     }
@@ -426,7 +425,7 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
     })
   }
 
-  // Initialize memory backend (Qdrant)
+  // Initialize memory backend
   try {
     const { getMemory } = await import("../../../../../src/memory/unified.js")
     const memory = getMemory()

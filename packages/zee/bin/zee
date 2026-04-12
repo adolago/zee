@@ -43,6 +43,7 @@ const scriptPath = fs.realpathSync(path.resolve(__filename))
 const scriptDir = path.dirname(scriptPath)
 
 const platformMap = {
+  darwin: "darwin",
   linux: "linux",
   win32: "windows",
 }
@@ -53,7 +54,7 @@ const archMap = {
 }
 
 const rawPlatform = os.platform()
-if (rawPlatform !== "linux" && rawPlatform !== "win32") {
+if (rawPlatform !== "darwin" && rawPlatform !== "linux" && rawPlatform !== "win32") {
   console.error(`zee is not supported on ${rawPlatform}`)
   process.exit(1)
 }

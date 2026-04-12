@@ -16,8 +16,7 @@ import type { MemoryConfig } from "../memory/types";
 import type { SurfaceType } from "../../packages/zee/src/surface/types";
 import type { LogLevel, DmPolicy, GroupPolicy, RetryConfig } from "./shared";
 import {
-  QDRANT_URL,
-  QDRANT_COLLECTION_MEMORY,
+  LOCAL_MEMORY_COLLECTION,
   EMBEDDING_MODEL,
   EMBEDDING_DIMENSIONS,
 } from "./constants";
@@ -289,16 +288,7 @@ export interface GeneralSettings {
 // =============================================================================
 
 export interface ZeeIntegrationsConfig {
-  splitwise?: ZeeSplitwiseConfig;
   codexbar?: ZeeCodexbarConfig;
-}
-
-export interface ZeeSplitwiseConfig {
-  enabled?: boolean;
-  token?: string;
-  tokenFile?: string;
-  baseUrl?: string;
-  timeoutMs?: number;
 }
 
 export interface ZeeCodexbarConfig {
@@ -334,17 +324,16 @@ export const DEFAULT_CONFIG: Partial<ZeeRootConfig> = {
   agents: [],
   assistants: [],
   mcp: {},
-	  memory: {
-	    qdrant: {
-	      url: QDRANT_URL,
-	      collection: QDRANT_COLLECTION_MEMORY,
-	    },
-	    embedding: {
-	      provider: "google",
-	      model: EMBEDDING_MODEL,
-	      dimension: EMBEDDING_DIMENSIONS,
-	    },
-	    autoLearn: true,
+  memory: {
+    storage: {
+      collection: LOCAL_MEMORY_COLLECTION,
+    },
+    embedding: {
+      provider: "local",
+      model: EMBEDDING_MODEL,
+      dimension: EMBEDDING_DIMENSIONS,
+    },
+    autoLearn: true,
     patternMinObservations: 3,
     defaultTTL: 0,
   },

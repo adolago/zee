@@ -45,12 +45,11 @@ const ProviderDiagnoseCommand = cmd({
           fail("Provider not in models.dev database")
         }
 
-        // 2. Check provider blacklist
-        const providerBlReason = Provider.getProviderBlacklistReason(providerID)
-        if (providerBlReason) {
-          fail(`Provider blacklisted: ${providerBlReason}`)
+        // 2. Check core provider surface
+        if (Provider.isCoreProvider(providerID)) {
+          pass("Provider is in Zee's core provider surface")
         } else {
-          pass("Provider not blacklisted")
+          fail("Provider is not in Zee's core provider surface")
         }
 
         // 3. Check disabled_providers config
@@ -76,25 +75,15 @@ const ProviderDiagnoseCommand = cmd({
           }
         }
 
-        // 5. Check hard-coded model blacklist
-        const modelBlReason = Provider.getModelBlacklistReason(providerID, modelID)
-        if (modelBlReason) {
-          fail(`Model blacklisted: ${modelBlReason}`)
-        } else {
-          pass("Model not in hard-coded blacklist")
-        }
-
-        // 6. Check config blacklist/whitelist
+        // 5. Check config whitelist
         const configProvider = config.provider?.[providerID]
-        if (configProvider?.blacklist?.includes(modelID)) {
-          fail("Model in config blacklist")
-        } else if (configProvider?.whitelist && !configProvider.whitelist.includes(modelID)) {
+        if (configProvider?.whitelist && !configProvider.whitelist.includes(modelID)) {
           fail("Model not in config whitelist")
         } else {
-          pass("Config blacklist/whitelist: clear")
+          pass("Config whitelist: clear")
         }
 
-        // 7. Check auth
+        // 6. Check auth
         const auth = await Auth.get(providerID)
         const envKeys = providerEntry?.env ?? []
         const hasEnvKey = envKeys.some((k: string) => process.env[k])
@@ -110,7 +99,7 @@ const ProviderDiagnoseCommand = cmd({
           warn("No auth configured (env var, API key, or OAuth)")
         }
 
-        // 8. Check circuit breaker
+        // 7. Check circuit breaker
         const cb = await CircuitBreaker.getState(providerID)
         if (cb.state === "open") {
           fail(`Circuit breaker: open (failures: ${cb.failures})`)
@@ -220,26 +209,20 @@ const ProviderListCommand = cmd({
 
         for (const [providerID, dbProvider] of targetProviders) {
           const isProviderActive = !!providers[providerID]
-          const providerBlReason = Provider.getProviderBlacklistReason(providerID)
           const isDisabled = disabled.has(providerID)
+          const isCore = Provider.isCoreProvider(providerID)
 
           for (const modelID of Object.keys(dbProvider.models).sort()) {
             const isLive = isProviderActive && !!providers[providerID]?.models[modelID]
-            const modelBlReason = Provider.getModelBlacklistReason(providerID, modelID)
-            const configBl = config.provider?.[providerID]?.blacklist?.includes(modelID)
             const model = dbProvider.models[modelID]
 
             let status = ""
             if (isLive) {
               status = UI.Style.TEXT_SUCCESS + "[active]" + UI.Style.TEXT_NORMAL
-            } else if (providerBlReason) {
-              status = UI.Style.TEXT_DANGER + `[provider blocked: ${providerBlReason}]` + UI.Style.TEXT_NORMAL
+            } else if (!isCore) {
+              status = UI.Style.TEXT_DIM + "[outside core surface]" + UI.Style.TEXT_NORMAL
             } else if (isDisabled) {
               status = UI.Style.TEXT_DANGER + "[provider disabled]" + UI.Style.TEXT_NORMAL
-            } else if (modelBlReason) {
-              status = UI.Style.TEXT_DANGER + `[blocked: ${modelBlReason}]` + UI.Style.TEXT_NORMAL
-            } else if (configBl) {
-              status = UI.Style.TEXT_DANGER + "[config blacklist]" + UI.Style.TEXT_NORMAL
             } else if (model?.status === "deprecated") {
               status = UI.Style.TEXT_WARNING + "[deprecated]" + UI.Style.TEXT_NORMAL
             } else if (!isProviderActive) {

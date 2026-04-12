@@ -7,6 +7,7 @@ import { Global } from "../../global"
 import { OPENBB_FREE_PROVIDERS, providersRequiringCredentials } from "../../openbb/free-providers"
 import { cmd } from "./cmd"
 import { runAuthAcquire } from "./auth-acquire"
+import { prepareLocalMemory } from "../../../../../src/memory/local-runtime"
 
 type FinanceProfile = "investment-research" | "dcm"
 
@@ -169,8 +170,9 @@ async function writeOnboardConfig(
     { path: ["$schema"], value: "zee" },
     { path: ["profile"], value: "assistant" },
     { path: ["server", "hostname"], value: "127.0.0.1" },
-    { path: ["memory", "backend"], value: "file" },
+    { path: ["memory", "backend"], value: "sqlite" },
     { path: ["memory", "required"], value: false },
+    { path: ["memory", "embedding", "provider"], value: "local" },
     { path: ["memory", "localIndex", "enabled"], value: true },
     { path: ["memory", "localIndex", "backend"], value: "sqlite-fts" },
     { path: ["memory", "localIndex", "degradedRead"], value: "keyword_only" },
@@ -251,6 +253,9 @@ export async function runOnboard(args: OnboardArgs): Promise<OnboardResult> {
     providerIds,
     dryRun: Boolean(args["dry-run"]),
   })
+  if (!args["dry-run"]) {
+    await prepareLocalMemory()
+  }
 
   return {
     profile,

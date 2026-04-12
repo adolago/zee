@@ -10,12 +10,10 @@ export type EmbeddingProfileConfig = {
 };
 
 export const EMBEDDING_PROFILES: Record<string, EmbeddingProfileConfig> = {
-  // Google Gemini embedding 2 (default)
-  "google/gemini-embedding-2-preview": {
-    provider: "google",
-    model: "gemini-embedding-2-preview",
-    dimensions: 3072,
-    baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+  "local/zee-local-hash-embedding-v1": {
+    provider: "local",
+    model: "zee-local-hash-embedding-v1",
+    dimensions: 384,
   },
 };
 

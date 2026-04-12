@@ -8,7 +8,7 @@
  * 4. Identifies stale beliefs (not challenged in a long time)
  *
  * This job does NOT use LLM calls -- it operates on heuristics
- * and Qdrant queries. An LLM-enhanced version can be added later
+ * and local memory queries. An LLM-enhanced version can be added later
  * as an agentTurn cron payload.
  */
 

@@ -1,7 +1,7 @@
 /**
  * Zee Contacts Tool
  *
- * Personal contact management backed by Qdrant semantic memory.
+ * Personal contact management backed by Zee local semantic memory.
  * Contacts are stored as structured facts in the "contacts" domain,
  * enabling semantic search by name, relationship, context, or any detail.
  *
@@ -327,7 +327,7 @@ Actions:
           return {
             title: "Memory Unavailable",
             metadata: { error: "connection_failed" },
-            output: `Could not connect to memory storage (Qdrant). Error: ${errorMsg}`,
+            output: `Could not connect to local memory storage. Error: ${errorMsg}`,
           };
         }
         return {

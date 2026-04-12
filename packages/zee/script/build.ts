@@ -375,6 +375,14 @@ const allTargets: BuildTarget[] = [
     arch: "x64",
     avx2: false,
   },
+  {
+    os: "darwin",
+    arch: "arm64",
+  },
+  {
+    os: "darwin",
+    arch: "x64",
+  },
 ]
 
 function resolveSingleTargets(): BuildTarget[] {

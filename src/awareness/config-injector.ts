@@ -5,7 +5,7 @@
  * Exposes enabled services and active integrations.
  */
 
-import { getZeeSplitwiseConfig, getZeeCodexbarConfig } from "../config/runtime"
+import { getZeeCodexbarConfig } from "../config/runtime"
 
 export interface ServiceStatus {
   name: string
@@ -29,20 +29,6 @@ export async function getRuntimeState(agentName: string): Promise<RuntimeState> 
 
   // Zee-specific services
   if (agentName === "zee") {
-    // Splitwise
-    try {
-      const splitwise = getZeeSplitwiseConfig()
-      state.enabledServices.push({
-        name: "Splitwise",
-        status: splitwise.enabled ? "enabled" : "disabled",
-        details: splitwise.enabled
-          ? "Actions: current-user, groups, group, friends, friend, expenses, expense, create-expense, update-expense, delete-expense, create-payment, notifications, currencies, categories, request"
-          : undefined,
-      })
-    } catch {
-      // Config not available
-    }
-
     // CodexBar
     try {
       const codexbar = getZeeCodexbarConfig()

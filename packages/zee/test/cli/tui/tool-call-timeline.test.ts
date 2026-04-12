@@ -55,7 +55,7 @@ describe("buildCompactToolTimeline", () => {
       reasoning("a"),
       reasoning("b"),
       completedTool("websearch", { query: "npm package name" }),
-      completedTool("edit", { filePath: "../zee-bot.com/deploy.sh" }, { diff: "@@\n+one\n+two\n context" }),
+      completedTool("edit", { filePath: "../zee.dev/deploy.sh" }, { diff: "@@\n+one\n+two\n context" }),
       completedTool("read", { filePath: "README.md" }),
       completedTool("bash", { command: "chmod +x /tmp/deploy.sh" }),
       reasoning("c"),
@@ -63,7 +63,7 @@ describe("buildCompactToolTimeline", () => {
 
     expect(buildCompactToolTimeline(parts as any)).toEqual([
       "✓ 2 thoughts, 1 search",
-      "✓ Edited ../zee-bot.com/deploy.sh +2",
+      "✓ Edited ../zee.dev/deploy.sh +2",
       "✓ 1 file read",
       "$ chmod +x /tmp/deploy.sh",
       "✓ 1 thought",

@@ -11,7 +11,7 @@ cd ../zee-installer-windows
 bun run build
 ```
 
-The MSI installs Zee under `C:\Program Files\Zee`, registers the `Zee` Windows Service, and configures service state under `C:\ProgramData\Zee`.
+The MSI installs Zee under `C:\Program Files\Zee`, prepares machine-scope local memory under `C:\ProgramData\Zee`, registers the `Zee` Windows Service, and configures service state under `C:\ProgramData\Zee`.
 
 ## Requirements
 

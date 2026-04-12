@@ -13,6 +13,8 @@ Zee supports a native Windows enterprise installation path built around a signed
 - Machine logs: `C:\ProgramData\Zee\logs`
 - Machine workspace: `C:\ProgramData\Zee\workspace`
 - Machine policy: `C:\ProgramData\Zee\policy.jsonc`
+- Machine memory: `C:\ProgramData\Zee\state\memory`
+- Machine embedding cache: `C:\ProgramData\Zee\cache\memory\models`
 - Machine OpenBB runtime: `C:\ProgramData\Zee\data\openbb`
 
 Per-user CLI runs outside the service use:
@@ -32,6 +34,7 @@ zee daemon-uninstall
 ```
 
 The service uses delayed auto-start and restart-on-failure recovery. It writes runtime logs to `C:\ProgramData\Zee\logs`.
+`daemon-install` also runs `zee memory prepare --scope machine`, so local SQLite memory and local embeddings are ready before the service starts.
 
 ## MSI Build
 
@@ -72,6 +75,12 @@ Machine policy is loaded after user and project config, so it has highest preced
   },
   "daemon": {
     "enabled": true,
+  },
+  "memory": {
+    "backend": "sqlite",
+    "embedding": {
+      "provider": "local",
+    },
   },
 }
 ```

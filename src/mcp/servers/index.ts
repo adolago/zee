@@ -13,7 +13,7 @@ export const BUILTIN_MCP_SERVERS = {
   "memory": {
     type: "local" as const,
     command: ["bun", "run", join(__dirname, "memory.ts")],
-    description: "Semantic memory storage and search via Qdrant",
+    description: "Semantic memory storage and search via Zee local memory",
   },
   "calendar": {
     type: "local" as const,

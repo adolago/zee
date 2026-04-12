@@ -3,8 +3,8 @@
  *
  * These tests verify that the wiring implementations are in place:
  * 1. Tool registry lists Johny tools when persona=johny
- * 2. Tool registry lists WhatsApp/Splitwise tools when persona=zee
- * 3. Memory search accepts rerank: true parameter
+ * 2. Tool registry lists WhatsApp tools when persona=zee
+ * 3. Memory search uses local-only retrieval without reranker wiring
  * 4. Retry logic has no secret leakage vectors
  * 5. No orphaned imports from deleted files
  */
@@ -45,10 +45,10 @@ describe("wiring.phase0", () => {
   })
 
   // ============================================================================
-  // Test 2: Zee WhatsApp/Splitwise tools are exported
+  // Test 2: Zee WhatsApp tools are exported
   // ============================================================================
   describe("zee tools", () => {
-    test(" Zee domain exports WhatsApp and Splitwise tools", async () => {
+    test(" Zee domain exports WhatsApp tools without Splitwise", async () => {
       // Read the Zee tools source file
       const zeeToolsPath = path.join(process.cwd(), "../../src/domain/zee/tools.ts")
       const content = await fs.readFile(zeeToolsPath, "utf-8")
@@ -58,8 +58,7 @@ describe("wiring.phase0", () => {
       // Should include WhatsApp tools in the export
       expect(content).toContain("...WHATSAPP_TOOLS")
 
-      // Should contain Splitwise tool
-      expect(content).toContain('id: "zee:splitwise"')
+      expect(content).not.toContain('id: "zee:splitwise"')
 
       // Should export ZEE_TOOLS array with all tools
       expect(content).toContain("export const ZEE_TOOLS")
@@ -77,38 +76,26 @@ describe("wiring.phase0", () => {
   })
 
   // ============================================================================
-  // Test 3: Memory search rerank parameter
+  // Test 3: Local-only memory search
   // ============================================================================
-  describe("memory reranker", () => {
-    test(" Memory search accepts rerank option", async () => {
+  describe("memory retrieval", () => {
+    test(" Memory search no longer exposes rerank options", async () => {
       // Read the unified memory source
       const unifiedPath = path.join(process.cwd(), "../../src/memory/unified.ts")
       const content = await fs.readFile(unifiedPath, "utf-8")
 
-      // Should have rerank parameter in search
-      expect(content).toContain("rerank?: boolean")
-      // Should handle rerank logic
-      expect(content).toContain("params?.rerank")
+      expect(content).not.toContain("rerank?: boolean")
+      expect(content).not.toContain("createReranker")
     })
 
-    test(" Reranker implementation exists", async () => {
+    test(" Reranker implementation was removed", async () => {
       const rerankerPath = path.join(process.cwd(), "../../src/memory/reranker.ts")
       const exists = await fs
         .stat(rerankerPath)
         .then(() => true)
         .catch(() => false)
 
-      expect(exists).toBe(true)
-
-      if (exists) {
-        const content = await fs.readFile(rerankerPath, "utf-8")
-        // Should have Voyage reranker
-        expect(content).toContain("VoyageReranker")
-        // Should have VLLM reranker
-        expect(content).toContain("VLLMReranker")
-        // Should export createReranker
-        expect(content).toContain("export function createReranker")
-      }
+      expect(exists).toBe(false)
     })
   })
 

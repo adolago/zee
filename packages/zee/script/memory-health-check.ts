@@ -29,7 +29,7 @@ function readNumber(value: string | boolean | undefined, fallback: number): numb
 
 function printHelp(): void {
   const text = [
-    "Memory health check (Qdrant + embeddings).",
+    "Memory health check (local SQLite vector storage + local embeddings).",
     "",
     "Usage:",
     "  bun run script/memory-health-check.ts [options]",
@@ -66,7 +66,7 @@ async function main(): Promise<void> {
   const memory = new Memory({ namespace })
   await memory.init()
   if (!memory.isAvailable()) {
-    console.error("Memory backend is unavailable; check Qdrant and embedding config.")
+    console.error("Memory backend is unavailable; run `zee memory prepare` and check local storage permissions.")
     process.exit(1)
   }
 

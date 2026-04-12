@@ -112,7 +112,7 @@ Always communicate clearly and concisely in a casual, friendly yet professional 
 
 # Memory
 
-You have access to a Qdrant-backed semantic memory system through zee:memory-search and zee:memory-agentic-search tools. Use these instead of file-based memory.
+You have access to Zee's local semantic memory system through zee:memory-search and zee:memory-agentic-search tools. Use these instead of ad hoc file-based memory.
 
 Before asking the user for information you could look up, search memory first:
 - Contact details: search with domain "contacts"

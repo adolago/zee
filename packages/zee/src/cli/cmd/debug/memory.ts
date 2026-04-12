@@ -1,20 +1,13 @@
 import { Timestamp } from "../../../util/timestamp"
 import { cmd } from "../cmd"
 import { bootstrap } from "../../bootstrap"
-import { Config } from "../../../config/config"
-
-const FALLBACK_QDRANT_URL = "http://localhost:6333"
-const FALLBACK_QDRANT_COLLECTION = "agent_memory"
+import { getLocalMemoryStatus } from "../../../../../../src/memory/local-runtime"
 
 export const MemoryCommand = cmd({
   command: "memory",
-  describe: "show memory and vector database stats",
+  describe: "show local memory stats",
   builder: (yargs) =>
     yargs
-      .option("qdrant-url", {
-        type: "string",
-        describe: "Qdrant server URL",
-      })
       .command(StatsMemoryCommand)
       .command(SearchMemoryCommand)
       .demandCommand(),
@@ -32,52 +25,9 @@ const StatsMemoryCommand = cmd({
     }),
   async handler(args) {
     await bootstrap(process.cwd(), async () => {
-      // Try to import Qdrant client
-      let qdrantStats: Record<string, unknown> | null = null
-
-      try {
-        // Dynamic import to avoid hard dependency
-        const qdrant = await resolveQdrantConfig({
-          url: typeof args.qdrantUrl === "string" ? args.qdrantUrl : undefined,
-        })
-        const { QdrantClient } = await import("@qdrant/js-client-rest")
-        const client = new QdrantClient({ url: qdrant.url })
-
-        // Get collections
-        const collections = await client.getCollections()
-        const collectionStats = []
-
-        for (const collection of collections.collections) {
-          try {
-            const info = await client.getCollection(collection.name)
-            collectionStats.push({
-              name: collection.name,
-              vectors: info.indexed_vectors_count ?? 0,
-              points: info.points_count ?? 0,
-              status: info.status,
-            })
-          } catch {
-            collectionStats.push({
-              name: collection.name,
-              error: "Failed to get details",
-            })
-          }
-        }
-
-        qdrantStats = {
-          connected: true,
-          collections: collectionStats,
-          totalCollections: collections.collections.length,
-        }
-      } catch (e) {
-        qdrantStats = {
-          connected: false,
-          error: e instanceof Error ? e.message : String(e),
-        }
-      }
-
       // Get Node.js memory stats
       const nodeMemory = process.memoryUsage()
+      const localMemory = await getLocalMemoryStatus()
 
       const stats = {
         node: {
@@ -86,7 +36,7 @@ const StatsMemoryCommand = cmd({
           external: formatBytes(nodeMemory.external),
           rss: formatBytes(nodeMemory.rss),
         },
-        qdrant: qdrantStats,
+        localMemory,
       }
 
       if (args.json) {
@@ -101,36 +51,12 @@ const StatsMemoryCommand = cmd({
       console.log(`  RSS:        ${stats.node.rss}`)
       console.log("")
 
-      console.log("Qdrant Vector Database:")
-      if (qdrantStats?.connected) {
-        const collections = qdrantStats.collections as Array<{
-          name: string
-          vectors?: number
-          points?: number
-          status?: string
-          error?: string
-        }>
-        console.log(`  Status: Connected`)
-        console.log(`  Collections: ${qdrantStats.totalCollections}`)
-        if (collections.length > 0) {
-          console.log("")
-          for (const col of collections) {
-            if (col.error) {
-              console.log(`    ${col.name}: ${col.error}`)
-            } else {
-              console.log(`    ${col.name}:`)
-              console.log(`      Vectors: ${col.vectors}`)
-              console.log(`      Points:  ${col.points}`)
-              console.log(`      Status:  ${col.status}`)
-            }
-          }
-        }
-      } else {
-        console.log(`  Status: Not connected`)
-        console.log(`  Error: ${(qdrantStats as { error?: string })?.error || "Unknown"}`)
-        console.log("")
-        console.log("  To start Qdrant: docker run -p 6333:6333 qdrant/qdrant")
-      }
+      console.log("Local Memory:")
+      console.log(`  Status: ${localMemory.ok ? "Ready" : "Not prepared"}`)
+      console.log(`  Scope: ${localMemory.scope}`)
+      console.log(`  Vector DB: ${localMemory.sqlite.vectorDbPath}`)
+      console.log(`  FTS DB: ${localMemory.sqlite.ftsDbPath}`)
+      console.log(`  Embedding: ${localMemory.embedding.model} (${localMemory.embedding.dimensions} dims)`)
     })
   },
 })
@@ -205,58 +131,13 @@ const SearchMemoryCommand = cmd({
           console.log("")
         }
       } catch (e) {
-        // Fallback to direct Qdrant query
-        console.log("Note: Memory store not available, falling back to Qdrant info.")
+        console.error(`Error: ${e instanceof Error ? e.message : String(e)}`)
         console.log("")
-
-        try {
-          const qdrant = await resolveQdrantConfig({
-            url: typeof args.qdrantUrl === "string" ? args.qdrantUrl : undefined,
-            collection: typeof args.collection === "string" ? args.collection : undefined,
-          })
-          const { QdrantClient } = await import("@qdrant/js-client-rest")
-          const client = new QdrantClient({ url: qdrant.url })
-
-          const info = await client.getCollection(qdrant.collection)
-          console.log(`Collection: ${qdrant.collection}`)
-          console.log(`  Points: ${info.points_count ?? 0}`)
-          console.log(`  Vectors: ${info.indexed_vectors_count ?? 0}`)
-          console.log("")
-          console.log("To enable semantic search, ensure the embedding model is configured.")
-        } catch (qdrantError) {
-          console.error(`Error: ${e instanceof Error ? e.message : String(e)}`)
-          console.log("")
-          console.log("Make sure Qdrant is running (docker run -p 6333:6333 qdrant/qdrant)")
-        }
+        console.log("Run `zee memory prepare` and try again.")
       }
     })
   },
 })
-
-async function resolveQdrantConfig(opts: {
-  url?: string
-  collection?: string
-}): Promise<{ url: string; collection: string }> {
-  let url = opts.url?.trim()
-  let collection = opts.collection?.trim()
-
-  if (!url || !collection) {
-    try {
-      const config = await Config.get()
-      const memory = config.memory
-      const qdrant = memory?.qdrant
-      url = url || qdrant?.url || memory?.qdrantUrl
-      collection = collection || qdrant?.collection || memory?.qdrantCollection
-    } catch {
-      // Ignore config errors and fall back to defaults.
-    }
-  }
-
-  return {
-    url: url || FALLBACK_QDRANT_URL,
-    collection: collection || FALLBACK_QDRANT_COLLECTION,
-  }
-}
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes}B`

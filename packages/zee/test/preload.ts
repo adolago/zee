@@ -143,8 +143,14 @@ if (typeof fsSync.openSync === "function") {
 // Use a per-thread directory to avoid cross-file collisions and premature deletion by afterAll().
 const dir = path.join(os.tmpdir(), `zee-test-data-${process.pid}-${threadId}`)
 await fs.mkdir(dir, { recursive: true })
-afterAll(() => {
-  fsSync.rmSync(dir, { recursive: true, force: true })
+afterAll(async () => {
+  try {
+    await fs.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 } as any)
+  } catch (error) {
+    const code = error && typeof error === "object" ? (error as any).code : undefined
+    if (process.platform === "win32" && (code === "EBUSY" || code === "EPERM")) return
+    throw error
+  }
 })
 // Set test home directory to isolate tests from user's actual home directory
 // This prevents tests from picking up real user configs/skills from ~/.claude/skills

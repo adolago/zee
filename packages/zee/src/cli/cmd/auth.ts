@@ -42,14 +42,12 @@ const LOCAL_PROVIDER_DEFAULTS: Record<string, { port: number; hint: string }> = 
   tgi: { port: 8080, hint: "Text Generation Inference" },
 }
 
-const HIDDEN_LLM_AUTH_PROVIDERS = new Set(["gemini-cli", "google-antigravity"])
-const EMBEDDING_ONLY_PROVIDERS = new Set(["google"])
+const HIDDEN_LLM_AUTH_PROVIDERS = new Set(["gemini-cli"])
+const EMBEDDING_ONLY_PROVIDERS = new Set<string>()
+const REMOVED_AUTH_PROVIDERS = new Set(["kernel", "voyage", "splitwise"])
 
 /** Providers that only need auth storage (not LLM model providers) */
 const AUTH_ONLY_PROVIDERS: Record<string, { name: string; hint?: string }> = {
-  google: { name: "Google AI", hint: "Google AI Studio API key (embeddings only)" },
-  kernel: { name: "Kernel", hint: "Kernel MCP API key" },
-  voyage: { name: "Voyage AI", hint: "Reranking API key" },
   "minimax-tts": {
     name: "MiniMax TTS",
     hint: "MiniMax TTS API key",
@@ -65,10 +63,6 @@ const AUTH_ONLY_PROVIDERS: Record<string, { name: string; hint?: string }> = {
   languagetool: {
     name: "LanguageTool",
     hint: "LanguageTool API key (premium)",
-  },
-  splitwise: {
-    name: "Splitwise",
-    hint: "Splitwise API key (Bearer token)",
   },
   "alpha-vantage": {
     name: "Alpha Vantage",
@@ -863,7 +857,7 @@ export const AuthLoginCommand = cmd({
         await ModelsDev.refresh().catch(() => {})
 
         const disabled = new Set(config.disabled_providers ?? [])
-        const isBlocked = (providerID: string) => disabled.has(providerID) || Provider.isProviderBlocked(providerID)
+        const isBlocked = (providerID: string) => disabled.has(providerID) || !Provider.isCoreProvider(providerID)
 
         const providers = await ModelsDev.get().then((x) => {
           const filtered: Record<string, (typeof x)[string]> = {}
@@ -1011,14 +1005,20 @@ export const AuthLoginCommand = cmd({
               anthropic: 0,
               openai: 1,
               google: 2,
-              openrouter: 3,
-              kernel: 4,
+              "google-antigravity": 3,
+              "zai-coding-plan": 4,
+              "minimax-coding-plan": 5,
+              "kimi-for-coding": 6,
+              openrouter: 7,
             }
             const providerHints: Record<string, string | undefined> = {
               anthropic: "Recommended - Claude Max or API key",
               openai: "ChatGPT Plus/Pro or API key",
-              google: AUTH_ONLY_PROVIDERS.google?.hint,
-              kernel: AUTH_ONLY_PROVIDERS.kernel?.hint,
+              google: "Gemini API key",
+              "google-antigravity": "Antigravity auth for Gemini models",
+              "zai-coding-plan": "Coding-plan provider",
+              "minimax-coding-plan": "Coding-plan provider",
+              "kimi-for-coding": "Coding-plan provider",
             }
             const newProvider = await prompts.autocomplete({
               message: "Select provider to add",
@@ -1058,6 +1058,11 @@ export const AuthLoginCommand = cmd({
 
         if (HIDDEN_LLM_AUTH_PROVIDERS.has(provider)) {
           prompts.log.error(`${provider} is no longer available for LLM auth`)
+          prompts.outro("Done")
+          return
+        }
+        if (REMOVED_AUTH_PROVIDERS.has(provider)) {
+          prompts.log.error(`${provider} is no longer available in Zee's core provider set`)
           prompts.outro("Done")
           return
         }
@@ -1379,12 +1384,9 @@ export const AuthLogoutCommand = cmd({
 })
 
 const SERVICE_LABELS: Record<ServiceType, string> = {
-  embedding: "Embedding",
-  reranking: "Reranking",
   tts: "Text-to-Speech",
   stt: "Speech-to-Text",
   image: "Image Generation",
-  expenses: "Expense Tracking",
   market_data: "Market Data",
 }
 

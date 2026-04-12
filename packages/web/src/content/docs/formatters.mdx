@@ -59,7 +59,7 @@ You can customize formatters through the `formatter` section in your Zee config.
 
 ```json title="zee.json"
 {
-  "$schema": "https://zee-bot.com/config.json",
+  "$schema": "https://zee.dev/config.json",
   "formatter": {}
 }
 ```
@@ -83,7 +83,7 @@ To disable **all** formatters globally, set `formatter` to `false`:
 
 ```json title="zee.json" {3}
 {
-  "$schema": "https://zee-bot.com/config.json",
+  "$schema": "https://zee.dev/config.json",
   "formatter": false
 }
 ```
@@ -92,7 +92,7 @@ To disable a **specific** formatter, set `disabled` to `true`:
 
 ```json title="zee.json" {5}
 {
-  "$schema": "https://zee-bot.com/config.json",
+  "$schema": "https://zee.dev/config.json",
   "formatter": {
     "prettier": {
       "disabled": true
@@ -109,7 +109,7 @@ You can override the built-in formatters or add new ones by specifying the comma
 
 ```json title="zee.json" {4-14}
 {
-  "$schema": "https://zee-bot.com/config.json",
+  "$schema": "https://zee.dev/config.json",
   "formatter": {
     "prettier": {
       "command": ["npx", "prettier", "--write", "$FILE"],

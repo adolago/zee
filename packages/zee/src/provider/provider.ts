@@ -29,6 +29,7 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible"
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { createOpenaiCompatible as createPatchedOpenAI } from "./sdk/openai-compatible/src"
 import { createXai } from "@ai-sdk/xai"
+import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { createMistral } from "@ai-sdk/mistral"
 import { createGroq } from "@ai-sdk/groq"
 import { createDeepInfra } from "@ai-sdk/deepinfra"
@@ -40,35 +41,37 @@ import { ProviderTransform } from "./transform"
 import { dedup, hasDedupParser } from "./dedup"
 import { loadRosettaDefaultModel, resolveDefaultModel } from "./model-selection"
 
-import blacklistData from "./blacklist.json"
-
 export namespace Provider {
   const log = Log.create({ service: "provider" })
 
-  /**
-   * Blacklist data loaded from blacklist.json.
-   * Contains model and provider blacklists with human-readable reasons.
-   */
-  type BlacklistEntry = { id: string; reason: string }
-
-  const MODEL_BLACKLIST: Record<string, string[]> = {}
-  const MODEL_BLACKLIST_REASONS: Record<string, Record<string, string>> = {}
-  for (const [providerID, entries] of Object.entries(blacklistData.models)) {
-    MODEL_BLACKLIST[providerID] = (entries as BlacklistEntry[]).map((e) => e.id)
-    MODEL_BLACKLIST_REASONS[providerID] = {}
-    for (const entry of entries as BlacklistEntry[]) {
-      MODEL_BLACKLIST_REASONS[providerID][entry.id] = entry.reason
-    }
-  }
-
-  const PROVIDER_BLACKLIST = new Set<string>(blacklistData.providers.map((e) => e.id))
-  const PROVIDER_BLACKLIST_REASONS: Record<string, string> = {}
-  for (const entry of blacklistData.providers) {
-    PROVIDER_BLACKLIST_REASONS[entry.id] = entry.reason
-  }
-
-  const RUNTIME_DISABLED_PROVIDER_IDS = new Set(["google", "google-antigravity", "gemini-cli"])
-  const RUNTIME_DISABLED_MODEL_NPMS = new Set(["@ai-sdk/google"])
+  const RUNTIME_DISABLED_PROVIDER_IDS = new Set(["gemini-cli"])
+  const RUNTIME_DISABLED_MODEL_NPMS = new Set<string>()
+  const CORE_PROVIDER_IDS = new Set([
+    "anthropic",
+    "azure",
+    "cohere",
+    "deepinfra",
+    "deepseek",
+    "google",
+    "google-antigravity",
+    "groq",
+    "kimi-for-coding",
+    "llamacpp",
+    "lmstudio",
+    "mistral",
+    "minimax",
+    "minimax-coding-plan",
+    "ollama",
+    "opencode",
+    "openai",
+    "openrouter",
+    "perplexity",
+    "tgi",
+    "togetherai",
+    "vllm",
+    "xai",
+    "zai-coding-plan",
+  ])
 
   const HARDCODED_MODEL_ALLOWLIST: Record<string, Set<string>> = {
     anthropic: new Set(["claude-opus-4-6"]),
@@ -84,22 +87,8 @@ export namespace Provider {
 
   const HARDCODED_MODEL_ALLOW_FILTERS: Record<string, (modelID: string) => boolean> = {}
 
-  /**
-   * Get the reason a model is blacklisted, or undefined if not blacklisted.
-   */
-  export function getModelBlacklistReason(providerID: string, modelID: string): string | undefined {
-    return MODEL_BLACKLIST_REASONS[providerID]?.[modelID]
-  }
-
-  /**
-   * Get the reason a provider is blacklisted, or undefined if not blacklisted.
-   */
-  export function getProviderBlacklistReason(providerID: string): string | undefined {
-    return PROVIDER_BLACKLIST_REASONS[providerID]
-  }
-
-  export function isProviderBlocked(providerID: string): boolean {
-    return PROVIDER_BLACKLIST.has(providerID)
+  export function isCoreProvider(providerID: string): boolean {
+    return CORE_PROVIDER_IDS.has(providerID)
   }
 
   function clientHeaders(options?: { lower?: boolean }) {
@@ -131,6 +120,7 @@ export namespace Provider {
     "@ai-sdk/azure": createAzure,
     "@ai-sdk/cohere": createCohere,
     "@ai-sdk/deepinfra": createDeepInfra,
+    "@ai-sdk/google": createGoogleGenerativeAI,
     "@ai-sdk/groq": createGroq,
     "@ai-sdk/mistral": createMistral,
     // Use custom OpenAI wrapper with GPT-5 stream completion fix
@@ -493,19 +483,19 @@ export namespace Provider {
     using _ = log.time("state")
     const config = await Config.get()
     const modelsDev = await ModelsDev.get()
-    const database = mapValues(modelsDev, fromModelsDevProvider)
+    const database = mapValues(
+      pickBy(modelsDev, (_provider, providerID) => CORE_PROVIDER_IDS.has(providerID)),
+      fromModelsDevProvider,
+    )
 
     for (const providerID of RUNTIME_DISABLED_PROVIDER_IDS) {
       delete database[providerID]
     }
 
-    const disabled = new Set(config.disabled_providers ?? [])
-    const blocked = new Set([...disabled, ...PROVIDER_BLACKLIST])
+    const blocked = new Set(config.disabled_providers ?? [])
     for (const providerID of blocked) {
       if (database[providerID]) {
-        const reason =
-          PROVIDER_BLACKLIST_REASONS[providerID] ?? (disabled.has(providerID) ? "disabled_providers config" : "blocked")
-        log.debug("provider blocked", { providerID, reason })
+        log.debug("provider disabled", { providerID, reason: "disabled_providers config" })
         delete database[providerID]
       }
     }
@@ -523,7 +513,8 @@ export namespace Provider {
     await Auth.refreshAllExpiring()
 
     const configProviders = Object.entries(config.provider ?? {}).filter(
-      ([providerID]) => !blocked.has(providerID) && !RUNTIME_DISABLED_PROVIDER_IDS.has(providerID),
+      ([providerID]) =>
+        CORE_PROVIDER_IDS.has(providerID) && !blocked.has(providerID) && !RUNTIME_DISABLED_PROVIDER_IDS.has(providerID),
     )
 
     function mergeProvider(providerID: string, provider: Partial<Info>) {
@@ -643,7 +634,7 @@ export namespace Provider {
     // load env
     const env = Env.all()
     for (const [providerID, provider] of Object.entries(database)) {
-      if (blocked.has(providerID)) continue
+      if (blocked.has(providerID) || !CORE_PROVIDER_IDS.has(providerID)) continue
       const apiKey = provider.env.map((item) => env[item]).find(Boolean)
       if (!apiKey) continue
       mergeProvider(providerID, {
@@ -654,7 +645,7 @@ export namespace Provider {
 
     // load apikeys
     for (const [providerID, provider] of Object.entries(await Auth.all())) {
-      if (blocked.has(providerID)) continue
+      if (blocked.has(providerID) || !CORE_PROVIDER_IDS.has(providerID)) continue
       if (provider.type === "api") {
         const envKeys = database[providerID]?.env ?? []
         for (const envKey of envKeys) {
@@ -670,7 +661,7 @@ export namespace Provider {
     for (const plugin of await Plugin.list()) {
       if (!plugin.auth) continue
       const providerID = plugin.auth.provider
-      if (blocked.has(providerID) || RUNTIME_DISABLED_PROVIDER_IDS.has(providerID)) continue
+      if (blocked.has(providerID) || !CORE_PROVIDER_IDS.has(providerID) || RUNTIME_DISABLED_PROVIDER_IDS.has(providerID)) continue
 
       let hasAuth = false
       const auth = await Auth.get(providerID)
@@ -690,7 +681,7 @@ export namespace Provider {
     }
 
     for (const [providerID, fn] of Object.entries(CUSTOM_LOADERS)) {
-      if (blocked.has(providerID)) continue
+      if (blocked.has(providerID) || !CORE_PROVIDER_IDS.has(providerID)) continue
       const data = database[providerID]
       if (!data) {
         log.error("Provider does not exist in model list " + providerID)
@@ -907,16 +898,6 @@ export namespace Provider {
         }
         if (model.status === "deprecated") {
           log.debug("model filtered", { providerID, modelID, reason: "deprecated status" })
-          delete provider.models[modelID]
-        }
-        // Hard-coded blacklist - permanently hidden models
-        if (MODEL_BLACKLIST[providerID]?.includes(modelID)) {
-          const blReason = MODEL_BLACKLIST_REASONS[providerID]?.[modelID] ?? "hard-coded blacklist"
-          log.debug("model filtered", { providerID, modelID, reason: blReason })
-          delete provider.models[modelID]
-        }
-        if (configProvider?.blacklist && configProvider.blacklist.includes(modelID)) {
-          log.debug("model filtered", { providerID, modelID, reason: "config blacklist" })
           delete provider.models[modelID]
         }
         if (configProvider?.whitelist && !configProvider.whitelist.includes(modelID)) {

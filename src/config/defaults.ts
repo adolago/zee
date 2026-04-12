@@ -160,10 +160,10 @@ export const DEFAULT_SURFACE_CONFIG: SurfaceConfig = {
 export const DEFAULT_MEMORY_CONFIG: MemoryConfig = {
   enabled: true,
   vectorDb: {
-    type: 'qdrant',
+    type: 'sqlite',
     collection: 'agent_memory',
-    embeddingModel: 'gemini-embedding-2-preview',
-    dimensions: 3072,
+    embeddingModel: 'zee-local-hash-embedding-v1',
+    dimensions: 384,
   },
   maxRetrieved: 10,
   similarityThreshold: 0.7,
@@ -310,7 +310,6 @@ export const ENV_VAR_MAPPING: Record<string, string> = {
 
   // Memory
   'ZEE_MEMORY_ENABLED': 'memory.enabled',
-  'QDRANT_URL': 'memory.vectorDb.url',
 };
 
 // ============================================================================

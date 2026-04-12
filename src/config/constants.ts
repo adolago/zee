@@ -7,36 +7,33 @@
  */
 
 // =============================================================================
-// Qdrant Vector Database
+// Local Memory
 // =============================================================================
 
-/** Default Qdrant server URL */
-export const QDRANT_URL = "http://localhost:6333";
-
-/** Canonical active collection for Zee memory. */
-export const QDRANT_COLLECTION_AGENT_MEMORY = "agent_memory";
+/** Canonical active collection/table namespace for Zee memory. */
+export const LOCAL_MEMORY_COLLECTION = "agent_memory";
 
 /** Default collection for agent state */
-export const QDRANT_COLLECTION_AGENT_STATE = "agent_state";
+export const LOCAL_MEMORY_COLLECTION_AGENT_STATE = "agent_state";
 
 /** Legacy collection used before the persona-collapse refactor. */
-export const QDRANT_COLLECTION_PERSONAS_MEMORY = "personas_memory";
+export const LOCAL_MEMORY_COLLECTION_PERSONAS_LEGACY = "personas_memory";
 
 // =============================================================================
 // Embedding Configuration
 // =============================================================================
 
-/** Default embedding model */
-export const EMBEDDING_MODEL = "gemini-embedding-2-preview";
+/** Default local embedding model identifier. */
+export const EMBEDDING_MODEL = "zee-local-hash-embedding-v1";
 
-/** Default embedding dimensions for the current embedding model */
-export const EMBEDDING_DIMENSIONS = 3072;
+/** Default embedding dimensions for local memory vectors. */
+export const EMBEDDING_DIMENSIONS = 384;
 
 /** Default collection for the current embedding model. */
-export const QDRANT_COLLECTION_MEMORY = QDRANT_COLLECTION_AGENT_MEMORY;
+export const LOCAL_MEMORY_COLLECTION_MEMORY = LOCAL_MEMORY_COLLECTION;
 
 /** Legacy preview-specific collection name kept only for migration. */
-export const QDRANT_COLLECTION_MEMORY_PREVIEW_LEGACY =
+export const LOCAL_MEMORY_COLLECTION_PREVIEW_LEGACY =
   "agent_memory_gemini_embedding_2_preview_3072";
 
 /** Mock embedding dimensions (for testing) */

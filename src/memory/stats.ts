@@ -1,32 +1,17 @@
 /**
  * Embedding Model Configuration
  *
- * Provides embedding model limits and configuration.
- * Max context is determined by the embedding model being used.
+ * Provides local embedding runtime state.
  */
-
-// =============================================================================
-// Embedding Model Limits
-// =============================================================================
-
-/**
- * Max input tokens for known embedding models.
- * Source: Model documentation and API specifications.
- */
-export const EMBEDDING_MODEL_LIMITS: Record<string, number> = {
-  // Google
-  "gemini-embedding-2-preview": 2048,
-};
 
 /** Default max context when model is unknown */
 export const DEFAULT_EMBEDDING_MAX_CONTEXT = 2048;
 
 /**
- * Get the max input tokens for an embedding model.
+ * Get the max input tokens for local embeddings.
  */
-export function getEmbeddingMaxContext(model?: string): number {
-  if (!model) return DEFAULT_EMBEDDING_MAX_CONTEXT;
-  return EMBEDDING_MODEL_LIMITS[model] ?? DEFAULT_EMBEDDING_MAX_CONTEXT;
+export function getEmbeddingMaxContext(_model?: string): number {
+  return DEFAULT_EMBEDDING_MAX_CONTEXT;
 }
 
 // =============================================================================

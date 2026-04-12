@@ -16,20 +16,20 @@ import type {
   LocalIndexBackend,
   LocalIndexDegradedReadMode,
 } from "../memory/types";
-import type { RerankerConfig } from "../memory/reranker";
 import {
   EMBEDDING_DIMENSIONS,
   EMBEDDING_MODEL,
-  QDRANT_COLLECTION_AGENT_MEMORY,
+  LOCAL_MEMORY_COLLECTION,
 } from "./constants";
 import { resolveEmbeddingProfile } from "./embedding-profiles";
 
 type RuntimeConfig = {
   memory?: {
-    backend?: "file" | "redis" | "qdrant";
-    qdrant?: {
-      url?: string;
+    backend?: "sqlite" | "file" | "redis";
+    collection?: string;
+    storage?: {
       collection?: string;
+      dbPath?: string;
     };
     localIndex?: {
       enabled?: boolean;
@@ -38,8 +38,6 @@ type RuntimeConfig = {
       dbName?: string;
       degradedRead?: LocalIndexDegradedReadMode;
     };
-    qdrantUrl?: string;
-    qdrantCollection?: string;
     embedding?: {
       profile?: string;
       provider?: string;
@@ -50,24 +48,17 @@ type RuntimeConfig = {
       title?: string;
       apiKey?: string;
       baseUrl?: string;
-    };
-    reranker?: {
-      enabled?: boolean;
-      provider?: "voyage" | "vllm";
-      model?: string;
-      apiKey?: string;
-      baseUrl?: string;
+      modelPath?: string;
     };
   };
   zee?: {
-    splitwise?: ZeeSplitwiseConfig;
     codexbar?: ZeeCodexbarConfig;
   };
 };
 
-export type MemoryQdrantConfig = {
-  url?: string;
+export type MemoryStorageConfig = {
   collection?: string;
+  dbPath?: string;
 };
 
 export type MemoryEmbeddingConfig = {
@@ -77,6 +68,7 @@ export type MemoryEmbeddingConfig = {
   taskType?: EmbeddingTaskType;
   title?: string;
   baseUrl?: string;
+  modelPath?: string;
 };
 
 export type MemoryMigrationHints = {
@@ -92,14 +84,6 @@ export type MemoryLocalIndexConfig = {
   dbDir?: string;
   dbName?: string;
   degradedRead: LocalIndexDegradedReadMode;
-};
-
-export type ZeeSplitwiseConfig = {
-  enabled?: boolean;
-  token?: string;
-  tokenFile?: string;
-  baseUrl?: string;
-  timeoutMs?: number;
 };
 
 export type ZeeCodexbarConfig = {
@@ -146,17 +130,13 @@ function mergeConfigs(base: RuntimeConfig, override: RuntimeConfig): RuntimeConf
     memory: {
       ...base.memory,
       ...override.memory,
-      qdrant: {
-        ...base.memory?.qdrant,
-        ...override.memory?.qdrant,
+      storage: {
+        ...base.memory?.storage,
+        ...override.memory?.storage,
       },
       embedding: {
         ...base.memory?.embedding,
         ...override.memory?.embedding,
-      },
-      reranker: {
-        ...base.memory?.reranker,
-        ...override.memory?.reranker,
       },
       localIndex: {
         ...base.memory?.localIndex,
@@ -166,10 +146,6 @@ function mergeConfigs(base: RuntimeConfig, override: RuntimeConfig): RuntimeConf
     zee: {
       ...base.zee,
       ...override.zee,
-      splitwise: {
-        ...base.zee?.splitwise,
-        ...override.zee?.splitwise,
-      },
       codexbar: {
         ...base.zee?.codexbar,
         ...override.zee?.codexbar,
@@ -200,38 +176,39 @@ function loadUserRuntimeConfig(): RuntimeConfig {
   return cachedUserConfig ?? {};
 }
 
-function resolveMemoryQdrantConfig(config: RuntimeConfig): MemoryQdrantConfig {
+function resolveMemoryStorageConfig(config: RuntimeConfig): MemoryStorageConfig {
   const memory = config.memory ?? {};
-  const qdrant = memory.qdrant ?? {};
-  const url = (qdrant.url ?? memory.qdrantUrl)?.trim() || undefined;
-  const collection = (qdrant.collection ?? memory.qdrantCollection)?.trim() || undefined;
+  const storage = memory.storage ?? {};
+  const collection = (storage.collection ?? memory.collection)?.trim() || undefined;
+  const dbPath = storage.dbPath?.trim() || undefined;
 
   return {
-    url,
     collection,
+    dbPath,
   };
 }
 
 function resolveMemoryEmbeddingConfig(config: RuntimeConfig): MemoryEmbeddingConfig {
   const embedding = config.memory?.embedding ?? {};
   const profileConfig = resolveEmbeddingProfile(embedding.profile?.trim());
-  const provider = "google";
+  const provider: EmbeddingProviderType = "local";
   const rawTaskType = embedding.taskType?.trim() || profileConfig?.taskType;
   const taskType = rawTaskType ? rawTaskType.toUpperCase() : undefined;
 
   return {
-    provider: provider as EmbeddingProviderType | undefined,
-    model: EMBEDDING_MODEL,
-    dimensions: EMBEDDING_DIMENSIONS,
+    provider,
+    model: embedding.model?.trim() || EMBEDDING_MODEL,
+    dimensions: embedding.dimensions ?? embedding.dimension ?? EMBEDDING_DIMENSIONS,
     taskType: taskType as EmbeddingTaskType | undefined,
     title: embedding.title?.trim() || profileConfig?.title,
     baseUrl: embedding.baseUrl?.trim() || profileConfig?.baseUrl,
+    modelPath: embedding.modelPath?.trim() || undefined,
   };
 }
 
 function resolveMemoryMigrationHints(config: RuntimeConfig): MemoryMigrationHints {
   const memory = config.memory ?? {};
-  const qdrant = memory.qdrant ?? {};
+  const storage = memory.storage ?? {};
   const embedding = memory.embedding ?? {};
   const rawDimensions = embedding.dimensions ?? embedding.dimension;
   const dimensions =
@@ -241,7 +218,7 @@ function resolveMemoryMigrationHints(config: RuntimeConfig): MemoryMigrationHint
 
   return {
     configuredCollection:
-      (qdrant.collection ?? memory.qdrantCollection)?.trim() || undefined,
+      (storage.collection ?? memory.collection)?.trim() || undefined,
     configuredEmbeddingProfile: embedding.profile?.trim() || undefined,
     configuredEmbeddingModel: embedding.model?.trim() || undefined,
     configuredEmbeddingDimensions:
@@ -255,7 +232,7 @@ function resolveMemoryLocalIndexConfig(config: RuntimeConfig): MemoryLocalIndexC
   const memory = config.memory ?? {};
   const localIndex = memory.localIndex ?? {};
   const backend = (localIndex.backend ?? "sqlite-fts") as LocalIndexBackend;
-  const enabled = localIndex.enabled ?? memory.backend !== "qdrant";
+  const enabled = localIndex.enabled ?? true;
   const degradedRead = (localIndex.degradedRead ?? (enabled ? "keyword_only" : "off")) as LocalIndexDegradedReadMode;
   const dbDir = localIndex.dbDir?.trim() || undefined;
   const dbName = localIndex.dbName?.trim() || undefined;
@@ -269,11 +246,11 @@ function resolveMemoryLocalIndexConfig(config: RuntimeConfig): MemoryLocalIndexC
   };
 }
 
-export function getMemoryQdrantConfig(): MemoryQdrantConfig {
-  const config = resolveMemoryQdrantConfig(loadRuntimeConfig());
+export function getMemoryStorageConfig(): MemoryStorageConfig {
+  const config = resolveMemoryStorageConfig(loadRuntimeConfig());
   return {
     ...config,
-    collection: QDRANT_COLLECTION_AGENT_MEMORY,
+    collection: config.collection ?? LOCAL_MEMORY_COLLECTION,
   };
 }
 
@@ -287,32 +264,6 @@ export function getMemoryMigrationHints(): MemoryMigrationHints {
 
 export function getMemoryLocalIndexConfig(): MemoryLocalIndexConfig {
   return resolveMemoryLocalIndexConfig(loadRuntimeConfig());
-}
-
-export function getMemoryRerankerConfig(): RerankerConfig {
-  const config = loadRuntimeConfig();
-  const reranker = config.memory?.reranker ?? {};
-  
-  // Environment variable overrides (highest priority)
-  const envEnabled = process.env.MEMORY_RERANKER_ENABLED;
-  const envProvider = process.env.MEMORY_RERANKER_PROVIDER as "voyage" | "vllm" | undefined;
-  const envModel = process.env.MEMORY_RERANKER_MODEL;
-  const envApiKey = process.env.VOYAGE_API_KEY || process.env.MEMORY_RERANKER_API_KEY;
-  const envBaseUrl = process.env.MEMORY_RERANKER_BASE_URL || process.env.VLLM_RERANKER_URL;
-  
-  return {
-    enabled: envEnabled !== undefined 
-      ? envEnabled === "true" || envEnabled === "1"
-      : (reranker.enabled ?? false),
-    provider: envProvider || reranker.provider || "voyage",
-    model: envModel?.trim() || reranker.model?.trim() || undefined,
-    apiKey: envApiKey?.trim() || reranker.apiKey?.trim() || undefined,
-    baseUrl: envBaseUrl?.trim() || reranker.baseUrl?.trim() || undefined,
-  };
-}
-
-export function getZeeSplitwiseConfig(): ZeeSplitwiseConfig {
-  return loadRuntimeConfig().zee?.splitwise ?? {};
 }
 
 export function getZeeCodexbarConfig(): ZeeCodexbarConfig {

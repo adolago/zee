@@ -4,7 +4,7 @@
  * Daily note-taking and journal management for the personal assistant.
  * Notes are stored in two places:
  * 1. Daily markdown files: ~/.local/state/zee/notes/YYYY-MM-DD.md
- * 2. Qdrant semantic memory: domain="notes", topic=YYYY-MM-DD
+ * 2. Local semantic memory: domain="notes", topic=YYYY-MM-DD
  *
  * This gives both human-readable daily logs (like OpenClaw workspace/memory/)
  * and semantic search across all notes.
@@ -132,7 +132,7 @@ Actions:
 - search: Semantic search across all notes { query: "client meeting roadmap" }
 - list: List recent daily note files { limit?: 10 }
 
-Notes are saved to ~/.local/state/zee/notes/YYYY-MM-DD.md and indexed in Qdrant for semantic recall.`,
+Notes are saved to ~/.local/state/zee/notes/YYYY-MM-DD.md and indexed in local semantic memory for recall.`,
     parameters: NotesParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       const { action, content, tags, date, query, limit } = args;
@@ -157,7 +157,7 @@ Notes are saved to ~/.local/state/zee/notes/YYYY-MM-DD.md and indexed in Qdrant 
         try {
           const filePath = await appendToDaily(today, entry);
 
-          // Also index in Qdrant for semantic search
+          // Also index in local memory for semantic search
           try {
             const store = getMemory();
             await store.save({

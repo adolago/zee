@@ -13,11 +13,12 @@ import { errors } from "../error"
 
 const log = Log.create({ service: "server:model" })
 
-const HIDDEN_MODEL_PROVIDER_IDS = new Set(["google", "google-antigravity", "gemini-cli"])
-const HIDDEN_AUTH_PROVIDER_IDS = new Set(["google-antigravity", "gemini-cli"])
+const HIDDEN_MODEL_PROVIDER_IDS = new Set(["gemini-cli"])
+const HIDDEN_AUTH_PROVIDER_IDS = new Set(["gemini-cli"])
 
 const SERVICE_PROVIDER_NAMES: Record<string, string> = {
   "gemini-cli": "Gemini CLI",
+  languagetool: "LanguageTool",
 }
 
 const resolveDefaultModels = (providers: Record<string, Provider.Info>) => {
@@ -90,7 +91,7 @@ export const ModelRoute = new Hono()
       const config = await Config.get()
       const disabled = new Set(config.disabled_providers ?? [])
       const isBlocked = (providerID: string) =>
-        HIDDEN_MODEL_PROVIDER_IDS.has(providerID) || disabled.has(providerID) || Provider.isProviderBlocked(providerID)
+        HIDDEN_MODEL_PROVIDER_IDS.has(providerID) || disabled.has(providerID) || !Provider.isCoreProvider(providerID)
 
       const allProviders = await ModelsDev.get()
       const filteredProviders: Record<string, (typeof allProviders)[string]> = {}

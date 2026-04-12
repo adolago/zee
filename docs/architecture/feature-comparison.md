@@ -60,7 +60,7 @@ cd packages/zee && bun run --conditions=browser ./src/index.ts compare --format 
 | XDG directories | Uses XDG Base Dir paths for config/cache/state on Linux. | Yes | Yes | No | Unknown |
 | **Memory** |  |  |  |  |  |
 | Local indexing store | Local embedding index (e.g. sqlite-vec) and plugin-based memory stores. | Yes | No | Yes | No |
-| Qdrant integration | First-class Qdrant support for vectors/memory. | Yes | No | No | No |
+| Local vector memory | Local-first vector memory without an external vector database. | Yes | No | Yes | No |
 | Semantic memory | Semantic recall beyond session history (embeddings, retrieval, long-term memory). | Yes | No | Yes | Partial |
 | Session export/import | Exports/imports session data for portability and backups. | Yes | Unknown | Partial | No |
 | **Extensibility** |  |  |  |  |  |
@@ -286,26 +286,26 @@ Uses XDG Base Dir paths for config/cache/state on Linux.
 
 ### Memory
 
-#### Local indexing store
+#### Local Indexing Store
 
 Local embedding index (e.g. sqlite-vec) and plugin-based memory stores.
 
-- Zee: Yes | SQLite local index is built into memory for keyword/hybrid retrieval, while Qdrant remains the source of truth for canonical semantic memory. | evidence: repo_path:src/memory/unified.ts, repo_path:src/memory/sqlite-fts.ts
+- Zee: Yes | SQLite-backed local vector storage and SQLite FTS are built into memory for semantic, keyword, and hybrid retrieval. | evidence: repo_path:src/memory/unified.ts, repo_path:src/memory/sqlite-vector.ts, repo_path:src/memory/sqlite-fts.ts
 - OpenClaw: Yes | Uses sqlite-vec for local indexing and memory surfaces. | evidence: doc:docs/architecture/upstream-differences.md
 
-#### Qdrant integration
+#### Local Vector Memory
 
-First-class Qdrant support for vectors/memory.
+Local-first vector memory without an external vector database.
 
-- Zee: Yes | evidence: repo_path:src/memory
-- OpenClaw: No | Uses local indexing (sqlite-vec) rather than Qdrant by default. | evidence: doc:docs/architecture/upstream-differences.md
+- Zee: Yes | Local SQLite vector storage is the canonical memory backend. | evidence: repo_path:src/memory/sqlite-vector.ts
+- OpenClaw: Yes | Uses local indexing (sqlite-vec) by default. | evidence: doc:docs/architecture/upstream-differences.md
 
 #### Semantic memory
 
 Semantic recall beyond session history (embeddings, retrieval, long-term memory).
 
-- Zee: Yes | Qdrant-backed semantic memory. | evidence: repo_path:src/memory
-- OpenCode: No | Primarily session/worktree focused; does not ship Qdrant-style semantic memory in the same way. | evidence: doc:docs/architecture/upstream-differences.md
+- Zee: Yes | Local SQLite-backed semantic memory with local embeddings. | evidence: repo_path:src/memory
+- OpenCode: No | Primarily session/worktree focused; does not ship the same semantic memory subsystem. | evidence: doc:docs/architecture/upstream-differences.md
 - OpenClaw: Yes | Local-first memory and indexing surfaces; differs in storage model. | evidence: doc:docs/architecture/upstream-differences.md
 - Pi-mono: Partial | Provides LLM/runtime primitives; memory layer depends on the embedding product.
 
@@ -447,7 +447,7 @@ WhatsApp channel integration for inbound/outbound messaging.
 
 Embeddings support for memory/search.
 
-- Zee: Yes | Google-only embeddings for semantic memory by default. | evidence: doc:docs/architecture/openclaw-delta-map.md
+- Zee: Yes | Local-only embeddings for memory/search by default. | evidence: doc:docs/architecture/openclaw-delta-map.md
 - OpenClaw: Yes | Supports embedding/indexing flows; storage differs.
 
 #### Local models

@@ -1,7 +1,7 @@
 /**
  * Memory Layer Types
  *
- * Unified memory system with Qdrant vector storage,
+ * Unified memory system with local SQLite vector storage,
  * supporting semantic search, pattern storage, and cross-session context
  */
 
@@ -206,7 +206,7 @@ export type MemorySearchMode = "auto" | "semantic" | "keyword" | "hybrid";
 /** Local index backend type. */
 export type LocalIndexBackend = "sqlite-fts";
 
-/** Behavior when Qdrant is unavailable but local index exists. */
+/** Behavior when vector search is unavailable but local keyword index exists. */
 export type LocalIndexDegradedReadMode = "off" | "keyword_only";
 
 /** Search parameters for memory retrieval */
@@ -273,8 +273,8 @@ export interface MemorySearchResult {
   /** Keyword snippet with match highlights (if available). */
   snippet?: string;
   /** Origin of the result payload. */
-  source?: "qdrant" | "local-index";
-  /** True when results are served from local index because Qdrant is unavailable. */
+  source?: "local-vector" | "local-index";
+  /** True when results are served from local index because vector search is unavailable. */
   degraded?: boolean;
 }
 
@@ -576,8 +576,7 @@ export interface EmbeddingProvider {
 }
 
 /** Supported embedding providers */
-export type EmbeddingProviderType =
-  | "google";
+export type EmbeddingProviderType = "local";
 
 // =============================================================================
 // Storage Types
@@ -641,14 +640,11 @@ export interface VectorStorage {
 
 /** Memory system configuration */
 export interface MemoryConfig {
-  /** Qdrant connection settings (local-only, no remote/cloud support) */
-  qdrant: {
-    url: string;
+  /** Local vector storage settings. */
+  storage: {
     collection: string;
-    /** Default request timeout for Qdrant REST calls (ms). */
-    timeoutMs?: number;
-    /** Max retry count for idempotent requests (network errors/timeouts/5xx/429). */
-    maxRetries?: number;
+    /** Optional explicit SQLite database path. Defaults to Zee's state dir. */
+    dbPath?: string;
   };
 
   /** Embedding settings */
@@ -685,7 +681,7 @@ export interface MemoryConfig {
     dbName?: string;
   };
 
-  /** Local index configuration (secondary index; Qdrant remains source of truth). */
+  /** Local index configuration. */
   localIndex?: {
     /** Enable local index (keyword/hybrid acceleration + optional degraded read). */
     enabled?: boolean;
@@ -695,7 +691,7 @@ export interface MemoryConfig {
     dbDir?: string;
     /** Database filename for backend state. */
     dbName?: string;
-    /** Degraded-read policy when Qdrant is unavailable. */
+    /** Degraded-read policy when vector search is unavailable. */
     degradedRead?: LocalIndexDegradedReadMode;
   };
 }

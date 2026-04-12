@@ -9,7 +9,7 @@
  * - **Provider System**: 15+ LLM providers with models.dev integration
  * - **Agent System**: Configurable assistant profiles, permissions, and mode switching
  * - **Tool System**: Built-in tools with MCP integration
- * - **Memory Layer**: Qdrant vector storage with semantic search
+ * - **Memory Layer**: Local SQLite vector storage with semantic search
  * - **Surface Abstraction**: CLI/TUI, GUI, and Messaging adapters
  * - **Plugin System**: Hook-based extensibility
  * - **Session Management**: Streaming, retry logic, persistence
@@ -33,7 +33,7 @@ export * as Tool from "./tool/types.js";
 // MCP - Model Context Protocol servers
 export * as Mcp from "./mcp/types.js";
 
-// Memory - Qdrant-backed semantic memory
+// Memory - local semantic memory
 export * as Memory from "./memory/types.js";
 
 // Surface - Abstraction for CLI/GUI/Messaging UIs

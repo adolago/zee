@@ -67,8 +67,6 @@ export const ProviderConfigSchema = z.object({
   ]).optional(),
   /** Model whitelist (only these models are available) */
   whitelist: z.array(z.string()).optional(),
-  /** Model blacklist (these models are excluded) */
-  blacklist: z.array(z.string()).optional(),
   /** Per-model configuration overrides */
   models: z.record(z.string(), ModelConfigSchema).optional(),
   /** Additional provider-specific options */
@@ -263,19 +261,19 @@ export type SurfaceConfig = z.infer<typeof SurfaceConfigSchema>;
 // ============================================================================
 
 /**
- * Vector database configuration (local Qdrant only -- no remote/cloud support)
+ * Vector database configuration (local SQLite by default)
  */
 export const VectorDbConfigSchema = z.object({
-  /** Vector database type (only local qdrant or in-memory) */
-  type: z.enum(['qdrant', 'memory']).default('qdrant'),
-  /** Connection URL (must be localhost) */
-  url: z.string().optional(),
+  /** Vector database type */
+  type: z.enum(['sqlite', 'memory']).default('sqlite'),
+  /** Optional explicit SQLite database path */
+  path: z.string().optional(),
   /** Canonical active collection for Zee memory */
   collection: z.string().optional().default('agent_memory'),
-  /** Fixed memory embedding model for Zee */
-  embeddingModel: z.string().optional().default('gemini-embedding-2-preview'),
-  /** Fixed memory embedding dimensions for Zee */
-  dimensions: z.number().int().positive().optional().default(3072),
+  /** Local memory embedding model for Zee */
+  embeddingModel: z.string().optional().default('zee-local-hash-embedding-v1'),
+  /** Local memory embedding dimensions for Zee */
+  dimensions: z.number().int().positive().optional().default(384),
 }).strict();
 export type VectorDbConfig = z.infer<typeof VectorDbConfigSchema>;
 

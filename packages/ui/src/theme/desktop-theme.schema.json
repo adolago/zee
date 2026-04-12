@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://zee-bot.com/desktop-theme.json",
+  "$id": "https://zee.dev/desktop-theme.json",
   "title": "Zee Desktop Theme",
   "description": "A theme definition for the Zee desktop application",
   "type": "object",

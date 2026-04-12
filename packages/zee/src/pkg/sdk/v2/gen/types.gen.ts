@@ -847,7 +847,7 @@ export type MemoryConfig = {
   /**
    * Memory backend
    */
-  backend?: "file" | "redis" | "qdrant"
+  backend?: "sqlite" | "file" | "redis"
   /**
    * Storage path for file backend
    */
@@ -857,23 +857,19 @@ export type MemoryConfig = {
    */
   redisUrl?: string
   /**
-   * Qdrant endpoint URL
+   * Local memory collection name
    */
-  qdrantUrl?: string
+  collection?: string
   /**
-   * Deprecated migration hint. Zee always uses the canonical agent_memory collection.
+   * Local memory storage configuration
    */
-  qdrantCollection?: string
-  /**
-   * Nested Qdrant configuration (local-only)
-   */
-  qdrant?: {
+  storage?: {
     /**
-     * Qdrant endpoint URL (must be localhost)
+     * Explicit SQLite memory database path
      */
-    url?: string
+    dbPath?: string
     /**
-     * Deprecated migration hint. Zee always uses the canonical agent_memory collection.
+     * Local memory collection name
      */
     collection?: string
   }
@@ -882,29 +878,33 @@ export type MemoryConfig = {
    */
   embedding?: {
     /**
-     * Deprecated migration hint. Zee always uses google/gemini-embedding-2-preview.
+     * Deprecated migration hint. Zee uses local memory embeddings by default.
      */
     profile?: string
     /**
-     * Embedding provider ID ("google")
+     * Embedding provider ID ("local").
      */
-    provider?: "google"
+    provider?: "local"
     /**
-     * Deprecated migration hint. Zee ignores custom memory embedding models.
+     * Local memory embedding model identifier
      */
     model?: string
     /**
-     * Deprecated migration hint. Zee always uses 3072 dimensions.
+     * Memory embedding dimensions
      */
     dimensions?: number
     /**
-     * Deprecated alias for dimensions. Zee always uses 3072.
+     * Deprecated alias for dimensions
      */
     dimension?: number
     /**
-     * Embedding API base URL (Google)
+     * Embedding API base URL for non-local providers
      */
     baseUrl?: string
+    /**
+     * Local embedding model/cache path
+     */
+    modelPath?: string
   }
   /**
    * Default TTL in seconds
@@ -928,31 +928,6 @@ export type MemoryConfig = {
  * Zee integration configuration
  */
 export type ZeeConfig = {
-  /**
-   * Splitwise API configuration
-   */
-  splitwise?: {
-    /**
-     * Enable Splitwise tooling
-     */
-    enabled?: boolean
-    /**
-     * Splitwise OAuth token (Bearer)
-     */
-    token?: string
-    /**
-     * Path to file containing Splitwise token
-     */
-    tokenFile?: string
-    /**
-     * Splitwise API base URL override
-     */
-    baseUrl?: string
-    /**
-     * Splitwise API timeout in ms
-     */
-    timeoutMs?: number
-  }
   /**
    * CodexBar CLI configuration
    */

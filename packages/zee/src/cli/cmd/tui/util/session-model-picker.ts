@@ -1,4 +1,4 @@
-export const HIDDEN_SESSION_MODEL_PROVIDER_IDS = new Set(["google", "google-antigravity", "gemini-cli"])
+export const HIDDEN_SESSION_MODEL_PROVIDER_IDS = new Set(["gemini-cli"])
 
 export type SessionModelPickerProvider = {
   id: string

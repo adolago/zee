@@ -1,7 +1,7 @@
 /**
  * Memory Module
  *
- * Unified memory system with Qdrant vector storage,
+ * Unified memory system with local SQLite vector storage,
  * supporting semantic search, pattern storage, and cross-session context.
  *
  * Primary API:
@@ -35,8 +35,9 @@ export * from "./types";
 // Embedding providers
 export * from "./embedding";
 
-// Low-level storage (for advanced use cases)
-export { QdrantVectorStorage, QdrantMemoryStore } from "./qdrant";
+// Low-level local storage (for advanced use cases)
+export { SqliteVectorStorage, resolveSqliteVectorDbPath } from "./sqlite-vector";
+export { prepareLocalMemory, getLocalMemoryStatus, resolveLocalMemoryPaths } from "./local-runtime";
 
 // SQLite FTS for keyword search
 export { SqliteFtsStore, buildFtsQuery, bm25RankToScore } from "./sqlite-fts";

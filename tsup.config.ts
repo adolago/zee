@@ -22,8 +22,6 @@ export default defineConfig({
   external: [
     "@ai-sdk/anthropic",
     "@ai-sdk/openai",
-    "@ai-sdk/google",
-    "@qdrant/js-client-rest",
     "@modelcontextprotocol/sdk",
   ],
 });

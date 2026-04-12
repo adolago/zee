@@ -5,7 +5,7 @@ import path from "path"
 import os from "os"
 import { fileURLToPath } from "url"
 import { createRequire } from "module"
-import { execSync } from "child_process"
+import { execSync, spawnSync } from "child_process"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const require = createRequire(import.meta.url)
@@ -19,6 +19,9 @@ function detectPlatformAndArch() {
       break
     case "win32":
       platform = "windows"
+      break
+    case "darwin":
+      platform = "darwin"
       break
     default:
       return null
@@ -139,18 +142,27 @@ function symlinkBinary(sourcePath, binaryName) {
 
 async function main() {
   try {
-    if (os.platform() === "win32") {
-      // On Windows, the .exe is already included in the package and bin field points to it
-      // No postinstall setup needed
-      console.log("Windows detected: binary setup not needed (using packaged .exe)")
+    const { binaryPath } = findBinary()
+    console.log(`Platform binary verified at: ${binaryPath}`)
+    if (process.env.ZEE_SKIP_MEMORY_PREPARE === "1") {
+      console.log("Skipping local memory preparation because ZEE_SKIP_MEMORY_PREPARE=1")
       return
     }
 
-    // On non-Windows platforms, just verify the binary package exists
-    // Don't replace the wrapper script - it handles binary execution
-    const { binaryPath } = findBinary()
-    console.log(`Platform binary verified at: ${binaryPath}`)
-    console.log("Wrapper script will handle binary execution")
+    const result = spawnSync(binaryPath, ["memory", "prepare", "--scope", "user", "--json"], {
+      encoding: "utf8",
+      stdio: "pipe",
+      env: process.env,
+    })
+    if (result.error) throw result.error
+    if (result.status !== 0) {
+      throw new Error(result.stderr || result.stdout || `zee memory prepare exited with ${result.status}`)
+    }
+    const status = JSON.parse(result.stdout)
+    if (!status.ok) {
+      throw new Error(`Local memory preparation failed: ${status.sqlite?.error || status.embedding?.error || "unknown error"}`)
+    }
+    console.log(`Local memory prepared at: ${status.paths?.memoryDir || status.sqlite?.vectorDbPath}`)
   } catch (error) {
     console.error("Failed to setup zee binary:", error.message)
     process.exit(1)

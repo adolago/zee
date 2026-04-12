@@ -2,7 +2,7 @@
  * Process Registry
  *
  * Centralized registry for managing running agents, swarms, and workers.
- * Uses in-memory Map for fast access with optional Qdrant persistence.
+ * Uses an in-memory Map for fast access with optional local persistence.
  */
 
 import { EventEmitter } from "events"

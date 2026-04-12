@@ -1314,7 +1314,6 @@ export namespace Config {
   export const Provider = ModelsDev.Provider.partial()
     .extend({
       whitelist: z.array(z.string()).optional(),
-      blacklist: z.array(z.string()).optional(),
       models: z
         .record(
           z.string(),
@@ -1366,48 +1365,46 @@ export namespace Config {
   export const Memory = z
     .object({
       required: z.boolean().optional().default(false).describe("Require memory availability before prompting"),
-      backend: z.enum(["file", "redis", "qdrant"]).optional().describe("Memory backend"),
+      backend: z.enum(["sqlite", "file", "redis"]).optional().describe("Memory backend"),
       storagePath: z.string().optional().describe("Storage path for file backend"),
       redisUrl: z.string().optional().describe("Redis connection URL"),
-      qdrantUrl: z.string().optional().describe("Qdrant endpoint URL"),
-      // qdrantApiKey removed: Qdrant is local-only, no remote support
-      qdrantCollection: z
+      collection: z
         .string()
         .optional()
-        .describe("Deprecated migration hint. Zee always uses the canonical agent_memory collection."),
-      qdrant: z
+        .describe("Local memory collection name"),
+      storage: z
         .object({
-          url: z.string().optional().describe("Qdrant endpoint URL (must be localhost)"),
+          dbPath: z.string().optional().describe("Explicit SQLite memory database path"),
           collection: z
             .string()
             .optional()
-            .describe("Deprecated migration hint. Zee always uses the canonical agent_memory collection."),
+            .describe("Local memory collection name"),
         })
         .optional()
-        .describe("Nested Qdrant configuration (local-only)"),
+        .describe("Local memory storage configuration"),
       embedding: z
         .object({
           profile: z
             .string()
             .optional()
-            .describe("Deprecated migration hint. Zee always uses google/gemini-embedding-2-preview."),
-          provider: z.literal("google").optional().describe('Embedding provider ID ("google").'),
+            .describe("Deprecated migration hint. Zee uses local memory embeddings by default."),
+          provider: z.literal("local").optional().describe('Embedding provider ID ("local").'),
           model: z
             .string()
             .optional()
-            .describe("Deprecated migration hint. Zee ignores custom memory embedding models."),
+            .describe("Local memory embedding model identifier"),
           dimensions: z
             .number()
             .int()
             .positive()
             .optional()
-            .describe("Deprecated migration hint. Zee always uses 3072 dimensions."),
+            .describe("Memory embedding dimensions"),
           dimension: z
             .number()
             .int()
             .positive()
             .optional()
-            .describe("Deprecated alias for dimensions. Zee always uses 3072."),
+            .describe("Deprecated alias for dimensions"),
           taskType: z
             .enum([
               "SEMANTIC_SIMILARITY",
@@ -1420,35 +1417,26 @@ export namespace Config {
               "CODE_RETRIEVAL_QUERY",
             ])
             .optional()
-            .describe("Google embedding task type override"),
-          title: z.string().optional().describe("Optional title for Google document embeddings"),
-          baseUrl: z.string().optional().describe("Embedding API base URL (Google)"),
+            .describe("Embedding task type hint"),
+          title: z.string().optional().describe("Optional title for document embeddings"),
+          baseUrl: z.string().optional().describe("Embedding API base URL for non-local providers"),
+          modelPath: z.string().optional().describe("Local embedding model/cache path"),
         })
         .optional()
-        .describe("Embedding provider configuration (Google-only; API key is read from `zee auth login google`)"),
-      reranker: z
-        .object({
-          enabled: z.boolean().optional().describe("Enable reranking for memory search"),
-          provider: z.enum(["voyage", "vllm"]).optional().describe("Reranker provider"),
-          model: z.string().optional().describe("Reranker model name"),
-          apiKey: z.string().optional().describe("Reranker API key"),
-          baseUrl: z.string().optional().describe("Reranker API base URL"),
-        })
-        .optional()
-        .describe("Reranker configuration for two-stage retrieval"),
+        .describe("Memory embedding provider configuration"),
       localIndex: z
         .object({
-          enabled: z.boolean().optional().describe("Enable local keyword index as secondary store"),
+          enabled: z.boolean().optional().describe("Enable local keyword index"),
           backend: z.enum(["sqlite-fts"]).optional().describe("Local index backend (sqlite-fts)"),
           dbDir: z.string().optional().describe("Local index database directory"),
           dbName: z.string().optional().describe("Local index database filename"),
           degradedRead: z
             .enum(["off", "keyword_only"])
             .optional()
-            .describe("Allow keyword-only local reads when Qdrant is unavailable"),
+            .describe("Allow keyword-only local reads when vector search is unavailable"),
         })
         .optional()
-        .describe("Secondary local index configuration (Qdrant remains source of truth)"),
+        .describe("Local keyword index configuration"),
       defaultTtl: z.number().int().nonnegative().optional().describe("Default TTL in seconds"),
       autoSaveInterval: z.number().int().nonnegative().optional().describe("Auto-save interval in ms"),
       compression: z.boolean().optional().describe("Enable compression"),
@@ -1704,16 +1692,6 @@ export namespace Config {
 
   export const Zee = z
     .object({
-      splitwise: z
-        .object({
-          enabled: z.boolean().optional().describe("Enable Splitwise tooling"),
-          token: z.string().optional().describe("Splitwise OAuth token (Bearer)"),
-          tokenFile: z.string().optional().describe("Path to file containing Splitwise token"),
-          baseUrl: z.string().optional().describe("Splitwise API base URL override"),
-          timeoutMs: z.number().int().positive().optional().describe("Splitwise API timeout in ms"),
-        })
-        .optional()
-        .describe("Splitwise API configuration"),
       codexbar: z
         .object({
           enabled: z.boolean().optional().describe("Enable CodexBar tooling"),
@@ -2370,10 +2348,7 @@ export namespace Config {
       if (embedding && typeof embedding.apiKey === "string" && embedding.apiKey.length > 0) {
         embedding.apiKey = "********"
       }
-      if (copy.memory.reranker?.apiKey) copy.memory.reranker.apiKey = "********"
     }
-    // Redact zee secrets
-    if (copy.zee?.splitwise?.token) copy.zee.splitwise.token = "********"
 
     // Legacy: redact grammar.apiKey if present on unvalidated inputs.
     const grammar = copy.grammar as unknown as { apiKey?: unknown } | undefined

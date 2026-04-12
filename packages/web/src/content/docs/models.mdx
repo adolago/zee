@@ -53,7 +53,7 @@ Zee config.
 
 ```json title="zee.json" {3}
 {
-  "$schema": "https://zee-bot.com/config.json",
+  "$schema": "https://zee.dev/config.json",
   "model": "lmstudio/google/gemma-3n-e4b"
 }
 ```
@@ -70,7 +70,7 @@ You can globally configure a model's options through the config.
 
 ```jsonc title="zee.jsonc" {7-12,19-24}
 {
-  "$schema": "https://zee-bot.com/config.json",
+  "$schema": "https://zee.dev/config.json",
   "provider": {
     "openai": {
       "models": {
@@ -109,7 +109,7 @@ You can also define custom variants that extend built-in ones. Variants let you 
 
 ```jsonc title="zee.jsonc" {6-21}
 {
-  "$schema": "https://zee-bot.com/config.json",
+  "$schema": "https://zee.dev/config.json",
   "provider": {
     "opencode": {
       "models": {
@@ -174,7 +174,7 @@ You can override existing variants or add your own:
 
 ```jsonc title="zee.jsonc" {7-18}
 {
-  "$schema": "https://zee-bot.com/config.json",
+  "$schema": "https://zee.dev/config.json",
   "provider": {
     "openai": {
       "models": {
@@ -211,7 +211,7 @@ When Zee starts up, it checks for models in the following priority order:
 
    ```json title="zee.json"
    {
-     "$schema": "https://zee-bot.com/config.json",
+     "$schema": "https://zee.dev/config.json",
      "model": "anthropic/claude-sonnet-4-20250514"
    }
    ```

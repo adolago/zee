@@ -1,7 +1,7 @@
 import type { DesktopTheme } from "./types"
 
 export const selenizedDarkTheme: DesktopTheme = {
-  $schema: "https://zee-bot.com/desktop-theme.json",
+  $schema: "https://zee.dev/desktop-theme.json",
   id: "selenized-dark",
   name: "Selenized Dark",
   light: {

@@ -30,7 +30,6 @@ export const iconNames = [
   "openai",
   "ollama-cloud",
   "nvidia",
-  "nebius",
   "nano-gpt",
   "morph",
   "moonshotai",

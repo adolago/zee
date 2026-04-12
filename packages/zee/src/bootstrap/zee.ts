@@ -9,6 +9,7 @@ import { LifecycleHooks } from "../hooks/lifecycle"
 import { Persistence } from "../session/persistence"
 import { Session } from "../session"
 import { Log } from "../util/log"
+import { prepareLocalMemory } from "../../../../src/memory/local-runtime"
 
 const log = Log.create({ service: "zee-bootstrap" })
 const FACT_EXTRACTION_MIN_DURATION_MS = 60_000
@@ -70,7 +71,7 @@ async function getMemoryInstance(): Promise<UnifiedMemory> {
     const cause = memoryLoadError?.message ?? "unknown error"
     throw new Error(
       `Unified Memory is required but unavailable. ` +
-        `Ensure Qdrant is running (docker-compose up -d qdrant) or configure embedded mode. ` +
+        `Run zee memory prepare and check local SQLite state. ` +
         `Cause: ${cause}`,
     )
   }
@@ -179,6 +180,11 @@ export async function initZeeBootstrap(): Promise<void> {
   }
 
   log.info("Initializing Zee hooks")
+
+  const memoryStatus = await prepareLocalMemory()
+  if (!memoryStatus.ok) {
+    throw new Error(memoryStatus.sqlite.error || memoryStatus.embedding.error || "Local memory preparation failed")
+  }
 
   await getMemoryInstance()
   log.info("Unified Memory connected for cross-session context")

@@ -17,14 +17,9 @@ describe("Config security", () => {
       },
       memory: {
         redisUrl: "redis://:password@localhost:6379",
-        qdrant: {},
+        storage: {},
         embedding: {
-          provider: "google",
-        },
-      },
-      zee: {
-        splitwise: {
-          token: "secret_splitwise_token",
+          provider: "local",
         },
       },
       grammar: {
@@ -46,8 +41,7 @@ describe("Config security", () => {
 
     expect(redacted.provider?.openai?.options?.apiKey).toBe("********")
     expect(redacted.memory?.redisUrl).toBe("********")
-    expect(redacted.memory?.embedding?.provider).toBe("google")
-    expect(redacted.zee?.splitwise?.token).toBe("********")
+    expect(redacted.memory?.embedding?.provider).toBe("local")
     expect(redacted.grammar?.apiKey).toBe("********")
     // Check MCP redaction
     const mcpRemote = redacted.mcp?.remote as any

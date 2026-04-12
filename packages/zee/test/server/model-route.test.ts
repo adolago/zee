@@ -23,9 +23,9 @@ ModelsDev.get = async () => ({
     env: [],
     models: {},
   },
-  nebius: {
-    id: "nebius",
-    name: "Nebius",
+  venice: {
+    id: "venice",
+    name: "Venice",
     env: [],
     models: {},
   },
@@ -65,8 +65,8 @@ describe("model route", () => {
         expect(response.status).toBe(200)
         const data = await response.json()
         const ids = (data.all as Array<{ id: string }>).map((provider) => provider.id)
-        expect(ids).not.toContain("nebius")
-        expect(ids).not.toContain("google")
+        expect(ids).not.toContain("venice")
+        expect(ids).toContain("google")
       },
     })
   })
@@ -74,15 +74,15 @@ describe("model route", () => {
   test("auth-only provider appears in list after credential is set", async () => {
     const original = ProviderAuth.methods
     ProviderAuth.methods = async () => ({
-      kernel: [
+      languagetool: [
         {
-          type: "oauth",
-          label: "OAuth",
+          type: "api",
+          label: "API key",
         },
       ],
     })
     try {
-      await Auth.set("kernel", {
+      await Auth.set("languagetool", {
         type: "api",
         key: "test-key",
       })
@@ -93,30 +93,30 @@ describe("model route", () => {
           expect(response.status).toBe(200)
           const data = await response.json()
           const ids = (data.all as Array<{ id: string }>).map((provider) => provider.id)
-          expect(ids).toContain("kernel")
-          expect(data.connected).toContain("kernel")
-          const entry = (data.all as Array<{ id: string; name?: string }>).find((provider) => provider.id === "kernel")
-          expect(entry?.name).toBe("Kernel")
+          expect(ids).toContain("languagetool")
+          expect(data.connected).toContain("languagetool")
+          const entry = (data.all as Array<{ id: string; name?: string }>).find(
+            (provider) => provider.id === "languagetool",
+          )
+          expect(entry?.name).toBe("LanguageTool")
         },
       })
     } finally {
       ProviderAuth.methods = original
-      await Auth.remove("kernel")
+      await Auth.remove("languagetool")
     }
   })
 
-  test("provider auth endpoints hide removed Google chat providers", async () => {
+  test("provider auth endpoints keep Antigravity auth and hide Gemini CLI", async () => {
     const original = ProviderAuth.methods
     ProviderAuth.methods = async () => ({
       "gemini-cli": [{ type: "oauth", label: "OAuth" }],
       "google-antigravity": [{ type: "oauth", label: "OAuth" }],
-      kernel: [{ type: "oauth", label: "OAuth" }],
     })
 
     try {
       await Auth.set("gemini-cli", { type: "oauth", access: "a", refresh: "r", expires: Date.now() + 60_000 })
       await Auth.set("google-antigravity", { type: "oauth", access: "a", refresh: "r", expires: Date.now() + 60_000 })
-      await Auth.set("kernel", { type: "api", key: "test-key" })
 
       await Instance.provide({
         directory: testDirectory,
@@ -125,22 +125,19 @@ describe("model route", () => {
           expect(authResponse.status).toBe(200)
           const authMethods = (await authResponse.json()) as Record<string, unknown>
           expect(authMethods["gemini-cli"]).toBeUndefined()
-          expect(authMethods["google-antigravity"]).toBeUndefined()
-          expect(authMethods.kernel).toBeDefined()
+          expect(authMethods["google-antigravity"]).toBeDefined()
 
           const statusResponse = await ModelRoute.request("/provider/auth/status")
           expect(statusResponse.status).toBe(200)
           const status = (await statusResponse.json()) as Record<string, unknown>
           expect(status["gemini-cli"]).toBeUndefined()
-          expect(status["google-antigravity"]).toBeUndefined()
-          expect(status.kernel).toBeDefined()
+          expect(status["google-antigravity"]).toBeDefined()
         },
       })
     } finally {
       ProviderAuth.methods = original
       await Auth.remove("gemini-cli")
       await Auth.remove("google-antigravity")
-      await Auth.remove("kernel")
     }
   })
 })

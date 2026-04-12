@@ -188,12 +188,12 @@ export function buildEscalation(error: Error, toolName: string): string {
   const msg = error.message.toLowerCase();
 
   if (msg.includes("econnrefused") || msg.includes("fetch failed")) {
-    if (toolName.includes("memory") || toolName.includes("qdrant")) {
-      return `Memory storage (Qdrant) is not reachable.
+    if (toolName.includes("memory")) {
+      return `Local memory storage is not reachable.
 
 To fix:
-1. Start Qdrant: docker run -p 6333:6333 qdrant/qdrant
-2. Or check if another process is using port 6333
+1. Run: zee memory prepare
+2. Check memory config in zee.jsonc
 
 Error: ${error.message}`;
     }

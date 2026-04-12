@@ -44,9 +44,8 @@ For the current repo configuration, the smallest useful live setup is:
 
 - `ANTHROPIC_API_KEY` for the default main agent
 - `OPENAI_API_KEY` for GPT-based flows and fallback coverage
-- `GEMINI_API_KEY` for summarize-related flows and optional memory embeddings
 
-Local file/SQLite memory works without external services. Add Qdrant only when you want vector semantic recall.
+Local SQLite memory and local embeddings work without external services.
 
 If you want investing workflows, also point Zee at an OpenBB Platform API instance with:
 
@@ -55,16 +54,13 @@ If you want investing workflows, also point Zee at an OpenBB Platform API instan
 
 ## 4. Start local services
 
-### Qdrant
+### Memory
 
-Qdrant is optional. When configured, Zee uses it for vector semantic memory; otherwise memory remains available through local files and SQLite keyword search.
-
-The default local Qdrant URL is `http://localhost:6333`.
-
-Example with Docker:
+Zee prepares local memory during package installation, setup, onboarding, and daemon installation. To inspect or repair it manually:
 
 ```bash
-docker run -p 6333:6333 qdrant/qdrant
+zee memory status
+zee memory prepare
 ```
 
 ### OpenBB
@@ -87,25 +83,21 @@ zee onboard --profile dcm --openbb-mode remote --acquire-keys
 
 ### Google
 
-Google Calendar auth is not stored in `.env`. Authenticate interactively:
+Google/Gemini LLM auth is opt-in. Prefer Antigravity auth when you want Gemini models through the agent:
+
+```bash
+zee auth login google-antigravity
+```
+
+The direct Gemini API-key path is also supported:
 
 ```bash
 zee auth login google
 ```
 
-The resulting credentials are stored under `~/.config/zee/credentials/google`.
+Calendar auth remains a separate explicit calendar-tool integration.
 
-This is separate from `GEMINI_API_KEY`, which is used by the current repo config for embeddings.
-
-### Splitwise
-
-Splitwise can be configured with `SPLITWISE_TOKEN` in `.env`, but the integration also supports Zee's auth store.
-
-If you prefer the auth store, use:
-
-```bash
-zee auth login splitwise
-```
+This is separate from memory. Zee memory embeddings are local-only by default.
 
 ## 6. Integration-specific variables
 
@@ -115,12 +107,11 @@ Usually useful first:
 
 - `ANTHROPIC_API_KEY`
 - `OPENAI_API_KEY`
-- `GEMINI_API_KEY`
+- `GEMINI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY`
 
 Optional provider keys:
 
 - `OPENROUTER_API_KEY`
-- `VOYAGE_API_KEY`
 
 ### Telegram
 
@@ -146,18 +137,6 @@ Configure:
 - `WACLI_STORE`
 - `ZEE_WA_UPDATE_TO`
 - `ZEE_WA_CALENDAR_TO`
-
-### Splitwise
-
-Required:
-
-- `SPLITWISE_TOKEN`
-
-Optional:
-
-- `SPLITWISE_BASE_URL`
-- `SPLITWISE_TIMEOUT_MS`
-- `SPLITWISE_TOKEN_FILE`
 
 ### GitHub
 
@@ -219,8 +198,8 @@ See `src/config/providers.ts` and `docs/providers/CREDENTIALS_MAP.md` for the br
 
 1. Create or update `.env`
 2. Source `.env` into your shell
-3. Start Qdrant if you need vector semantic memory
-4. Run `zee auth login google` if you need Calendar access
+3. Run `zee memory status`
+4. Run `zee auth login google` only if you need Calendar access
 5. Start or point at OpenBB if you need investing workflows
 6. Launch Zee
 
@@ -239,5 +218,5 @@ If you are using the daemon, restart it after updating `daemon.env` so the new e
 ## 9. Notes
 
 - Do not commit `.env` or `daemon.env`.
-- Qdrant and OpenBB are optional service dependencies, not API keys.
+- OpenBB is an optional service dependency, not an API key.
 - The automated test suite does not validate live external integrations; those need separate runtime verification with real credentials.

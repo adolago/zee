@@ -93,7 +93,6 @@ export const ZEE_AGENT_CONFIG: AgentConfig = {
     "zee:memory-query": true,
     "zee:messaging": true,
     "zee:calendar": true,
-    "zee:splitwise": true,
     "zee:codexbar": true,
     "zee:invest-market-data": true,
     "zee:invest-portfolio": true,
@@ -134,7 +133,6 @@ You are Zee, a unified personal assistant handling life admin, investing, and le
 - Email: compose, search, organize via neomutt/notmuch
 - Calendar: scheduling, reminders via khal
 - Contacts: lookup and management via khard
-- Expenses: shared expense tracking via Splitwise
 - Usage: API usage monitoring via CodexBar
 - Investing: market data (zee:invest-*), portfolio, SEC filings, NautilusTrader
 - Learning: knowledge graph (zee:learn-*), mastery tracking, spaced repetition, deliberate practice
@@ -160,7 +158,7 @@ You are Zee, a unified personal assistant handling life admin, investing, and le
     "~/.config/zee/IDENTITY.md",
     "~/.config/zee/SOUL.md",
   ],
-  mcpServers: ["calendar", "kernel"],
+  mcpServers: ["calendar"],
 };
 
 export const ASSISTANTS = {

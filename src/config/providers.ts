@@ -1,7 +1,7 @@
 /**
  * Unified Provider Registry
  *
- * Central registry of all external service providers (embedding, reranking, TTS, STT, image).
+ * Central registry of opt-in external service providers.
  * Each provider has an auth ID that maps to the Zee auth system.
  *
  * This enables:
@@ -16,12 +16,9 @@
 // =============================================================================
 
 export type ServiceType =
-  | "embedding"
-  | "reranking"
   | "tts"
   | "stt"
   | "image"
-  | "expenses"
   | "market_data";
 
 export interface ProviderDefinition {
@@ -52,18 +49,7 @@ export interface ProviderDefinition {
 // =============================================================================
 
 export const PROVIDERS: Record<string, ProviderDefinition> = {
-  // --- Cloud Providers ---
-  google: {
-    id: "google",
-    name: "Google AI",
-    services: ["embedding"],
-    envKey: "GOOGLE_API_KEY",
-    envAliases: ["GEMINI_API_KEY"],
-    authType: "api",
-    validateEndpoint: "https://generativelanguage.googleapis.com/v1/models",
-    website: "https://aistudio.google.com/apikey",
-  },
-
+  // --- Dictation ---
   wisprflow: {
     id: "wisprflow",
     name: "Wispr Flow",
@@ -74,37 +60,15 @@ export const PROVIDERS: Record<string, ProviderDefinition> = {
     website: "https://wisprflow.ai/",
   },
 
+  // --- Core media helpers ---
   openai: {
     id: "openai",
     name: "OpenAI",
-    services: ["tts", "image"],
+    services: ["image"],
     envKey: "OPENAI_API_KEY",
     authType: "api",
     validateEndpoint: "https://api.openai.com/v1/models",
     website: "https://platform.openai.com/api-keys",
-  },
-
-  voyage: {
-    id: "voyage",
-    name: "Voyage AI",
-    services: ["reranking"],
-    envKey: "VOYAGE_API_KEY",
-    authType: "api",
-    baseUrl: "https://api.voyageai.com/v1",
-    validateEndpoint: "https://api.voyageai.com/v1/models",
-    website: "https://dash.voyageai.com/api-keys",
-  },
-
-  elevenlabs: {
-    id: "elevenlabs",
-    name: "ElevenLabs",
-    services: ["tts"],
-    envKey: "ELEVENLABS_API_KEY",
-    envAliases: ["XI_API_KEY"],
-    authType: "api",
-    baseUrl: "https://api.elevenlabs.io",
-    validateEndpoint: "https://api.elevenlabs.io/v1/user",
-    website: "https://elevenlabs.io/app/settings/api-keys",
   },
 
   minimax: {
@@ -125,17 +89,6 @@ export const PROVIDERS: Record<string, ProviderDefinition> = {
     authType: "api",
     baseUrl: "https://api.minimax.io/v1",
     website: "https://platform.minimaxi.com/",
-  },
-
-  // --- Integration Providers ---
-  splitwise: {
-    id: "splitwise",
-    name: "Splitwise",
-    services: ["expenses"],
-    envKey: "SPLITWISE_TOKEN",
-    authType: "api",
-    baseUrl: "https://secure.splitwise.com/api/v3.0",
-    website: "https://secure.splitwise.com/oauth_clients",
   },
 
   // --- Market Data Providers (OpenBB-compatible) ---
@@ -278,25 +231,6 @@ export const PROVIDERS: Record<string, ProviderDefinition> = {
     website: "https://docs.tradingeconomics.com/",
   },
 
-  // --- Local Providers ---
-  vllm: {
-    id: "vllm",
-    name: "vLLM (Local)",
-    services: ["reranking"],
-    envKey: "VLLM_BASE_URL",
-    authType: "none",
-    baseUrl: "http://localhost:8000",
-    local: true,
-  },
-
-  edge: {
-    id: "edge",
-    name: "Microsoft Edge TTS",
-    services: ["tts"],
-    envKey: "",
-    authType: "none",
-    local: true,
-  },
 };
 
 // =============================================================================
@@ -433,12 +367,9 @@ export async function getApiKey(providerId: string): Promise<string | undefined>
  */
 export function listProvidersByService(): Record<ServiceType, ProviderDefinition[]> {
   const services: ServiceType[] = [
-    "embedding",
-    "reranking",
     "tts",
     "stt",
     "image",
-    "expenses",
     "market_data",
   ];
   const result = {} as Record<ServiceType, ProviderDefinition[]>;
