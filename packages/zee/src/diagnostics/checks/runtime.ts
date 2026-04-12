@@ -3,7 +3,7 @@
  * @description Core runtime environment health checks
  */
 
-import { execSync } from "child_process"
+import { execFileSync } from "child_process"
 import * as fs from "fs/promises"
 import * as os from "os"
 import * as path from "path"
@@ -13,7 +13,7 @@ import { OpenBB } from "../../paths"
 import { probeOpenBBAvailability } from "../../openbb/runtime"
 
 /** Minimum required Bun version */
-const MIN_BUN_VERSION = "1.0.0"
+const FALLBACK_MIN_BUN_VERSION = "1.0.0"
 
 /** Minimum required disk space in GB */
 const MIN_DISK_SPACE_GB = 1
@@ -58,6 +58,25 @@ function compareVersions(a: string, b: string): number {
   return 0
 }
 
+async function resolveMinimumBunVersion(): Promise<string> {
+  const candidates = [
+    path.resolve(process.cwd(), "package.json"),
+    path.resolve(process.cwd(), "..", "..", "package.json"),
+  ]
+  for (const candidate of candidates) {
+    try {
+      const raw = await fs.readFile(candidate, "utf-8")
+      const parsed = JSON.parse(raw) as { engines?: { bun?: string } }
+      const range = parsed.engines?.bun?.trim()
+      const match = range?.match(/\d+(?:\.\d+){0,2}/)
+      if (match?.[0]) return match[0]
+    } catch {
+      // Try the next candidate.
+    }
+  }
+  return FALLBACK_MIN_BUN_VERSION
+}
+
 /**
  * Check Bun runtime version
  */
@@ -65,9 +84,10 @@ async function checkBunVersion(): Promise<CheckResult> {
   const start = Date.now()
 
   try {
-    const output = execSync("bun --version", { encoding: "utf-8" }).trim()
+    const minBunVersion = await resolveMinimumBunVersion()
+    const output = execFileSync("bun", ["--version"], { encoding: "utf-8" }).trim()
     const version = output.replace(/^v/, "")
-    const meetsMinimum = compareVersions(version, MIN_BUN_VERSION) >= 0
+    const meetsMinimum = compareVersions(version, minBunVersion) >= 0
 
     return {
       id: "runtime.bun-version",
@@ -75,12 +95,12 @@ async function checkBunVersion(): Promise<CheckResult> {
       category: "runtime",
       status: meetsMinimum ? "pass" : "fail",
       message: meetsMinimum
-        ? `Bun ${version} (required: ≥${MIN_BUN_VERSION})`
-        : `Bun ${version} is below minimum ${MIN_BUN_VERSION}`,
+        ? `Bun ${version} (required: ≥${minBunVersion})`
+        : `Bun ${version} is below minimum ${minBunVersion}`,
       severity: meetsMinimum ? "info" : "critical",
       durationMs: Date.now() - start,
       autoFixable: false,
-      metadata: { version, minVersion: MIN_BUN_VERSION },
+      metadata: { version, minVersion: minBunVersion },
     }
   } catch (error) {
     return {
@@ -177,13 +197,33 @@ async function checkDiskSpace(): Promise<CheckResult> {
   const start = Date.now()
 
   try {
-    const homeDir = os.homedir()
-    const output = execSync(`df -BG "${homeDir}" | tail -1`, {
-      encoding: "utf-8",
-    })
-    const parts = output.trim().split(/\s+/)
-    const availableStr = parts[3]
-    const available = parseInt(availableStr.replace("G", ""), 10)
+    let available: number
+    if (process.platform === "win32") {
+      const root = path.parse(getStateDir()).root.replace(/\\$/, "")
+      const output = execFileSync(
+        "powershell.exe",
+        [
+          "-NoProfile",
+          "-NonInteractive",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-Command",
+          `$d = Get-CimInstance Win32_LogicalDisk | Where-Object { $_.DeviceID -eq '${root}' } | Select-Object -First 1; if ($null -ne $d) { [math]::Floor($d.FreeSpace / 1GB) }`,
+        ],
+        { encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"], windowsHide: true },
+      ).trim()
+      available = Number.parseInt(output, 10)
+    } else {
+      const output = execFileSync("df", ["-k", os.homedir()], {
+        encoding: "utf-8",
+        stdio: ["ignore", "pipe", "ignore"],
+      })
+      const line = output.trim().split(/\r?\n/)[1] ?? ""
+      const parts = line.trim().split(/\s+/)
+      available = Math.floor(Number.parseInt(parts[3] ?? "0", 10) / 1024 / 1024)
+    }
+
+    if (!Number.isFinite(available)) throw new Error("disk space unavailable")
 
     const isOk = available >= MIN_DISK_SPACE_GB
 

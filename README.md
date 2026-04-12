@@ -8,15 +8,15 @@ Zee is a unified CLI agent engine for life admin, investing, and learning. Seman
 ## Release
 
 - **Version:** see `zee --version`
-- **Prebuilt targets:** Linux x64
+- **Prebuilt targets:** Linux x64 and Windows x64
 - **Other platforms:** build from source
 
 ## Quick Start
 
 ### Prerequisites
 
-- [Bun](https://bun.sh) (v1.1+)
-- [Qdrant](https://qdrant.tech) (local) for semantic memory
+- [Bun](https://bun.sh) satisfying the package `engines.bun` range
+- [Qdrant](https://qdrant.tech) (optional) for vector semantic memory
 - [OpenBB Platform API](https://docs.openbb.co/platform/developer_guide/api) for investing workflows (`http://127.0.0.1:6900` by default or `ZEE_OPENBB_API_URL`)
 - API key for your model provider (Anthropic, OpenAI, Google, etc.)
 
@@ -60,6 +60,19 @@ export ZEE_OPENBB_API_URL=http://127.0.0.1:6900
 export ZEE_OPENBB_API_CMD=openbb-api
 ```
 
+To create a local finance workspace with file-backed memory and OpenBB provider setup prompts:
+
+```bash
+zee onboard --profile dcm --openbb-mode remote --acquire-keys
+```
+
+Provider keys can also be acquired one at a time:
+
+```bash
+zee auth acquire fred
+zee auth acquire polygon
+```
+
 ### Configuration
 
 Zee reads JSONC config from `~/.config/zee/zee.jsonc` or `.zee/zee.jsonc`.
@@ -85,24 +98,24 @@ To override only the workspace location, set `ZEE_WORKSPACE_DIR`.
 
 Use `zee paths` to print the resolved locations.
 
-Example memory + embeddings configuration:
+Zee defaults to local file/SQLite memory. Add Qdrant and embeddings only when you want vector semantic recall:
 
 ```jsonc
 {
   "memory": {
     "qdrant": {
       "url": "http://localhost:6333",
-      "collection": "agent_memory"
+      "collection": "agent_memory",
     },
     "embedding": {
       "profile": "google/gemini-embedding-2-preview",
-      "dimensions": 3072
-    }
-  }
+      "dimensions": 3072,
+    },
+  },
 }
 ```
 
-Configure Google embeddings credentials (single source of truth):
+Configure Google embeddings credentials when vector semantic memory is enabled:
 
 ```bash
 zee auth login google
@@ -121,7 +134,7 @@ zee auth login
 
 Select **Google** when prompted.
 
-Start Qdrant (if running locally):
+Start Qdrant only when running local vector semantic memory:
 
 ```bash
 docker run -p 6333:6333 qdrant/qdrant
@@ -194,7 +207,7 @@ zee/
 ├── packages/zee/    # Main CLI/TUI/daemon
 ├── src/
 │   ├── agent/              # Assistant profiles and wiring
-│   ├── memory/             # Qdrant semantic memory
+│   ├── memory/             # File/SQLite memory with optional Qdrant vectors
 │   └── domain/             # Domain tools (zee/, learning/)
 └── .agents/skills/         # Skills
 ```
@@ -209,7 +222,7 @@ Zee is the only active assistant. The engine still exposes domain toolsets under
 
 ### Key Features
 
-- **Semantic Memory**: Vector-based memory with Qdrant for context persistence
+- **Memory**: File/SQLite-backed memory by default, with optional Qdrant vectors for semantic recall
 - **Single Assistant Runtime**: No assistant switching or delegation required
 - **Embedded Gateway**: Zee messaging gateway launched and supervised by the daemon
 

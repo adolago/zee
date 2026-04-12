@@ -20,6 +20,7 @@ const log = Log.create({ service: "setup-check" })
 
 export interface SetupCheckResult {
   ok: boolean
+  strict: boolean
   qdrant: {
     available: boolean
     url: string
@@ -257,6 +258,7 @@ function getQdrantUrl(): string {
 export async function runSetupCheck(): Promise<SetupCheckResult> {
   const warnings: string[] = []
   const errors: string[] = []
+  const strict = process.env.ZEE_STRICT_SETUP === "1" || process.env.ZEE_REQUIRE_MEMORY === "1"
 
   const qdrantUrl = getQdrantUrl()
   const qdrantCheck = await checkQdrantConnectivity(qdrantUrl)
@@ -266,14 +268,24 @@ export async function runSetupCheck(): Promise<SetupCheckResult> {
   const missingEnvWarnings = await scanMissingEnvPlaceholders().catch(() => [])
 
   if (!qdrantCheck.available) {
-    errors.push(`Qdrant not available at ${qdrantUrl}: ${qdrantCheck.error}`)
-    errors.push("  Run: docker compose up -d   OR   zee setup")
+    const message = `Qdrant not available at ${qdrantUrl}: ${qdrantCheck.error}`
+    if (strict) {
+      errors.push(message)
+      errors.push("  Run: docker compose up -d   OR   zee setup --services")
+    } else {
+      warnings.push(`${message}; semantic memory will use local file/SQLite mode until Qdrant is configured.`)
+    }
   }
 
   if (!googleCheck.available) {
-    errors.push("Google/Gemini API key not found (required for memory embeddings, regardless of chat provider)")
-    errors.push("  Run: zee auth login google")
-    errors.push(`  Stores in: ${AUTH_JSON_DATA_PATH} (or ${AUTH_JSON_STATE_PATH})`)
+    const message = "Google/Gemini API key not found; embeddings will stay disabled until configured."
+    if (strict) {
+      errors.push("Google/Gemini API key not found (required for strict semantic memory)")
+      errors.push("  Run: zee auth login google")
+      errors.push(`  Stores in: ${AUTH_JSON_DATA_PATH} (or ${AUTH_JSON_STATE_PATH})`)
+    } else {
+      warnings.push(message)
+    }
   }
 
   if (missingEnvWarnings.length > 0) {
@@ -286,10 +298,11 @@ export async function runSetupCheck(): Promise<SetupCheckResult> {
     if (openbbCheck.action) warnings.push(`OpenBB remediation: ${openbbCheck.action}`)
   }
 
-  const ok = qdrantCheck.available && googleCheck.available
+  const ok = strict ? qdrantCheck.available && googleCheck.available : true
 
   const result: SetupCheckResult = {
     ok,
+    strict,
     qdrant: {
       available: qdrantCheck.available,
       url: qdrantUrl,
@@ -362,7 +375,7 @@ export function formatSetupCheckResult(result: SetupCheckResult): string {
 
   // Summary
   if (result.ok) {
-    lines.push("Status: Ready")
+    lines.push(result.strict ? "Status: Ready" : "Status: Ready (degraded services are optional)")
   } else {
     lines.push("Status: Setup required")
     lines.push("")

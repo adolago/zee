@@ -263,10 +263,10 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
 
   // Run setup check unless explicitly skipped.
   if (!skipSetupCheck) {
-    const setupResult = await validateSetup({ exitOnFail: false, verbose: true })
+    const setupResult = await validateSetup({ exitOnFail: false, verbose: false })
     setupOk = setupResult.ok
     if (!setupResult.ok) {
-      log.error("setup validation failed; refusing to start", {
+      log.error("strict setup validation failed; refusing to start", {
         errors: setupResult.errors,
         warnings: setupResult.warnings,
         qdrantAvailable: setupResult.qdrant.available,

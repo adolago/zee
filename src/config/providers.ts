@@ -236,6 +236,14 @@ export const PROVIDERS: Record<string, ProviderDefinition> = {
     authType: "api",
     website: "https://data.nasdaq.com/",
   },
+  polygon: {
+    id: "polygon",
+    name: "Polygon.io",
+    services: ["market_data"],
+    envKey: "POLYGON_API_KEY",
+    authType: "api",
+    website: "https://polygon.io/dashboard/api-keys",
+  },
   sec: {
     id: "sec",
     name: "SEC EDGAR",

@@ -19,6 +19,7 @@ import { modify, applyEdits } from "jsonc-parser"
 import { Skill } from "../../skill"
 import { createAuthorizedFetch } from "@/server/auth"
 import { AuthImportOpenCodeCommand } from "./auth-import-opencode"
+import { AuthAcquireCommand } from "./auth-acquire"
 import {
   listProvidersByService,
   hasCredentials,
@@ -116,6 +117,10 @@ const AUTH_ONLY_PROVIDERS: Record<string, { name: string; hint?: string }> = {
   nasdaq: {
     name: "Nasdaq Data Link",
     hint: "NASDAQ_API_KEY",
+  },
+  polygon: {
+    name: "Polygon.io",
+    hint: "POLYGON_API_KEY",
   },
   sec: {
     name: "SEC EDGAR",
@@ -706,6 +711,7 @@ export const AuthCommand = cmd({
   builder: (yargs) =>
     yargs
       .command(AuthLoginCommand)
+      .command(AuthAcquireCommand)
       .command(AuthLogoutCommand)
       .command(AuthImportOpenCodeCommand)
       .command(AuthListCommand)

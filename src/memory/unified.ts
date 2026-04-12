@@ -548,7 +548,7 @@ export class Memory {
     // Initialize local keyword index first so degraded reads can work if Qdrant is down.
     await this.initLocalIndex();
 
-    const maxRetries = 3;
+    const maxRetries = this.localIndex.enabled ? 1 : 3;
     const baseDelay = 1000; // 1 second
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -1362,38 +1362,25 @@ export class Memory {
   async save(input: MemoryInput): Promise<MemoryEntry> {
     await this.init();
 
-    // Graceful degradation if memory unavailable
-    if (!this.isAvailable()) {
-      log.warn("Memory save skipped - storage unavailable", { category: input.category });
-      const id = randomUUID();
-      const now = Date.now();
-      return {
-        id,
-        category: input.category,
-        content: input.content,
-        summary: input.summary,
-        embedding: [],
-        metadata: input.metadata ?? {},
-        createdAt: now,
-        accessedAt: now,
-        ttl: input.ttl,
-        namespace: input.namespace ?? this.namespace,
-      };
+    const storageAvailable = this.isAvailable();
+    if (!storageAvailable) {
+      log.warn("Memory save continuing in local-only mode - storage unavailable", { category: input.category });
     }
-
     const id = randomUUID();
     const now = Date.now();
-    const vector = await this.embedding.embed(
-      input.content,
-      this.buildDocumentEmbeddingOptions(input),
-    );
+    const vector = storageAvailable
+      ? await this.embedding.embed(
+          input.content,
+          this.buildDocumentEmbeddingOptions(input),
+        )
+      : [];
 
     // Version control: if memoryId provided, look for existing current version
     let memoryId = input.memoryId ?? randomUUID();
     let version = 1;
     let parentVersion: number | undefined;
 
-    if (input.memoryId) {
+    if (storageAvailable && input.memoryId) {
       try {
         const existing = await this.storage.scroll({
           filter: { memoryId: input.memoryId, superseded: false, type: "memory" },
@@ -1460,41 +1447,51 @@ export class Memory {
       lastChallenged: input.confidence !== undefined ? now : undefined,
     };
 
-    await this.storage.insert([{
-      id,
-      vector,
-      payload: {
-        type: "memory" as EntryType,
-        category: entry.category,
-        content: entry.content,
-        summary: entry.summary,
-        embeddingModel: entry.embeddingModel,
-        embeddingDimensions: entry.embeddingDimensions,
-        metadata: entry.metadata,
-        createdAt: entry.createdAt,
-        accessedAt: entry.accessedAt,
-        ttl: entry.ttl,
-        expiresAt: entry.ttl ? entry.createdAt + entry.ttl : 0,
-        namespace: entry.namespace,
-        // Enhanced payload fields
-        domain: entry.domain,
-        topic: entry.topic,
-        subtopic: entry.subtopic,
-        memoryId: entry.memoryId,
-        version: entry.version,
-        parentVersion: entry.parentVersion,
-        superseded: false,
-        kind: entry.kind,
-        priority: entry.priority,
-        bookmarked: entry.bookmarked,
-        memoryType: entry.memoryType,
-        // Opinion Confidence
-        confidence: entry.confidence,
-        evidenceFor: entry.evidenceFor,
-        evidenceAgainst: entry.evidenceAgainst,
-        lastChallenged: entry.lastChallenged,
-      },
-    }]);
+    if (storageAvailable) {
+      try {
+        await this.storage.insert([{
+          id,
+          vector,
+          payload: {
+            type: "memory" as EntryType,
+            category: entry.category,
+            content: entry.content,
+            summary: entry.summary,
+            embeddingModel: entry.embeddingModel,
+            embeddingDimensions: entry.embeddingDimensions,
+            metadata: entry.metadata,
+            createdAt: entry.createdAt,
+            accessedAt: entry.accessedAt,
+            ttl: entry.ttl,
+            expiresAt: entry.ttl ? entry.createdAt + entry.ttl : 0,
+            namespace: entry.namespace,
+            // Enhanced payload fields
+            domain: entry.domain,
+            topic: entry.topic,
+            subtopic: entry.subtopic,
+            memoryId: entry.memoryId,
+            version: entry.version,
+            parentVersion: entry.parentVersion,
+            superseded: false,
+            kind: entry.kind,
+            priority: entry.priority,
+            bookmarked: entry.bookmarked,
+            memoryType: entry.memoryType,
+            // Opinion Confidence
+            confidence: entry.confidence,
+            evidenceFor: entry.evidenceFor,
+            evidenceAgainst: entry.evidenceAgainst,
+            lastChallenged: entry.lastChallenged,
+          },
+        }]);
+      } catch (err) {
+        log.warn("Memory storage insert failed; keeping local index/markdown copy", {
+          id: entry.id,
+          category: entry.category,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
 
     // Index in SQLite FTS for hybrid search
     if (this.ftsStore) {
@@ -1519,7 +1516,7 @@ export class Memory {
     }
 
     // Maintain context tree directory indexes
-    if (input.domain) {
+    if (storageAvailable && input.domain) {
       await this.upsertTreeIndexes(input.domain, input.topic, input.subtopic);
     }
 

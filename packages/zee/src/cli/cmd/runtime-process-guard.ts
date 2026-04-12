@@ -182,6 +182,13 @@ function collectWindowsRawProcesses(): RawRuntimeProcess[] {
   }
 }
 
+function isWindowsShellWrapper(entry: RawRuntimeProcess): boolean {
+  if (process.platform !== "win32") return false
+  const base = path.basename(entry.exePath ?? "").toLowerCase()
+  if (!["powershell.exe", "pwsh.exe", "cmd.exe", "conhost.exe"].includes(base)) return false
+  return !isZeeExecutablePath(entry.exePath)
+}
+
 function getEnvInt(key: string): number | undefined {
   const raw = process.env[key]?.trim()
   if (!raw) return undefined
@@ -222,9 +229,14 @@ function isLikelyInteractiveClientCommand(command: string): boolean {
 
 async function resolveExpectedExecutablePaths(): Promise<Set<string>> {
   const configured = process.env.ZEE_EXPECTED_EXE?.trim()
-  const candidates = [configured, path.join(os.homedir(), ".bun", "bin", "zee"), process.execPath].filter(
-    (value): value is string => Boolean(value),
-  )
+  const bunBin = path.join(os.homedir(), ".bun", "bin")
+  const candidates = [
+    configured,
+    process.execPath,
+    ...(process.platform === "win32"
+      ? [path.join(bunBin, "zee.exe"), path.join(bunBin, "zee.cmd"), path.join(bunBin, "zee.ps1")]
+      : [path.join(bunBin, "zee")]),
+  ].filter((value): value is string => Boolean(value))
 
   const paths = new Set<string>()
   for (const candidate of candidates) {
@@ -376,7 +388,24 @@ export function classifyRuntimeProcess(command: string): RuntimeKind {
 }
 
 function shouldTrack(command: string): boolean {
-  return command.includes("zee") || Boolean(extractMcpServerName(command))
+  if (extractMcpServerName(command)) return true
+  const normalized = command.replace(/\\/g, "/")
+  if (/(^|[\s"'])zee(\.exe|\.cmd|\.ps1)?($|[\s"'])/i.test(normalized)) return true
+  if (/(^|[\s"'])(?:[A-Za-z]:)?[^"'\s]*\/bin\/zee(\.exe)?($|[\s"'])/i.test(normalized)) return true
+  if (/(^|[\s"'])src\/index\.ts($|[\s"'])/i.test(normalized) && /\bbun(\.exe)?\b/i.test(normalized)) return true
+  return false
+}
+
+function isTransientDiagnosticCommand(command: string): boolean {
+  const normalized = command.replace(/\\/g, "/").toLowerCase()
+  return (
+    /\bsrc\/index\.ts\s+check\b/.test(normalized) ||
+    /\bsrc\/index\.ts\s+debug\s+status\b/.test(normalized) ||
+    /\bsrc\/index\.ts\s+doctor\s+runtime\b/.test(normalized) ||
+    /\bzee(\.exe|\.cmd|\.ps1)?\s+check\b/.test(normalized) ||
+    /\bzee(\.exe|\.cmd|\.ps1)?\s+debug\s+status\b/.test(normalized) ||
+    /\bzee(\.exe|\.cmd|\.ps1)?\s+doctor\s+runtime\b/.test(normalized)
+  )
 }
 
 function computeCounts(entries: RuntimeProcessEntry[]): RuntimeCounts {
@@ -486,6 +515,7 @@ export async function collectRuntimeSnapshot(
   const raw = collectRawRuntimeProcesses()
   const unique = new Map<number, RawRuntimeProcess>()
   for (const entry of raw) {
+    if (isWindowsShellWrapper(entry)) continue
     if (!shouldTrack(entry.command)) continue
     if (entry.pid === currentPid) continue
     if (!unique.has(entry.pid)) unique.set(entry.pid, entry)
@@ -540,12 +570,12 @@ export async function collectRuntimeSnapshot(
     }),
   )
 
-  const trackedEntries = entries.filter(
-    (entry) =>
-      entry.kind === "mcp_server" ||
-      entry.zeeExecutable ||
-      (process.platform === "win32" && shouldTrack(entry.command)),
-  )
+  const trackedEntries = entries.filter((entry) => {
+    if (isTransientDiagnosticCommand(entry.command)) return false
+    return (
+      entry.kind === "mcp_server" || entry.zeeExecutable || (process.platform === "win32" && shouldTrack(entry.command))
+    )
+  })
 
   trackedEntries.sort((a, b) => a.pid - b.pid)
   const counts = computeCounts(trackedEntries)

@@ -5,9 +5,11 @@ import { Config } from "../../../config/config"
 import { Global } from "../../../global"
 import { Flag } from "../../../flag/flag"
 import { createAuthorizedFetch } from "../../../server/auth"
+import { collectRuntimeSnapshot } from "../runtime-process-guard"
 import fs from "fs/promises"
 import fsSync from "node:fs"
 import path from "path"
+import os from "os"
 import net from "net"
 import { Style, Symbols } from "../../style"
 import { Timestamp } from "../../../util/timestamp"
@@ -123,10 +125,13 @@ type DaemonHealth = Installation.RuntimeInfo & {
 
 function resolvePathBinary(): string | undefined {
   const pathEnv = process.env.PATH ?? ""
+  const names = process.platform === "win32" ? ["zee.exe", "zee.cmd", "zee.ps1", "zee"] : ["zee"]
   for (const dir of pathEnv.split(path.delimiter)) {
     if (!dir) continue
-    const candidate = path.join(dir, "zee")
-    if (fsSync.existsSync(candidate)) return candidate
+    for (const name of names) {
+      const candidate = path.join(dir, name)
+      if (fsSync.existsSync(candidate)) return candidate
+    }
   }
   return undefined
 }
@@ -150,14 +155,21 @@ function describeBinary(pathname: string, source: string): BinaryInfo {
 
 function resolveBinaryCandidates(): BinaryInfo[] {
   const candidates: Array<{ path: string; source: string }> = []
-  const home = process.env.HOME ?? ""
+  const home = os.homedir()
   const pathBinary = resolvePathBinary()
   if (pathBinary) candidates.push({ path: pathBinary, source: "PATH" })
   if (process.env.ZEE_BIN_PATH) {
     candidates.push({ path: process.env.ZEE_BIN_PATH, source: "ZEE_BIN_PATH" })
   }
   if (home) {
-    candidates.push({ path: path.join(home, ".bun", "bin", "zee"), source: "BUN_LINK" })
+    const bunBin = path.join(home, ".bun", "bin")
+    if (process.platform === "win32") {
+      candidates.push({ path: path.join(bunBin, "zee.cmd"), source: "BUN_LINK" })
+      candidates.push({ path: path.join(bunBin, "zee.ps1"), source: "BUN_LINK" })
+      candidates.push({ path: path.join(bunBin, "zee.exe"), source: "BUN_LINK" })
+    } else {
+      candidates.push({ path: path.join(bunBin, "zee"), source: "BUN_LINK" })
+    }
     candidates.push({ path: path.join(home, "bin", "zee"), source: "LEGACY_HOME_BIN" })
     candidates.push({ path: path.join(home, ".local", "bin", "zee"), source: "LEGACY_LOCAL_BIN" })
   }
@@ -239,39 +251,26 @@ async function collectStatus(verbose: boolean): Promise<SystemStatus> {
   if (pathBinary && bunLink) {
     const pathResolved = pathBinary.resolved ?? pathBinary.path
     const bunResolved = bunLink.resolved ?? bunLink.path
-    if (pathResolved !== bunResolved) {
+    const equivalentWindowsLaunchers =
+      process.platform === "win32" &&
+      path.dirname(pathResolved).toLowerCase() === path.dirname(bunResolved).toLowerCase() &&
+      ["zee.cmd", "zee.ps1", "zee.exe"].includes(path.basename(pathResolved).toLowerCase()) &&
+      ["zee.cmd", "zee.ps1", "zee.exe"].includes(path.basename(bunResolved).toLowerCase())
+    if (pathResolved !== bunResolved && !equivalentWindowsLaunchers) {
       status.issues.push(`PATH zee points to ${pathBinary.path} (expected ${bunLink.path})`)
     }
   }
 
-  // Check for running processes
-  try {
-    const { execSync } = await import("child_process")
-    const psOutput = execSync('pgrep -af "(zee)" 2>/dev/null || true', { encoding: "utf-8" })
-    const lines = psOutput.trim().split("\n").filter(Boolean)
-
-    for (const line of lines) {
-      const match = line.match(/^(\d+)\s+(.*)$/)
-      if (!match) continue
-      const pid = parseInt(match[1])
-      const cmd = match[2]
-
-      // Skip ourselves and grep
-      if (cmd.includes("pgrep") || cmd.includes("status")) continue
-
-      let type = "unknown"
-      if (cmd.includes("daemon")) type = "daemon"
-      else if (cmd.includes("print-logs") || cmd.match(/\/bin\/zee$/)) type = "tui"
-
-      status.processes.push({ pid, type, cmd })
-
-      if (type === "daemon") {
+  const processSnapshot = await collectRuntimeSnapshot().catch(() => undefined)
+  if (processSnapshot) {
+    for (const entry of processSnapshot.processes) {
+      const type = entry.kind === "zee_other" ? "client" : entry.kind
+      status.processes.push({ pid: entry.pid, type, cmd: entry.command })
+      if (entry.kind === "daemon") {
         status.daemon.running = true
-        status.daemon.pid = pid
+        status.daemon.pid = entry.pid
       }
     }
-  } catch {
-    // Ignore process check errors
   }
 
   // Daemon health check
@@ -332,22 +331,10 @@ async function collectStatus(verbose: boolean): Promise<SystemStatus> {
     status.gateway.listening = false
   }
 
-  try {
-    const { execSync } = await import("child_process")
-    const gatewayOutput = execSync('pgrep -af "zee.*gateway" 2>/dev/null || true', { encoding: "utf-8" })
-    const lines = gatewayOutput.trim().split("\n").filter(Boolean)
-    status.gateway.processes = lines
-      .map((line) => {
-        const match = line.match(/^(\d+)\s+(.*)$/)
-        if (!match) return null
-        const cmd = match[2]
-        if (cmd.includes("pgrep")) return null
-        return { pid: Number.parseInt(match[1], 10), cmd }
-      })
-      .filter((entry): entry is { pid: number; cmd: string } => Boolean(entry))
-  } catch {
-    // Ignore gateway process check errors
-  }
+  status.gateway.processes =
+    processSnapshot?.processes
+      .filter((entry) => entry.kind === "gateway")
+      .map((entry) => ({ pid: entry.pid, cmd: entry.command })) ?? []
 
   if (status.gateway.configured && !status.gateway.listening) {
     status.gateway.issues.push("Gateway configured but not listening")

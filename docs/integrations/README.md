@@ -1,9 +1,11 @@
 # Live Integrations Setup
+
 This guide covers the local setup needed to run Zee with real providers, OAuth credentials, and external services instead of test fixtures.
 
 Examples assume a Linux or WSL shell from the repository root.
 
 ## 1. Create a local env file
+
 Start from the checked-in example:
 
 ```bash
@@ -16,6 +18,7 @@ Fill only the integrations you plan to use. `.env` is local-only and gitignored.
 If you already created a local `.env`, update that file instead of copying a new one.
 
 ## 2. Make the variables available to Zee
+
 `zee.jsonc` resolves `{env:VAR}` placeholders from the current process environment.
 
 For interactive development, export the local `.env` into your shell before launching Zee:
@@ -36,12 +39,14 @@ cp .env ~/.config/zee/daemon.env
 `daemon.env` may contain plain `KEY=value` lines or `export KEY=value` lines.
 
 ## 3. Minimal live setup
+
 For the current repo configuration, the smallest useful live setup is:
 
 - `ANTHROPIC_API_KEY` for the default main agent
 - `OPENAI_API_KEY` for GPT-based flows and fallback coverage
-- `GEMINI_API_KEY` for memory embeddings and summarize-related flows
-- a local Qdrant instance on `http://localhost:6333`
+- `GEMINI_API_KEY` for summarize-related flows and optional memory embeddings
+
+Local file/SQLite memory works without external services. Add Qdrant only when you want vector semantic recall.
 
 If you want investing workflows, also point Zee at an OpenBB Platform API instance with:
 
@@ -49,8 +54,12 @@ If you want investing workflows, also point Zee at an OpenBB Platform API instan
 - optionally `ZEE_OPENBB_API_CMD`
 
 ## 4. Start local services
+
 ### Qdrant
-Semantic memory expects a local Qdrant instance. The default repo config points to `http://localhost:6333`.
+
+Qdrant is optional. When configured, Zee uses it for vector semantic memory; otherwise memory remains available through local files and SQLite keyword search.
+
+The default local Qdrant URL is `http://localhost:6333`.
 
 Example with Docker:
 
@@ -59,6 +68,7 @@ docker run -p 6333:6333 qdrant/qdrant
 ```
 
 ### OpenBB
+
 Investing workflows require an OpenBB Platform API. Point `ZEE_OPENBB_API_URL` at a running instance:
 
 ```bash
@@ -67,8 +77,16 @@ export ZEE_OPENBB_API_URL=http://127.0.0.1:6900
 export ZEE_OPENBB_API_CMD=openbb-api
 ```
 
+For a finance workspace with provider setup prompts, run:
+
+```bash
+zee onboard --profile dcm --openbb-mode remote --acquire-keys
+```
+
 ## 5. OAuth-backed integrations
+
 ### Google
+
 Google Calendar auth is not stored in `.env`. Authenticate interactively:
 
 ```bash
@@ -80,6 +98,7 @@ The resulting credentials are stored under `~/.config/zee/credentials/google`.
 This is separate from `GEMINI_API_KEY`, which is used by the current repo config for embeddings.
 
 ### Splitwise
+
 Splitwise can be configured with `SPLITWISE_TOKEN` in `.env`, but the integration also supports Zee's auth store.
 
 If you prefer the auth store, use:
@@ -89,7 +108,9 @@ zee auth login splitwise
 ```
 
 ## 6. Integration-specific variables
+
 ### Core providers
+
 Usually useful first:
 
 - `ANTHROPIC_API_KEY`
@@ -102,6 +123,7 @@ Optional provider keys:
 - `VOYAGE_API_KEY`
 
 ### Telegram
+
 Required:
 
 - `TELEGRAM_BOT_TOKEN`
@@ -115,6 +137,7 @@ Optional:
 - `ZEE_API_TOKEN`
 
 ### WhatsApp
+
 WhatsApp uses a local bridge instead of an API key.
 
 Configure:
@@ -125,6 +148,7 @@ Configure:
 - `ZEE_WA_CALENDAR_TO`
 
 ### Splitwise
+
 Required:
 
 - `SPLITWISE_TOKEN`
@@ -136,6 +160,7 @@ Optional:
 - `SPLITWISE_TOKEN_FILE`
 
 ### GitHub
+
 Required for GitHub-backed automation:
 
 - `GITHUB_TOKEN`
@@ -145,6 +170,7 @@ Alternative commonly supported by GitHub tooling:
 - `GH_TOKEN`
 
 ### WHOOP skill
+
 Required:
 
 - `WHOOP_CLIENT_ID`
@@ -155,6 +181,7 @@ Usually also set:
 - `WHOOP_REDIRECT_URI`
 
 ### Home Assistant skill
+
 Required:
 
 - `HASS_TOKEN`
@@ -164,6 +191,7 @@ Optional:
 - `HASS_SERVER`
 
 ### TUWEL
+
 Uses login credentials rather than an API key:
 
 - `TUWEL_EMAIL`
@@ -171,6 +199,7 @@ Uses login credentials rather than an API key:
 - optionally `TUWEL_BASE_URL`
 
 ### OpenBB market-data providers
+
 Some investing workflows depend on additional provider-specific keys exposed through OpenBB-compatible integrations.
 
 Common examples include:
@@ -179,19 +208,24 @@ Common examples include:
 - `FRED_API_KEY`
 - `FMP_API_KEY`
 - `NASDAQ_API_KEY`
+- `POLYGON_API_KEY`
 - `SEC_IDENTITY`
+
+Use `zee auth acquire --free-only` to list supported free or free-registration OpenBB providers, or `zee auth acquire fred` to acquire one provider key. Zee stores compatible keys in the Zee auth store and OpenBB `user_settings.json`.
 
 See `src/config/providers.ts` and `docs/providers/CREDENTIALS_MAP.md` for the broader provider registry.
 
 ## 7. Recommended bring-up order
+
 1. Create or update `.env`
 2. Source `.env` into your shell
-3. Start Qdrant
+3. Start Qdrant if you need vector semantic memory
 4. Run `zee auth login google` if you need Calendar access
 5. Start or point at OpenBB if you need investing workflows
 6. Launch Zee
 
 ## 8. Quick verification
+
 After sourcing `.env`, verify the basic runtime:
 
 ```bash
@@ -203,6 +237,7 @@ zee gateway status
 If you are using the daemon, restart it after updating `daemon.env` so the new environment is picked up.
 
 ## 9. Notes
+
 - Do not commit `.env` or `daemon.env`.
-- Qdrant and OpenBB are service dependencies, not API keys.
+- Qdrant and OpenBB are optional service dependencies, not API keys.
 - The automated test suite does not validate live external integrations; those need separate runtime verification with real credentials.

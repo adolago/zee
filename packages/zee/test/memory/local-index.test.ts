@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { resetMarkdownSync } from "../../../../src/memory/markdown-sync";
 import type { FtsSearchResult } from "../../../../src/memory/sqlite-fts";
 import { Memory } from "../../../../src/memory/unified";
 
@@ -86,5 +87,38 @@ describe("memory local index degraded reads", () => {
     expect(stats.localIndex.degradedRead).toBe("keyword_only");
     expect(stats.localIndex.totalEntries).toBe(2);
     expect(stats.fts?.totalEntries).toBe(2);
+  });
+
+  it("saves to the local index when Qdrant is unavailable", async () => {
+    resetMarkdownSync();
+    const indexed: Array<{ id: string; content: string; category?: string }> = [];
+    const memory = new Memory({
+      embedding: { provider: "google", dimensions: 384 },
+      localIndex: {
+        enabled: true,
+        backend: "sqlite-fts",
+        degradedRead: "keyword_only",
+      },
+      markdown: { enabled: false },
+    });
+    const mem = memory as any;
+    mem.init = async () => {};
+    mem.initialized = false;
+    mem.initFailed = true;
+    mem.ftsStore = {
+      index: (entry: { id: string; content: string; category?: string }) => indexed.push(entry),
+      stats: () => ({ totalEntries: indexed.length, dbSizeBytes: 256 }),
+    };
+
+    const entry = await memory.save({
+      category: "fact",
+      content: "Treasury refunding notes should be checked before DCM market updates.",
+    });
+
+    expect(entry.embedding).toEqual([]);
+    expect(indexed).toHaveLength(1);
+    expect(indexed[0].content).toContain("Treasury refunding");
+    expect(indexed[0].category).toBe("fact");
+    resetMarkdownSync();
   });
 });

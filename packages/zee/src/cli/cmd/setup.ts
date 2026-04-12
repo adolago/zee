@@ -7,16 +7,19 @@ import * as prompts from "@clack/prompts"
 import { ensureManagedOpenBBDirectories, type OpenBBRuntimeConfigLike } from "../../openbb/runtime"
 import { OpenBB } from "../../paths"
 import { Config } from "../../config/config"
+import { runOnboard } from "./onboard"
 
-type SetupProfile = "assistant" | "engine"
+type SetupProfile = "assistant" | "engine" | "investment-research" | "dcm"
 
 type SetupArgs = {
   profile?: SetupProfile
   "skip-profile"?: boolean
   "skip-openbb"?: boolean
+  services?: boolean
 }
 
 function buildOnboardingProfileConfig(profile: SetupProfile) {
+  const runtimeProfile = profile === "engine" ? "engine" : "assistant"
   const secureControlUiAuth = {
     required: true,
     mode: "token",
@@ -24,10 +27,10 @@ function buildOnboardingProfileConfig(profile: SetupProfile) {
     allowInsecureHttp: false,
   } as const
 
-  if (profile === "assistant") {
+  if (runtimeProfile === "assistant") {
     return {
       $schema: "zee",
-      profile,
+      profile: runtimeProfile,
       server: {
         hostname: "127.0.0.1",
       },
@@ -51,7 +54,7 @@ function buildOnboardingProfileConfig(profile: SetupProfile) {
 
   return {
     $schema: "zee",
-    profile,
+    profile: runtimeProfile,
     server: {
       hostname: "127.0.0.1",
     },
@@ -105,8 +108,9 @@ async function maybeApplyOnboardingProfile(args: SetupArgs): Promise<boolean> {
   fs.mkdirSync(Global.Path.config, { recursive: true })
   fs.writeFileSync(configPath, JSON.stringify(buildOnboardingProfileConfig(profile), null, 2) + "\n")
 
-  UI.success(`Onboarding profile '${profile}' written to ${configPath}`)
-  if (profile === "assistant") {
+  const runtimeProfile = profile === "engine" ? "engine" : "assistant"
+  UI.success(`Onboarding profile '${runtimeProfile}' written to ${configPath}`)
+  if (runtimeProfile === "assistant") {
     UI.info("Assistant mode applied secure single-user defaults and disabled messaging channels by default.")
   } else {
     UI.info("Engine mode applied secure defaults while preserving advanced multi-domain flexibility.")
@@ -117,12 +121,12 @@ async function maybeApplyOnboardingProfile(args: SetupArgs): Promise<boolean> {
 
 export const SetupCommand = cmd({
   command: "setup",
-  describe: "prepare onboarding profile and local environment (Qdrant, managed OpenBB)",
+  describe: "run lightweight onboarding; use --services for local Qdrant/OpenBB setup",
   builder: (yargs) =>
     yargs
       .option("profile", {
         type: "string",
-        choices: ["assistant", "engine"],
+        choices: ["assistant", "engine", "investment-research", "dcm"],
         describe: "onboarding profile preset for first-time setup",
       })
       .option("skip-profile", {
@@ -134,10 +138,37 @@ export const SetupCommand = cmd({
         type: "boolean",
         default: false,
         describe: "skip managed OpenBB install/setup",
+      })
+      .option("services", {
+        type: "boolean",
+        default: false,
+        describe: "run advanced local service setup for Qdrant and managed OpenBB",
       }),
   async handler(args) {
     const typedArgs = args as SetupArgs
     UI.header("Zee Setup")
+
+    if (!typedArgs.services) {
+      if (typedArgs.profile === "assistant" || typedArgs.profile === "engine") {
+        const onboardingApplied = await maybeApplyOnboardingProfile(typedArgs)
+        if (!onboardingApplied) return
+        UI.info("Run `zee onboard --profile dcm` when you want finance workspace files and OpenBB provider setup.")
+        return
+      }
+
+      const financeProfile =
+        typedArgs.profile === "investment-research" || typedArgs.profile === "dcm" ? typedArgs.profile : undefined
+      const result = await runOnboard({
+        profile: financeProfile,
+        "openbb-mode": "degraded",
+        "non-interactive": Boolean(financeProfile),
+      })
+      UI.success(`Onboarding complete: ${result.profile}`)
+      UI.info(`Config: ${result.configPath}`)
+      UI.info(`Workspace: ${result.workspace}`)
+      UI.info("Run `zee setup --services` only if you want local Qdrant/OpenBB services on this machine.")
+      return
+    }
 
     const onboardingApplied = await maybeApplyOnboardingProfile(typedArgs)
     if (!onboardingApplied) return
@@ -251,7 +282,9 @@ services:
         )
       }
     } else if (hasConfiguredRemoteOpenBB) {
-      UI.info(`Skipping managed OpenBB install because a remote OpenBB API is configured at ${openbbConfig?.apiUrl || OpenBB.apiUrl()}`)
+      UI.info(
+        `Skipping managed OpenBB install because a remote OpenBB API is configured at ${openbbConfig?.apiUrl || OpenBB.apiUrl()}`,
+      )
     }
 
     UI.success("Setup complete. You can now run 'zee daemon'.")

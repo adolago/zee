@@ -26,6 +26,7 @@ import { resolveEmbeddingProfile } from "./embedding-profiles";
 
 type RuntimeConfig = {
   memory?: {
+    backend?: "file" | "redis" | "qdrant";
     qdrant?: {
       url?: string;
       collection?: string;
@@ -254,8 +255,8 @@ function resolveMemoryLocalIndexConfig(config: RuntimeConfig): MemoryLocalIndexC
   const memory = config.memory ?? {};
   const localIndex = memory.localIndex ?? {};
   const backend = (localIndex.backend ?? "sqlite-fts") as LocalIndexBackend;
-  const enabled = localIndex.enabled ?? false;
-  const degradedRead = (localIndex.degradedRead ?? "off") as LocalIndexDegradedReadMode;
+  const enabled = localIndex.enabled ?? memory.backend !== "qdrant";
+  const degradedRead = (localIndex.degradedRead ?? (enabled ? "keyword_only" : "off")) as LocalIndexDegradedReadMode;
   const dbDir = localIndex.dbDir?.trim() || undefined;
   const dbName = localIndex.dbName?.trim() || undefined;
 

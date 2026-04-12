@@ -18,9 +18,9 @@ import {
   readdirSync,
 } from "node:fs"
 import { join } from "node:path"
-import { homedir } from "node:os"
 import type { MemoryEntry } from "./types"
 import { Log } from "../../packages/zee/src/util/log"
+import { Global } from "../../packages/zee/src/global"
 
 const log = Log.create({ service: "memory-markdown" })
 
@@ -38,7 +38,7 @@ export interface MarkdownSyncConfig {
 }
 
 /** Default base directory for markdown memory files */
-const DEFAULT_BASE_DIR = join(homedir(), ".local", "state", "zee", "memory")
+const DEFAULT_BASE_DIR = join(Global.Path.workspace, "memory")
 
 // =============================================================================
 // MarkdownSync Class

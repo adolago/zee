@@ -304,5 +304,3 @@ export async function inspectPodsConfig() {
 export async function stateFileExists() {
   return Filesystem.exists(stateFilepath())
 }
-
-log.info("pods manager loaded")

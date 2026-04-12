@@ -1911,6 +1911,19 @@ export namespace Config {
         .describe("MCP (Model Context Protocol) server configurations"),
       memory: Memory.optional().describe("Memory and storage configuration"),
       openbb: OpenBBConfig.optional().describe("OpenBB Platform runtime configuration"),
+      onboarding: z
+        .object({
+          profile: z.enum(["investment-research", "dcm"]).optional(),
+          role: z.string().optional(),
+          region: z.string().optional(),
+          coverage: z.array(z.string()).optional(),
+          assetClass: z.array(z.string()).optional(),
+          compliance: z.string().optional(),
+          openbbMode: z.enum(["remote", "managed", "degraded"]).optional(),
+          freeProviderIds: z.array(z.string()).optional(),
+        })
+        .optional()
+        .describe("Lightweight onboarding profile and finance research defaults"),
       investing: Investing.optional().describe("Investing platform configuration"),
       zee: Zee.optional().describe("Zee integration configuration"),
       messages: Messages.optional().describe("Messaging and TTS configuration"),

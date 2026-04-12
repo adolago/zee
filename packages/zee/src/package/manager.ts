@@ -323,5 +323,3 @@ export function formatManifestKinds(manifest: ZeeManifest) {
   }
   return out
 }
-
-log.info("package manager loaded")
