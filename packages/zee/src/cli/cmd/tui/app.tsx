@@ -74,11 +74,10 @@ export function tui(input: {
       directory: input.directory ?? process.cwd(),
       fn: async () => {
         const cfg = await Config.get()
-        if (cfg.tui?.kitty_keyboard === false) return null
-        // Always enable events + allKeysAsEscapes for PTT hold-to-record
-        return { events: true, allKeysAsEscapes: true }
+        if (cfg.tui?.kitty_keyboard !== true) return null
+        return { events: true }
       },
-    }).catch(() => ({ events: true, allKeysAsEscapes: true }) as Record<string, boolean> | null)
+    }).catch(() => null as Record<string, boolean> | null)
     const onExit = async () => {
       await input.onExit?.()
       resolve()

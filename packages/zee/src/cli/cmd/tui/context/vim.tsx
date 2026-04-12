@@ -16,10 +16,10 @@ export const { use: useVim, provider: VimProvider } = createSimpleContext({
       return tui?.vim?.enabled !== false
     })
 
-    // Check if we should start in insert mode (default: false)
+    // Check if we should start in insert mode (default: true)
     const startInInsert = createMemo(() => {
       const tui = sync.data.config.tui as { vim?: { enabled?: boolean; start_in_insert?: boolean } } | undefined
-      return tui?.vim?.start_in_insert === true
+      return tui?.vim?.start_in_insert !== false
     })
 
     // Initialize mode: if vim disabled or start_in_insert, use insert; otherwise normal

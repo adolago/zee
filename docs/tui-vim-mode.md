@@ -11,7 +11,7 @@ Vim mode is enabled by default. Configure it in your config file:
   "tui": {
     "vim": {
       "enabled": true,
-      "start_in_insert": false
+      "start_in_insert": true
     }
   }
 }
@@ -23,6 +23,7 @@ Vim mode is enabled by default. Configure it in your config file:
 - Insert mode shows `I`.
 - A pending operator shows next to `N` (for example `N d`).
 - HOLD/RELEASE is shown next to the mode indicator to reflect session mode.
+- Zee starts in insert mode by default so ordinary typing works immediately. Press `Esc` to enter normal mode.
 
 ## Insert mode entry (Normal mode)
 

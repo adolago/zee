@@ -22,7 +22,7 @@ interface VimConfig {
  */
 function createVimState(config: VimConfig = {}) {
   const enabled = config.enabled !== false
-  const startInInsert = config.start_in_insert === true
+  const startInInsert = config.start_in_insert !== false
 
   let mode: VimMode = startInInsert ? "insert" : "normal"
   let focusCallbackInvoked = false
@@ -78,11 +78,11 @@ describe("Vim mode state machine", () => {
       expect(vim.isInsert).toBe(false)
     })
 
-    test("initial mode is 'normal' when start_in_insert is undefined (default)", () => {
+    test("initial mode is 'insert' when start_in_insert is undefined (default)", () => {
       const vim = createVimState({ enabled: true })
-      expect(vim.mode).toBe("normal")
-      expect(vim.isNormal).toBe(true)
-      expect(vim.isInsert).toBe(false)
+      expect(vim.mode).toBe("insert")
+      expect(vim.isNormal).toBe(false)
+      expect(vim.isInsert).toBe(true)
     })
 
     test("initial mode is 'insert' when start_in_insert is true", () => {
@@ -189,21 +189,21 @@ describe("Vim mode state machine", () => {
       vim.enterNormal()
       expect(vim.mode).toBe("insert")
       expect(vim.isNormal).toBe(false)
-      expect(vim._internalMode).toBe("normal") // internal state unchanged by enterNormal when disabled
+      expect(vim._internalMode).toBe("insert") // internal state unchanged by enterNormal when disabled
     })
 
     test("setMode() is a no-op when disabled", () => {
-      // Internal mode starts as normal (since start_in_insert defaults to false)
-      expect(vim._internalMode).toBe("normal")
+      // Internal mode starts as insert (since start_in_insert defaults to true)
+      expect(vim._internalMode).toBe("insert")
 
       vim.setMode("insert")
       // setMode should be a no-op, so internal mode stays the same
-      expect(vim._internalMode).toBe("normal")
+      expect(vim._internalMode).toBe("insert")
       // But the external mode always reports insert
       expect(vim.mode).toBe("insert")
 
       vim.setMode("normal")
-      expect(vim._internalMode).toBe("normal")
+      expect(vim._internalMode).toBe("insert")
       expect(vim.mode).toBe("insert")
     })
 
@@ -211,7 +211,7 @@ describe("Vim mode state machine", () => {
       // Note: enterInsert() does NOT check enabled, matching the actual implementation
       // This allows focus callback to still work even when vim mode is disabled
       vim.enterNormal() // This is a no-op when disabled
-      expect(vim._internalMode).toBe("normal")
+      expect(vim._internalMode).toBe("insert")
 
       vim.enterInsert() // This changes internal mode to insert
       expect(vim._internalMode).toBe("insert")
@@ -235,23 +235,23 @@ describe("Vim mode state machine", () => {
       expect(vim.enabled).toBe(true)
     })
 
-    test("start_in_insert defaults to false when not specified", () => {
+    test("start_in_insert defaults to true when not specified", () => {
       const vim = createVimState({})
-      expect(vim.mode).toBe("normal")
+      expect(vim.mode).toBe("insert")
     })
 
-    test("empty config results in vim enabled, starting in normal mode", () => {
+    test("empty config results in vim enabled, starting in insert mode", () => {
       const vim = createVimState({})
       expect(vim.enabled).toBe(true)
-      expect(vim.mode).toBe("normal")
-      expect(vim.isNormal).toBe(true)
-      expect(vim.isInsert).toBe(false)
+      expect(vim.mode).toBe("insert")
+      expect(vim.isNormal).toBe(false)
+      expect(vim.isInsert).toBe(true)
     })
   })
 
   describe("edge cases", () => {
     test("calling enterNormal() when already in normal mode is idempotent", () => {
-      const vim = createVimState({ enabled: true })
+      const vim = createVimState({ enabled: true, start_in_insert: false })
       expect(vim.mode).toBe("normal")
 
       vim.enterNormal()
@@ -309,7 +309,7 @@ describe("Vim mode state machine", () => {
     })
 
     test("setMode with same mode is idempotent", () => {
-      const vim = createVimState({ enabled: true })
+      const vim = createVimState({ enabled: true, start_in_insert: false })
       expect(vim.mode).toBe("normal")
 
       vim.setMode("normal")

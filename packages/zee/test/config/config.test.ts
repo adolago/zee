@@ -106,6 +106,20 @@ test("includes default tui scroll settings", async () => {
     },
   })
 })
+
+test("uses typing-friendly TUI keyboard defaults", async () => {
+  await using tmp = await tmpdir()
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const config = await Config.get()
+      expect(config.tui?.vim?.enabled).toBe(true)
+      expect(config.tui?.vim?.start_in_insert).toBe(true)
+      expect(config.tui?.kitty_keyboard).toBe(false)
+    },
+  })
+})
+
 test("loads JSON config file", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {

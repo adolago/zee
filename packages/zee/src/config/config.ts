@@ -1073,15 +1073,16 @@ export namespace Config {
     vim: z
       .object({
         enabled: z.boolean().optional().default(true).describe("Enable vim normal/insert modes"),
-        start_in_insert: z.boolean().optional().default(false).describe("Start in insert mode instead of normal mode"),
+        start_in_insert: z.boolean().optional().default(true).describe("Start in insert mode instead of normal mode"),
       })
       .optional()
+      .default({ enabled: true, start_in_insert: true })
       .describe("Vim mode settings for the input prompt"),
     kitty_keyboard: z
       .boolean()
       .optional()
-      .default(true)
-      .describe("Enable Kitty keyboard protocol. Disable if dead key composition (accented characters) doesn't work."),
+      .default(false)
+      .describe("Enable Kitty keyboard protocol for terminals that need advanced key events."),
   })
 
   /**
