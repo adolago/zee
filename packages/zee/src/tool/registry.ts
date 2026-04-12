@@ -29,11 +29,53 @@ import { ApplyPatchTool } from "./apply_patch"
 import { ListSessionsTool, SendToSessionTool } from "./session-control"
 import { FetchContentTool } from "./fetch_content"
 import { GetSearchContentTool } from "./get_search_content"
+import { Global } from "@/global"
 
 export namespace ToolRegistry {
   const log = Log.create({ service: "tool.registry" })
 
+  function ensureRuntimeEnv() {
+    process.env.ZEE_ROOT ??= Global.Path.source
+    process.env.ZEE_SOURCE ??= Global.Path.source
+    process.env.ZEE_CONFIG_DIR ??= Global.Path.config
+    process.env.ZEE_DATA_DIR ??= Global.Path.data
+    process.env.ZEE_STATE_DIR ??= Global.Path.state
+    process.env.ZEE_LOG_DIR ??= Global.Path.log
+  }
+
+  function isToolDefinition(value: unknown): value is ToolDefinition {
+    if (!value || typeof value !== "object") return false
+    const candidate = value as Partial<ToolDefinition>
+    return (
+      typeof candidate.description === "string" &&
+      typeof candidate.execute === "function" &&
+      !!candidate.args &&
+      typeof candidate.args === "object"
+    )
+  }
+
+  async function loadCustomToolFile(match: string, custom: Tool.Info[]) {
+    const namespace = path.basename(match, path.extname(match))
+    try {
+      const mod = await import(match)
+      for (const [id, def] of Object.entries(mod)) {
+        const toolID = id === "default" ? namespace : `${namespace}_${id}`
+        if (!isToolDefinition(def)) {
+          log.warn("custom tool export is invalid; skipping", { tool: toolID, path: match })
+          continue
+        }
+        custom.push(fromPlugin(toolID, def))
+      }
+    } catch (error) {
+      log.warn("failed to load custom tool; skipping", {
+        path: match,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
+  }
+
   export const state = Instance.state(async () => {
+    ensureRuntimeEnv()
     const custom = [] as Tool.Info[]
     const glob = new Bun.Glob("{tool,tools}/*.{js,ts}")
 
@@ -44,17 +86,22 @@ export namespace ToolRegistry {
         followSymlinks: true,
         dot: true,
       })) {
-        const namespace = path.basename(match, path.extname(match))
-        const mod = await import(match)
-        for (const [id, def] of Object.entries<ToolDefinition>(mod)) {
-          custom.push(fromPlugin(id === "default" ? namespace : `${namespace}_${id}`, def))
-        }
+        await loadCustomToolFile(match, custom)
       }
     }
 
-    const plugins = await Plugin.list()
+    const plugins = await Plugin.list().catch((error) => {
+      log.warn("failed to load plugins; skipping plugin tools", {
+        error: error instanceof Error ? error.message : String(error),
+      })
+      return []
+    })
     for (const plugin of plugins) {
       for (const [id, def] of Object.entries(plugin.tool ?? {})) {
+        if (!isToolDefinition(def)) {
+          log.warn("plugin tool export is invalid; skipping", { tool: id })
+          continue
+        }
         custom.push(fromPlugin(id, def))
       }
     }

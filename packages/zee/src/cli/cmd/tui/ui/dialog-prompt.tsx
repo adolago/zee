@@ -51,7 +51,12 @@ export function DialogPrompt(props: DialogPromptProps) {
             props.onConfirm?.(textarea.plainText)
           }}
           height={3}
-          keyBindings={[{ name: "return", action: "submit" }, { name: "kpenter", action: "submit" }]}
+          keyBindings={[
+            { name: "return", action: "submit" },
+            { name: "enter", action: "submit" },
+            { name: "linefeed", action: "submit" },
+            { name: "kpenter", action: "submit" },
+          ]}
           ref={(val: TextareaRenderable) => (textarea = val)}
           initialValue={props.value}
           placeholder={props.placeholder ?? "Enter text..."}

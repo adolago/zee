@@ -494,9 +494,13 @@ describe("isReturn", () => {
   })
 
   test("rejects other keys", () => {
-    expect(isReturn("enter")).toBe(false)
     expect(isReturn("escape")).toBe(false)
     expect(isReturn(undefined)).toBe(false)
+  })
+
+  test("matches terminal enter aliases", () => {
+    expect(isReturn("enter")).toBe(true)
+    expect(isReturn("linefeed")).toBe(true)
   })
 })
 

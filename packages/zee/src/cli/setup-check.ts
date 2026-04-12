@@ -18,6 +18,7 @@ import { Auth } from "../auth"
 import { Config } from "../config/config"
 import { ModelsDev } from "../provider/models"
 import { Provider } from "../provider/provider"
+import { getBuiltinMcpRuntimeStatus } from "../mcp/builtin"
 
 const log = Log.create({ service: "setup-check" })
 
@@ -40,6 +41,10 @@ export interface SetupCheckResult {
     mode: OpenBBRuntimeMode
     error?: string
     action?: string
+  }
+  mcp: {
+    builtinsReady: boolean
+    servers: Record<string, { available: boolean; command: string[] }>
   }
   agentProvider: AgentProviderSetupStatus
   warnings: string[]
@@ -254,6 +259,8 @@ export async function runSetupCheck(): Promise<SetupCheckResult> {
   const openbbCheck = await probeOpenBBAvailability()
   const agentProvider = await checkAgentProviderReady()
   const missingEnvWarnings = await scanMissingEnvPlaceholders().catch(() => [])
+  const mcpRuntime = getBuiltinMcpRuntimeStatus()
+  const mcpBuiltinsReady = Object.values(mcpRuntime).every((server) => server.available)
 
   if (!memoryStatus.ok) {
     const detail = memoryStatus.sqlite.error || memoryStatus.embedding.error || "run `zee memory prepare`"
@@ -287,7 +294,13 @@ export async function runSetupCheck(): Promise<SetupCheckResult> {
     }
   }
 
-  const ok = strict ? memoryStatus.ok && agentProvider.available : true
+  if (!mcpBuiltinsReady) {
+    const message = "Built-in local MCP launchers are not available."
+    if (strict) errors.push(message)
+    else warnings.push(message)
+  }
+
+  const ok = strict ? memoryStatus.ok && agentProvider.available && mcpBuiltinsReady : true
 
   const result: SetupCheckResult = {
     ok,
@@ -309,6 +322,10 @@ export async function runSetupCheck(): Promise<SetupCheckResult> {
       error: openbbCheck.error,
       action: openbbCheck.action,
     },
+    mcp: {
+      builtinsReady: mcpBuiltinsReady,
+      servers: mcpRuntime,
+    },
     agentProvider,
     warnings,
     errors,
@@ -318,6 +335,7 @@ export async function runSetupCheck(): Promise<SetupCheckResult> {
     log.info("Setup check passed", {
       memoryPrepared: memoryStatus.prepared,
       openbbAvailable: openbbCheck.available,
+      mcpBuiltinsReady,
       warnings: warnings.length,
     })
   } else {
@@ -352,6 +370,15 @@ export function formatSetupCheckResult(result: SetupCheckResult): string {
     lines.push(`OpenBB:   DEGRADED (${result.openbb.apiUrl}, ${result.openbb.mode})`)
     if (result.openbb.error) {
       lines.push(`          ${result.openbb.error}`)
+    }
+  }
+
+  if (result.mcp.builtinsReady) {
+    lines.push(`MCP:      OK (${Object.keys(result.mcp.servers).join(", ")})`)
+  } else {
+    lines.push("MCP:      MISSING (built-in local server launchers)")
+    for (const [name, status] of Object.entries(result.mcp.servers)) {
+      if (!status.available) lines.push(`          ${name}: ${status.command.join(" ") || "missing command"}`)
     }
   }
 

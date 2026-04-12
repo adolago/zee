@@ -100,7 +100,12 @@ export function DialogExportOptions(props: DialogExportOptionsProps) {
             })
           }}
           height={3}
-          keyBindings={[{ name: "return", action: "submit" }, { name: "kpenter", action: "submit" }]}
+          keyBindings={[
+            { name: "return", action: "submit" },
+            { name: "enter", action: "submit" },
+            { name: "linefeed", action: "submit" },
+            { name: "kpenter", action: "submit" },
+          ]}
           ref={(val: TextareaRenderable) => (textarea = val)}
           initialValue={props.defaultFilename}
           placeholder="Enter filename..."

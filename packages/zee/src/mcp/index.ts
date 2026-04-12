@@ -29,7 +29,7 @@ import { Bus } from "@/bus"
 import { TuiEvent } from "@/cli/cmd/tui/event"
 import { getZeeRoot } from "../paths"
 import { Global } from "@/global"
-import { getAllBuiltinMcpServers } from "../../../../src/mcp/servers"
+import { getAllBuiltinMcpServers, isBuiltinMcpServerName } from "./builtin"
 import { normalizeHttpUrl } from "@/util/net"
 import { openExternalUrl } from "@/util/open-external-url"
 
@@ -40,7 +40,6 @@ export namespace MCP {
   const HEALTH_MONITOR_INTERVAL_MS = 15_000
   const TOOL_CALL_CONNECT_ATTEMPTS = 2
   const TOOL_CALL_CONNECT_RETRY_DELAY_MS = 250
-  const LOCAL_NODE_FALLBACK_SERVERS = new Set(["consciousness"])
   const DEFAULT_LAZY_IDLE_TIMEOUT_MINUTES = 10
   const MCP_TOOL_CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
 
@@ -56,8 +55,6 @@ export namespace MCP {
   const serverLastUsedAt = new Map<string, number>()
   const toolCacheFilePath = path.join(Global.Path.state, "mcp", "tool-cache.json")
   let toolCacheHydratedFromDisk = false
-  const BUILTIN_LOCAL_MCP_SERVERS = new Set(["calendar", "consciousness", "memory"])
-
   type LocalFailureClass =
     | "connection_closed"
     | "spawn_failed"
@@ -137,12 +134,8 @@ export namespace MCP {
     }
   }
 
-  function normalizeBuiltinLocalServerName(serverName: string): string {
-    return serverName
-  }
-
   function isBuiltinLocalServer(serverName: string): boolean {
-    return BUILTIN_LOCAL_MCP_SERVERS.has(normalizeBuiltinLocalServerName(serverName))
+    return isBuiltinMcpServerName(serverName)
   }
 
   function getOrCreateLocalServerHealth(serverName: string): LocalServerHealth {
@@ -740,7 +733,22 @@ export namespace MCP {
 
   function resolveMcpConfigEntry(name: string, entry: McpEntry | undefined): Config.Mcp | undefined {
     if (!entry) return undefined
-    if (isMcpConfigured(entry)) return forceMcpEnabled(name, entry)
+    if (isMcpConfigured(entry)) {
+      const configured = forceMcpEnabled(name, entry)
+      const builtin = (builtinServers as Record<string, BuiltinServerConfig>)[name]
+      if (
+        builtin &&
+        configured.type === "local" &&
+        builtin.type === "local" &&
+        (!configured.command || configured.command.length === 0)
+      ) {
+        return {
+          ...configured,
+          command: Array.from(builtin.command),
+        }
+      }
+      return configured
+    }
     if (typeof entry !== "object" || entry === null || !("enabled" in entry)) return undefined
     const builtin = (builtinServers as Record<string, BuiltinServerConfig>)[name]
     if (!builtin) return undefined
@@ -862,14 +870,14 @@ export namespace MCP {
     mcp: z.infer<typeof Config.McpLocal>,
     agentCoreRoot: string,
   ): string[] | undefined {
-    const forceBunRuntime = isBuiltinLocalServer(serverName)
-    if (forceBunRuntime) {
-      log.debug("using Bun runtime for built-in local MCP server", { serverName })
-    }
-
     const pickSourceRuntime = (candidate: string): string[] => ["bun", "run", candidate]
 
-    // Check if provided command exists (handles bundled __dirname paths that don't exist at runtime)
+    // Built-in MCP servers are launched through the current Zee runtime, not repo source paths.
+    if (isBuiltinLocalServer(serverName) && mcp.command?.length && mcp.command[0]) {
+      return mcp.command
+    }
+
+    // Check if provided command exists (handles legacy bundled __dirname paths that don't exist at runtime)
     if (mcp.command?.length && mcp.command[0]) {
       // For "bun run <file>" or similar, verify the file exists
       const scriptArg = mcp.command.find((arg, i) => i > 0 && arg.endsWith(".ts"))
@@ -879,9 +887,6 @@ export namespace MCP {
         normalizedScriptArg?.includes("/$bunfs/")
 
       if (!scriptArg || (existsSync(scriptArg) && !bundledPathMismatch)) {
-        if (forceBunRuntime && scriptArg) {
-          return ["bun", "run", scriptArg]
-        }
         return mcp.command
       }
       // Script doesn't exist, fall through to source resolution
@@ -907,16 +912,7 @@ export namespace MCP {
 
   function resolveLocalCommandVariants(serverName: string, command: string[] | undefined): string[][] {
     if (!command || command.length === 0) return []
-    if (!isBuiltinLocalServer(serverName)) return [command]
-
-    const resolveTsxRunner = (): string | undefined => {
-      const roots = [getZeeRoot(), Global.Path.source, process.cwd()]
-      for (const root of roots) {
-        const candidate = path.join(root, "node_modules", ".bin", "tsx")
-        if (existsSync(candidate)) return candidate
-      }
-      return undefined
-    }
+    if (isBuiltinLocalServer(serverName)) return [command]
 
     const variants: string[][] = []
     const pushVariant = (candidate: string[]) => {
@@ -930,36 +926,11 @@ export namespace MCP {
 
     pushVariant(command)
 
-    const normalizedServerName = normalizeBuiltinLocalServerName(serverName)
-    const supportsNodeFallback = LOCAL_NODE_FALLBACK_SERVERS.has(normalizedServerName)
-    const tsxRunner = supportsNodeFallback ? resolveTsxRunner() : undefined
-
-    // Built-in local MCP servers default to `bun run <script>.ts`; if that
-    // runtime path is unstable, fall back to `bun <script>.ts`.
     const bunCmd = command[0]
     const scriptArg = command[2]
     if (bunCmd === "bun" && command[1] === "run" && typeof scriptArg === "string" && scriptArg.endsWith(".ts")) {
       pushVariant([bunCmd, ...command.slice(2)])
-
-      // Portfolio has shown Bun runtime panics on some hosts; add a Node+tsx
-      // loader fallback as a last resort while keeping the same server script.
-      if (supportsNodeFallback) {
-        if (tsxRunner) {
-          pushVariant([tsxRunner, scriptArg])
-        }
-        pushVariant(["node", "--import", "tsx", scriptArg])
-      }
       return variants
-    }
-
-    if (supportsNodeFallback) {
-      const scriptCandidate = command.at(-1)
-      if (typeof scriptCandidate === "string" && scriptCandidate.endsWith(".ts")) {
-        if (tsxRunner) {
-          pushVariant([tsxRunner, scriptCandidate])
-        }
-        pushVariant(["node", "--import", "tsx", scriptCandidate])
-      }
     }
 
     return variants

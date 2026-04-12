@@ -1,7 +1,6 @@
 import fs from "node:fs/promises"
+import os from "node:os"
 import path from "node:path"
-
-import { Global } from "../../../packages/zee/src/global"
 
 export type BannerItemKind = "reminder" | "todo" | "message"
 export type BannerItemPriority = "low" | "normal" | "high" | "urgent"
@@ -41,6 +40,30 @@ export function isExpired(item: Pick<ZeeBannerItem, "expiresAt">, nowMs: number)
   return typeof item.expiresAt === "number" && Number.isFinite(item.expiresAt) && item.expiresAt <= nowMs
 }
 
+function resolveHomeDir(): string {
+  return process.env.ZEE_TEST_HOME || process.env.HOME || process.env.USERPROFILE || os.homedir()
+}
+
+export function resolveStateDir(): string {
+  const explicit = process.env.ZEE_STATE_DIR?.trim()
+  if (explicit) return path.resolve(explicit)
+
+  const home = resolveHomeDir()
+  if (process.platform === "win32") {
+    const localAppData = process.env.LOCALAPPDATA || path.join(home, "AppData", "Local")
+    return path.join(localAppData, "Zee", "state")
+  }
+
+  const xdgState = process.env.XDG_STATE_HOME?.trim()
+  if (xdgState) return path.join(xdgState, "zee")
+
+  return path.join(home, ".local", "state", "zee")
+}
+
+export function kvPath(): string {
+  return path.join(resolveStateDir(), "kv.json")
+}
+
 export function uniq(items: ZeeBannerItem[]): ZeeBannerItem[] {
   const seen = new Set<string>()
   const result: ZeeBannerItem[] = []
@@ -72,8 +95,7 @@ function normalizeExistingItem(raw: unknown, nowMs: number): ZeeBannerItem | nul
   if (typeof text !== "string" || !text.trim()) return null
 
   const id = typeof x.id === "string" && x.id.trim() ? x.id.trim() : uid("item")
-  const createdAt =
-    typeof x.createdAt === "number" && Number.isFinite(x.createdAt) ? (x.createdAt as number) : nowMs
+  const createdAt = typeof x.createdAt === "number" && Number.isFinite(x.createdAt) ? (x.createdAt as number) : nowMs
   const expiresAt =
     typeof x.expiresAt === "number" && Number.isFinite(x.expiresAt) ? (x.expiresAt as number) : undefined
 
@@ -106,9 +128,9 @@ export function parseExistingBanner(raw: unknown, nowMs: number): { rotationMs?:
 }
 
 export async function loadKV(): Promise<Record<string, unknown>> {
-  const kvPath = path.join(Global.Path.state, "kv.json")
+  const filepath = kvPath()
   try {
-    const content = await fs.readFile(kvPath, "utf-8")
+    const content = await fs.readFile(filepath, "utf-8")
     const parsed = JSON.parse(content) as unknown
     if (parsed && typeof parsed === "object") return parsed as Record<string, unknown>
   } catch {
@@ -118,7 +140,7 @@ export async function loadKV(): Promise<Record<string, unknown>> {
 }
 
 export async function saveKV(kv: Record<string, unknown>): Promise<void> {
-  const kvPath = path.join(Global.Path.state, "kv.json")
-  await fs.mkdir(Global.Path.state, { recursive: true })
-  await fs.writeFile(kvPath, JSON.stringify(kv, null, 2) + "\n")
+  const filepath = kvPath()
+  await fs.mkdir(path.dirname(filepath), { recursive: true })
+  await fs.writeFile(filepath, JSON.stringify(kv, null, 2) + "\n")
 }

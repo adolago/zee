@@ -14,16 +14,15 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { z } from "zod";
+import { z } from "zod/v3";
 import { installMcpParentGuard } from "./parent-guard.js";
+import { runMcpServerWhenDirect } from "./run.js";
 
 // Create server
 const server = new McpServer({
   name: "consciousness",
   version: "1.0.0",
 });
-
-installMcpParentGuard("consciousness");
 
 // =============================================================================
 // Types for IIT calculations
@@ -303,9 +302,8 @@ Use this for:
             type: "text" as const,
             text: JSON.stringify(
               {
-                success: true,
-                mode: mode ?? "basic",
                 ...result,
+                mode: mode ?? "basic",
               },
               null,
               2
@@ -364,7 +362,6 @@ Returns:
             type: "text" as const,
             text: JSON.stringify(
               {
-                success: true,
                 ...result,
               },
               null,
@@ -557,13 +554,11 @@ server.tool(
 // Start server
 // =============================================================================
 
-async function main() {
+export async function startConsciousnessMcpServer() {
+  installMcpParentGuard("consciousness");
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error("Consciousness MCP server running on stdio");
 }
 
-main().catch((error) => {
-  console.error("Failed to start Consciousness MCP server:", error);
-  process.exit(1);
-});
+runMcpServerWhenDirect(import.meta.url, "Consciousness", startConsciousnessMcpServer);

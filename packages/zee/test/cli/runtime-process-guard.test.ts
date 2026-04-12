@@ -48,15 +48,18 @@ describe("runtime-process-guard helpers", () => {
   }
 
   test("parsePgrepOutput parses pid and command lines", () => {
-    const parsed = parsePgrepOutput("123 zee daemon --port 3210\ninvalid\n456 bun run src/mcp/servers/memory.ts\n")
+    const parsed = parsePgrepOutput("123 zee daemon --port 3210\ninvalid\n456 zee mcp-server memory\n")
 
     expect(parsed).toEqual([
       { pid: 123, command: "zee daemon --port 3210" },
-      { pid: 456, command: "bun run src/mcp/servers/memory.ts" },
+      { pid: 456, command: "zee mcp-server memory" },
     ])
   })
 
   test("extractMcpServerName extracts server names", () => {
+    expect(extractMcpServerName("zee mcp-server memory")).toBe("memory")
+    expect(extractMcpServerName("/opt/zee/bin/zee mcp-server consciousness")).toBe("consciousness")
+    expect(extractMcpServerName("bun run /repo/packages/zee/src/index.ts mcp-server calendar")).toBe("calendar")
     expect(extractMcpServerName("bun run /repo/src/mcp/servers/memory.ts")).toBe("memory")
     expect(extractMcpServerName("bun run /repo/src/mcp/servers/calendar.ts --stdio")).toBe("calendar")
     expect(extractMcpServerName("zee daemon")).toBeUndefined()
@@ -65,6 +68,7 @@ describe("runtime-process-guard helpers", () => {
   test("classifyRuntimeProcess classifies daemon gateway and mcp", () => {
     expect(classifyRuntimeProcess("/home/user/.bun/bin/zee daemon --port 3210")).toBe("daemon")
     expect(classifyRuntimeProcess("/home/user/.bun/bin/zee gateway --port 18789")).toBe("gateway")
+    expect(classifyRuntimeProcess("/home/user/.bun/bin/zee mcp-server calendar")).toBe("mcp_server")
     expect(classifyRuntimeProcess("bun run /repo/src/mcp/servers/calendar.ts")).toBe("mcp_server")
     expect(classifyRuntimeProcess('zee run "hello"')).toBe("zee_other")
   })
@@ -94,7 +98,7 @@ describe("runtime-process-guard helpers", () => {
     const mcp = makeEntry({
       pid: 200,
       ppid: 100,
-      command: "bun run /repo/src/mcp/servers/memory.ts",
+      command: "zee mcp-server memory",
       kind: "mcp_server",
       mcpServerName: "memory",
     })

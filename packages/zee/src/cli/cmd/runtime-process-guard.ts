@@ -157,7 +157,7 @@ function collectWindowsRawProcesses(): RawRuntimeProcess[] {
   try {
     const script = [
       "Get-CimInstance Win32_Process",
-      "Where-Object { ($_.CommandLine -like '*zee*') -or ($_.CommandLine -like '*src/mcp/servers*') -or ($_.ExecutablePath -like '*zee.exe') }",
+      "Where-Object { ($_.CommandLine -like '*zee*') -or ($_.CommandLine -like '*mcp-server*') -or ($_.CommandLine -like '*src/mcp/servers*') -or ($_.ExecutablePath -like '*zee.exe') }",
       "Select-Object ProcessId,ParentProcessId,ExecutablePath,CommandLine",
       "ConvertTo-Json -Compress",
     ].join(" | ")
@@ -268,7 +268,7 @@ function runPgrep(pattern: string): Array<{ pid: number; command: string }> {
 
 function collectRawRuntimeProcesses(): RawRuntimeProcess[] {
   if (process.platform === "win32") return collectWindowsRawProcesses()
-  return [...runPgrep("zee"), ...runPgrep("src/mcp/servers/")]
+  return [...runPgrep("zee"), ...runPgrep("mcp-server"), ...runPgrep("src/mcp/servers/")]
 }
 
 function isPidAlive(pid: number): boolean {
@@ -374,6 +374,10 @@ async function isDescendantOfPid(
 
 export function extractMcpServerName(command: string): string | undefined {
   const normalized = command.replace(/\\/g, "/")
+  const cliMatch = normalized.match(
+    /(?:^|[\s"'])(?:zee(?:\.exe|\.cmd|\.ps1)?|[^"'\s]*\/bin\/zee(?:\.exe)?|(?:[^"'\s]*\/)?packages\/zee\/src\/index\.(?:ts|js)|src\/index\.(?:ts|js))\s+mcp-server\s+([a-zA-Z0-9_-]+)\b/i,
+  )
+  if (cliMatch?.[1]) return cliMatch[1]
   const match = normalized.match(/src\/mcp\/servers\/([a-zA-Z0-9_-]+)\.ts\b/)
   return match?.[1]
 }

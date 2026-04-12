@@ -48,6 +48,7 @@ import { V3Command } from "./cli/cmd/v3"
 import { BenchmarkCommand } from "./cli/cmd/benchmark"
 import { PromptCommand } from "./cli/cmd/prompt"
 import { MemoryCommand } from "./cli/cmd/memory"
+import { McpServerCommand } from "./cli/cmd/mcp-server"
 import path from "node:path"
 import fs from "node:fs"
 import os from "node:os"
@@ -163,6 +164,7 @@ const cli = yargs(hideBin(process.argv))
   .completion("completion", "generate shell completion script")
   .command(AcpCommand)
   .command(McpCommand)
+  .command(McpServerCommand)
   .command(TuiThreadCommand)
   .command(AttachCommand)
   .command(ClientCommand)

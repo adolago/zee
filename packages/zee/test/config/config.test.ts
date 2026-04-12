@@ -116,6 +116,7 @@ test("uses typing-friendly TUI keyboard defaults", async () => {
       expect(config.tui?.vim?.enabled).toBe(true)
       expect(config.tui?.vim?.start_in_insert).toBe(true)
       expect(config.tui?.kitty_keyboard).toBe(false)
+      expect(config.keybinds?.input_dictation_hold).toBe("none")
     },
   })
 })

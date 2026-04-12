@@ -73,4 +73,40 @@ describe("tool.registry", () => {
       },
     })
   })
+
+  test("skips broken custom tools without blocking valid tools", async () => {
+    await using tmp = await tmpdir({
+      init: async (dir) => {
+        const agentCoreDir = path.join(dir, ".zee")
+        await fs.mkdir(agentCoreDir, { recursive: true })
+
+        const toolDir = path.join(agentCoreDir, "tool")
+        await fs.mkdir(toolDir, { recursive: true })
+
+        await Bun.write(path.join(toolDir, "broken.ts"), "import './missing-module'\nexport default {}\n")
+        await Bun.write(
+          path.join(toolDir, "hello.ts"),
+          [
+            "export default {",
+            "  description: 'hello tool',",
+            "  args: {},",
+            "  execute: async () => {",
+            "    return 'hello world'",
+            "  },",
+            "}",
+            "",
+          ].join("\n"),
+        )
+      },
+    })
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: async () => {
+        const ids = await ToolRegistry.ids()
+        expect(ids).toContain("hello")
+        expect(ids).not.toContain("broken")
+      },
+    })
+  })
 })

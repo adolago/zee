@@ -39,6 +39,7 @@ import { Dictation } from "@tui/util/dictation"
 import { DialogGrammar } from "../dialog-grammar"
 import { Grammar } from "../../util/grammar"
 import { createGrammarChecker, type GrammarError } from "../../util/grammar-realtime"
+import { formatSubmitError } from "../../util/submit-error"
 import { Banner, type BannerItem } from "../banner"
 import { computePromptHeaderBorderLayout } from "./header-border-layout"
 import { VimCommands } from "@tui/util/vim-commands"
@@ -770,8 +771,8 @@ export function Prompt(props: PromptProps) {
     return text.slice(from, to)
   }
 
-  // Real-time grammar checking - enabled by default
-  const [realtimeGrammarEnabled, setRealtimeGrammarEnabled] = createSignal(kv.get("realtime_grammar_enabled", true))
+  // Real-time grammar checking is opt-in so normal typing stays local and immediate.
+  const [realtimeGrammarEnabled, setRealtimeGrammarEnabled] = createSignal(kv.get("realtime_grammar_enabled", false))
   const grammarChecker = createGrammarChecker({
     debounceMs: 500,
     enabled: realtimeGrammarEnabled,
@@ -1259,6 +1260,32 @@ export function Prompt(props: PromptProps) {
     )
   }
 
+  let promptMaintenancePending = false
+  let pendingPromptMaintenanceValue = ""
+  function schedulePromptMaintenance(value: string) {
+    pendingPromptMaintenanceValue = value
+    if (promptMaintenancePending) return
+    promptMaintenancePending = true
+
+    queueMicrotask(() => {
+      promptMaintenancePending = false
+      if (!input || input.isDestroyed || !autocomplete) return
+      const value = pendingPromptMaintenanceValue
+      autocomplete.onInput(value)
+
+      const hasPromptParts =
+        promptPartTypeId !== 0 &&
+        (store.prompt.parts.length > 0 || input.extmarks.getAllForTypeId(promptPartTypeId).length > 0)
+      if (hasPromptParts) {
+        syncExtmarksWithPromptParts(value)
+      }
+
+      if (realtimeGrammarEnabled()) {
+        grammarChecker.check(value)
+      }
+    })
+  }
+
   command.register(() => [
     {
       title: "Stash prompt",
@@ -1345,27 +1372,6 @@ export function Prompt(props: PromptProps) {
     if (!selectedModel) {
       promptModelWarning()
       return
-    }
-
-    const formatSubmitError = (error: unknown) => {
-      const normalized = (() => {
-        if (!error) return ""
-        if (typeof error === "string") return error
-        if (error instanceof Error) return error.message
-        if (typeof error === "object") {
-          const anyErr = error as any
-          if (typeof anyErr?.message === "string") return anyErr.message
-          if (typeof anyErr?.error?.message === "string") return anyErr.error.message
-          try {
-            return JSON.stringify(error)
-          } catch {
-            return String(error)
-          }
-        }
-        return String(error)
-      })()
-      const collapsed = normalized.replace(/\s+/g, " ").trim()
-      return collapsed || "Unknown error"
     }
 
     let sessionID: string
@@ -1950,12 +1956,7 @@ export function Prompt(props: PromptProps) {
             onContentChange={() => {
               const value = input.plainText
               setStore("prompt", "input", value)
-              autocomplete.onInput(value)
-              syncExtmarksWithPromptParts(value)
-              // Trigger real-time grammar check
-              if (realtimeGrammarEnabled()) {
-                grammarChecker.check(value)
-              }
+              schedulePromptMaintenance(value)
             }}
             keyBindings={textareaKeybindings()}
             onKeyDown={async (e) => {

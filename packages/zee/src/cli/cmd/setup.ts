@@ -10,6 +10,7 @@ import { Config } from "../../config/config"
 import { runOnboard } from "./onboard"
 import { prepareLocalMemory } from "../../../../../src/memory/local-runtime"
 import { checkAgentProviderReady } from "../setup-check"
+import { getBuiltinMcpRuntimeStatus } from "../../mcp/builtin"
 
 type SetupProfile = "assistant" | "engine" | "investment-research" | "dcm"
 
@@ -188,6 +189,14 @@ export const SetupCommand = cmd({
       return
     }
     UI.success(`Local memory is ready at ${memoryStatus.paths.memoryDir}`)
+    const builtinMcpStatus = getBuiltinMcpRuntimeStatus()
+    const builtinMcpReady = Object.values(builtinMcpStatus).every((server) => server.available)
+    if (!builtinMcpReady) {
+      UI.error("Built-in MCP launchers are not available.")
+      process.exitCode = 1
+      return
+    }
+    UI.success(`Built-in MCP launchers ready: ${Object.keys(builtinMcpStatus).join(", ")}`)
 
     if (!typedArgs.services) {
       if (typedArgs.profile === "assistant" || typedArgs.profile === "engine") {

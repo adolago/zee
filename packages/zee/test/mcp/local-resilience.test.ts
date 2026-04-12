@@ -183,6 +183,15 @@ afterEach(() => {
   MCP.resetLocalMcpResilienceForTests()
 })
 
+function expectBuiltinMcpAttempt(
+  attempt: { command?: string; args?: string[] } | undefined,
+  serverName: string,
+) {
+  expect(attempt?.command).toBe(process.execPath)
+  expect(attempt?.args).toContain("mcp-server")
+  expect(attempt?.args?.at(-1)).toBe(serverName)
+}
+
 test("local MCP retries transient connection_closed failures and recovers", async () => {
   localFailurePlans.memory = {
     connectErrors: ["Connection closed"],
@@ -263,7 +272,7 @@ test("callTool surfaces reconnect failure reason when recovery does not succeed"
   })
 })
 
-test("built-in local MCP servers always run with bun runtime", async () => {
+test("built-in local MCP servers run through the current Zee runtime", async () => {
   await using tmp = await tmpdir()
   await Instance.provide({
     directory: tmp.path,
@@ -273,14 +282,27 @@ test("built-in local MCP servers always run with bun runtime", async () => {
       expect(status.consciousness?.status).toBe("connected")
       expect(status.memory?.status).toBe("connected")
 
-      expect(commandByServer.calendar).toBe("bun")
-      expect(commandByServer.consciousness).toBe("bun")
-      expect(commandByServer.memory).toBe("bun")
+      expect(commandByServer.calendar).toBe(process.execPath)
+      expect(commandByServer.consciousness).toBe(process.execPath)
+      expect(commandByServer.memory).toBe(process.execPath)
+
+      expectBuiltinMcpAttempt(
+        ((transportRefsByServer.calendar ?? []) as Array<{ command?: string; args?: string[] }>)[0],
+        "calendar",
+      )
+      expectBuiltinMcpAttempt(
+        ((transportRefsByServer.consciousness ?? []) as Array<{ command?: string; args?: string[] }>)[0],
+        "consciousness",
+      )
+      expectBuiltinMcpAttempt(
+        ((transportRefsByServer.memory ?? []) as Array<{ command?: string; args?: string[] }>)[0],
+        "memory",
+      )
     },
   })
 })
 
-test("built-in local MCP retries with fallback command variant", async () => {
+test("built-in local MCP retries with the same packaged command", async () => {
   localFailurePlans.calendar = {
     connectErrors: ["Connection closed"],
   }
@@ -299,11 +321,9 @@ test("built-in local MCP retries with fallback command variant", async () => {
 
       const attempts = (transportRefsByServer.calendar ?? []) as Array<{ args?: string[] }>
       expect(attempts.length).toBe(2)
-      expect(attempts[0]?.args).toHaveLength(2)
-      expect(attempts[0]?.args?.[0]).toBe("run")
-      expect(attempts[0]?.args?.[1]?.endsWith("/src/mcp/servers/calendar.ts")).toBe(true)
-      expect(attempts[1]?.args).toHaveLength(1)
-      expect(attempts[1]?.args?.[0]?.endsWith("/src/mcp/servers/calendar.ts")).toBe(true)
+      expect(attempts[0]?.args).toEqual(attempts[1]?.args)
+      expect(attempts[0]?.args).toContain("mcp-server")
+      expect(attempts[0]?.args?.at(-1)).toBe("calendar")
     },
   })
 })
@@ -595,7 +615,7 @@ test("local MCP classifies parent-guard exit signature as runtime_crash", async 
   })
 })
 
-test("consciousness local MCP falls back to node+tsx after repeated connection_closed failures", async () => {
+test("consciousness local MCP retries packaged command after repeated connection_closed failures", async () => {
   localFailurePlans.consciousness = {
     connectErrors: ["MCP error -32000: Connection closed", "MCP error -32000: Connection closed"],
   }
@@ -617,25 +637,16 @@ test("consciousness local MCP falls back to node+tsx after repeated connection_c
         args?: string[]
       }>
       expect(attempts.length).toBe(3)
-      expect(attempts[0]?.command).toBe("bun")
-      expect(attempts[0]?.args?.[0]).toBe("run")
-      expect(attempts[1]?.command).toBe("bun")
-      expect(attempts[1]?.args?.length).toBe(1)
-      const third = attempts[2]
-      if ((third?.command ?? "").endsWith("/node_modules/.bin/tsx")) {
-        expect(third?.args?.length).toBe(1)
-        expect(third?.args?.[0]?.endsWith("/src/mcp/servers/consciousness.ts")).toBe(true)
-      } else {
-        expect(third?.command).toBe("node")
-        expect(third?.args?.[0]).toBe("--import")
-        expect(third?.args?.[1]).toBe("tsx")
-        expect(third?.args?.[2]?.endsWith("/src/mcp/servers/consciousness.ts")).toBe(true)
-      }
+      expectBuiltinMcpAttempt(attempts[0], "consciousness")
+      expectBuiltinMcpAttempt(attempts[1], "consciousness")
+      expectBuiltinMcpAttempt(attempts[2], "consciousness")
+      expect(attempts[0]?.args).toEqual(attempts[1]?.args)
+      expect(attempts[1]?.args).toEqual(attempts[2]?.args)
     },
   })
 })
 
-test("memory local MCP does not use node+tsx fallback variants", async () => {
+test("memory local MCP retries packaged command without node fallback variants", async () => {
   localFailurePlans.memory = {
     connectErrors: [
       "panic(main thread): Illegal instruction. oh no: Bun has crashed. bun.report/abc",
@@ -660,9 +671,9 @@ test("memory local MCP does not use node+tsx fallback variants", async () => {
         args?: string[]
       }>
       expect(attempts.length).toBe(3)
-      expect(attempts[0]?.command).toBe("bun")
-      expect(attempts[1]?.command).toBe("bun")
-      expect(attempts[2]?.command).toBe("bun")
+      expectBuiltinMcpAttempt(attempts[0], "memory")
+      expectBuiltinMcpAttempt(attempts[1], "memory")
+      expectBuiltinMcpAttempt(attempts[2], "memory")
       expect(attempts.some((attempt) => attempt.command === "node")).toBe(false)
     },
   })

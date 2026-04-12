@@ -53,6 +53,7 @@ import { Instance } from "@/project/instance"
 import { PromptRefProvider, usePromptRef } from "./context/prompt"
 import { openExternalUrl } from "@/util/open-external-url"
 import { Terminal } from "./util/terminal"
+import { resolveKittyKeyboardOptions } from "./util/keyboard"
 import { nextSessionMode, resolveEffectiveSessionMode } from "./util/session-mode"
 import { createHomeBenchmarkCommand } from "./routes/session/benchmark"
 
@@ -74,10 +75,9 @@ export function tui(input: {
       directory: input.directory ?? process.cwd(),
       fn: async () => {
         const cfg = await Config.get()
-        if (cfg.tui?.kitty_keyboard !== true) return null
-        return { events: true }
+        return resolveKittyKeyboardOptions(cfg)
       },
-    }).catch(() => null as Record<string, boolean> | null)
+    }).catch(() => resolveKittyKeyboardOptions(null))
     const onExit = async () => {
       await input.onExit?.()
       resolve()
@@ -118,7 +118,7 @@ export function tui(input: {
         targetFps: 60,
         gatherStats: false,
         exitOnCtrlC: false,
-        useKittyKeyboard: kittyKeyboardConfig ?? undefined,
+        useKittyKeyboard: kittyKeyboardConfig,
         consoleOptions: {
           keyBindings: [{ name: "y", ctrl: true, action: "copy-selection" }],
           onCopySelection: (text) => {

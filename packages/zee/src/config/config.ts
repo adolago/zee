@@ -965,8 +965,10 @@ export namespace Config {
       input_dictation_hold: z
         .string()
         .optional()
-        .default("alt")
-        .describe("Hold to record, release to stop (requires kitty/ghostty/foot terminal). Set to 'alt' to enable."),
+        .default("none")
+        .describe(
+          "Hold to record, release to stop (requires kitty/ghostty/foot terminal). Set to a modifier to enable.",
+        ),
       grammar_quickfix: z.string().optional().default("<leader>.").describe("Quick-fix grammar error at cursor"),
       grammar_menu: z.string().optional().default("<leader>shift+g").describe("Open grammar check menu"),
       input_newline: z
@@ -1393,17 +1395,11 @@ export namespace Config {
       backend: z.enum(["sqlite", "file", "redis"]).optional().describe("Memory backend"),
       storagePath: z.string().optional().describe("Storage path for file backend"),
       redisUrl: z.string().optional().describe("Redis connection URL"),
-      collection: z
-        .string()
-        .optional()
-        .describe("Local memory collection name"),
+      collection: z.string().optional().describe("Local memory collection name"),
       storage: z
         .object({
           dbPath: z.string().optional().describe("Explicit SQLite memory database path"),
-          collection: z
-            .string()
-            .optional()
-            .describe("Local memory collection name"),
+          collection: z.string().optional().describe("Local memory collection name"),
         })
         .optional()
         .describe("Local memory storage configuration"),
@@ -1414,22 +1410,9 @@ export namespace Config {
             .optional()
             .describe("Deprecated migration hint. Zee uses local memory embeddings by default."),
           provider: z.literal("local").optional().describe('Embedding provider ID ("local").'),
-          model: z
-            .string()
-            .optional()
-            .describe("Local memory embedding model identifier"),
-          dimensions: z
-            .number()
-            .int()
-            .positive()
-            .optional()
-            .describe("Memory embedding dimensions"),
-          dimension: z
-            .number()
-            .int()
-            .positive()
-            .optional()
-            .describe("Deprecated alias for dimensions"),
+          model: z.string().optional().describe("Local memory embedding model identifier"),
+          dimensions: z.number().int().positive().optional().describe("Memory embedding dimensions"),
+          dimension: z.number().int().positive().optional().describe("Deprecated alias for dimensions"),
           taskType: z
             .enum([
               "SEMANTIC_SIMILARITY",

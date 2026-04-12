@@ -2,7 +2,7 @@ import { isDeepEqual } from "remeda"
 import type { ParsedKey } from "@opentui/core"
 
 export function isReturn(name: string | undefined) {
-  return name === "return" || name === "kpenter"
+  return name === "return" || name === "enter" || name === "linefeed" || name === "kpenter"
 }
 
 export namespace Keybind {
@@ -58,6 +58,8 @@ export namespace Keybind {
   // OpenTUI's kittyKeyMap doesn't include 32, so we normalize here.
   const KEY_NAME_ALIASES: Record<string, string> = {
     " ": "space",
+    enter: "return",
+    linefeed: "return",
   }
 
   export function fromParsedKey(key: ParsedKey, leader = false): Info {

@@ -109,8 +109,11 @@ export namespace Daemon {
   function isZeeDaemonArgs(args: string[]): boolean {
     if (args.length === 0) return false
     const hasDaemonArg = args.some((arg) => arg === "daemon")
-    if (!hasDaemonArg) return false
-    return args.some((arg) => DAEMON_BASENAMES.has(path.basename(arg).toLowerCase()))
+    const zeeArgIndex = args.findIndex((arg) => DAEMON_BASENAMES.has(path.basename(arg).toLowerCase()))
+    if (zeeArgIndex === -1) return false
+    if (hasDaemonArg) return true
+    const positional = args.slice(zeeArgIndex + 1).find((arg) => arg && !arg.startsWith("-"))
+    return positional === undefined
   }
 
   async function readProcessCmdline(pid: number): Promise<string | null> {

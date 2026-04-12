@@ -11,10 +11,11 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { z } from "zod";
+import { z } from "zod/v3";
 import { getMemory } from "../../memory/unified.js";
 import type { MemoryCategory } from "../../memory/types.js";
 import { installMcpParentGuard } from "./parent-guard.js";
+import { runMcpServerWhenDirect } from "./run.js";
 
 const MEMORY_CATEGORIES = [
   "conversation",
@@ -32,8 +33,6 @@ const server = new McpServer({
   name: "memory",
   version: "1.0.0",
 });
-
-installMcpParentGuard("memory");
 
 // =============================================================================
 // memory_store - Store information in memory
@@ -303,13 +302,11 @@ server.tool(
 // Start server
 // =============================================================================
 
-async function main() {
+export async function startMemoryMcpServer() {
+  installMcpParentGuard("memory");
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error("Memory MCP server running on stdio");
 }
 
-main().catch((error) => {
-  console.error("Failed to start Memory MCP server:", error);
-  process.exit(1);
-});
+runMcpServerWhenDirect(import.meta.url, "Memory", startMemoryMcpServer);

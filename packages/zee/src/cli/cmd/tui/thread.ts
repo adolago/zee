@@ -252,6 +252,7 @@ async function ensureProcessRunning(
   const resolveUrl = async () => resolveDaemonUrl(network, await Daemon.readPidFile())
   const systemdUser = getSystemdServiceState("user")
   const systemdSystem = getSystemdServiceState("system")
+  const defaultUrl = resolveDaemonUrl(network, null)
 
   if (systemdUser.available && systemdUser.installed && systemdSystem.available && systemdSystem.installed) {
     UI.warn("Both user and system zee systemd services are installed. Use only one to avoid restarts.")
@@ -289,6 +290,10 @@ async function ensureProcessRunning(
       UI.info("Check: zee daemon-status")
       process.exit(1)
     }
+  }
+
+  if (await checkDaemonLiveness(defaultUrl)) {
+    return { url: defaultUrl }
   }
 
   // 3. Systemd (prefer user service)

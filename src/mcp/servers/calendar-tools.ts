@@ -4,7 +4,7 @@
  * Kept side-effect free for tests.
  */
 
-import { z } from "zod";
+import { z } from "zod/v3";
 import * as calendar from "../../domain/zee/google/calendar.js";
 
 export type CalendarDeps = Pick<
