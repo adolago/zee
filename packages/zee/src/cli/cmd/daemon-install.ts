@@ -17,6 +17,14 @@ import { Global } from "../../global"
 import { Log } from "../../util/log"
 import { UI } from "../ui"
 import { syncBundledSkillsToMachine } from "../../skill/mirror"
+import {
+  resolveConfigDir,
+  resolveInstallRoot,
+  resolveLogsDir,
+  resolvePolicyPath,
+  resolveStateDir,
+  resolveWorkspaceDir,
+} from "../../global/dirs"
 
 const log = Log.create({ service: "daemon-install" })
 
@@ -39,8 +47,14 @@ const SYSTEMD_ASSERT_TIMER_PATH = path.join(SYSTEMD_UNIT_DIR, SYSTEMD_ASSERT_TIM
 const SYSTEMD_ORCH_UNIT_NAME = "zee-orch.service"
 const SYSTEMD_ORCH_UNIT_PATH = path.join(SYSTEMD_UNIT_DIR, SYSTEMD_ORCH_UNIT_NAME)
 
+// Windows Service Control Manager service
+const WINDOWS_SERVICE_NAME = "Zee"
+const WINDOWS_SERVICE_DISPLAY_NAME = "Zee Daemon"
+const WINDOWS_SERVICE_ACCOUNT = `NT SERVICE\\${WINDOWS_SERVICE_NAME}`
+const WINDOWS_SERVICE_REGISTRY_KEY = `HKLM\\SYSTEM\\CurrentControlSet\\Services\\${WINDOWS_SERVICE_NAME}`
+
 // Log paths
-const LOG_DIR = path.join(Global.Path.state, "logs")
+const LOG_DIR = resolveLogsDir()
 const STDOUT_LOG = path.join(LOG_DIR, "daemon.log")
 const STDERR_LOG = path.join(LOG_DIR, "daemon.err.log")
 
@@ -54,13 +68,17 @@ export interface DaemonInstallOptions {
   gateway?: boolean
   gatewayForce?: boolean
   workingDirectory?: string
+  binaryPath?: string
   force?: boolean
   nonInteractive?: boolean
+  start?: boolean
+  scope?: "machine" | "user"
+  serviceAccount?: "virtual" | "local-system" | "interactive-user"
 }
 
 export interface DaemonInstallResult {
   success: boolean
-  platform: "linux" | "unsupported"
+  platform: "linux" | "windows" | "unsupported"
   servicePath?: string
   error?: string
   hints?: string[]
@@ -70,8 +88,10 @@ export interface DaemonInstallResult {
 // Platform Detection
 // =============================================================================
 
-function getPlatform(): "linux" | "unsupported" {
-  return os.platform() === "linux" ? "linux" : "unsupported"
+function getPlatform(): "linux" | "windows" | "unsupported" {
+  if (os.platform() === "linux") return "linux"
+  if (os.platform() === "win32") return "windows"
+  return "unsupported"
 }
 
 function hasSystemd(): boolean {
@@ -93,13 +113,50 @@ function hasSystemd(): boolean {
 function resolveZeeBinary(): string | null {
   const isExecutableZeeBinary = (candidate: string): boolean => {
     const base = path.basename(candidate).toLowerCase()
-    if (base !== "zee" && base !== "zee.exe") return false
+    if (base !== "zee" && base !== "zee.exe" && base !== "zee.cmd") return false
     fs.accessSync(candidate, fs.constants.X_OK)
     return true
   }
 
   // Check common locations
+  const windowsDistCandidates =
+    process.platform === "win32"
+      ? [
+          path.join(
+            Global.Path.source,
+            "packages",
+            "zee",
+            "dist",
+            "@adolago",
+            `zee-windows-${process.arch}`,
+            "bin",
+            "zee.exe",
+          ),
+          path.join(
+            Global.Path.source,
+            "packages",
+            "zee",
+            "dist",
+            "@adolago",
+            `zee-windows-${process.arch}-baseline`,
+            "bin",
+            "zee.exe",
+          ),
+          path.join(resolveInstallRoot(), "bin", "zee.exe"),
+          path.join(os.homedir(), ".bun", "bin", "zee.exe"),
+          path.join(os.homedir(), ".bun", "bin", "zee.cmd"),
+        ]
+      : []
+
   const candidates = [
+    // Current process (if running from a compiled zee binary).
+    path.basename(process.execPath).toLowerCase() === "zee.exe" ||
+    path.basename(process.execPath).toLowerCase() === "zee"
+      ? process.execPath
+      : null,
+    // Current argv (when launched via a direct shim).
+    ["zee", "zee.exe", "zee.cmd"].includes(path.basename(process.argv[0] ?? "").toLowerCase()) ? process.argv[0] : null,
+    ...windowsDistCandidates,
     // Bun global install
     path.join(os.homedir(), ".bun", "bin", "zee"),
     // User local bin
@@ -107,8 +164,6 @@ function resolveZeeBinary(): string | null {
     path.join(os.homedir(), ".local", "bin", "zee"),
     // npm global
     "/usr/local/bin/zee",
-    // Current process (if running from zee)
-    path.basename(process.argv[0] ?? "").toLowerCase() === "zee" ? process.argv[0] : null,
   ].filter(Boolean) as string[]
 
   for (const candidate of candidates) {
@@ -121,14 +176,18 @@ function resolveZeeBinary(): string | null {
     }
   }
 
-  // Try to find via which
+  // Try to find via platform PATH lookup.
   try {
-    const result = spawnSync("which", ["zee"], {
+    const result = spawnSync(process.platform === "win32" ? "where.exe" : "which", ["zee"], {
       encoding: "utf-8",
       timeout: 5000,
     })
-    if (result.status === 0 && result.stdout.trim() && isExecutableZeeBinary(result.stdout.trim())) {
-      return result.stdout.trim()
+    const found = result.stdout
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .find((line) => line && isExecutableZeeBinary(line))
+    if (result.status === 0 && found) {
+      return found
     }
   } catch {
     // Ignore
@@ -570,6 +629,372 @@ async function uninstallSystemdService(): Promise<DaemonInstallResult> {
 }
 
 // =============================================================================
+// Windows Service Control Manager
+// =============================================================================
+
+function quoteWindowsCommandArg(value: string): string {
+  return `"${value.replaceAll('"', '\\"')}"`
+}
+
+function runWindowsCommand(
+  command: string,
+  args: string[],
+  options: { timeout?: number; ignoreFailure?: boolean } = {},
+): { status: number | null; stdout: string; stderr: string } {
+  const result = spawnSync(command, args, {
+    encoding: "utf-8",
+    stdio: "pipe",
+    timeout: options.timeout ?? 30_000,
+    windowsHide: true,
+  })
+
+  const status = typeof result.status === "number" ? result.status : null
+  if (!options.ignoreFailure && status !== 0) {
+    const details = result.stderr?.trim() || result.stdout?.trim() || result.error?.message || `${command} failed`
+    throw new Error(details)
+  }
+  return {
+    status,
+    stdout: result.stdout ?? "",
+    stderr: result.stderr ?? "",
+  }
+}
+
+function runSc(args: string[], options: { timeout?: number; ignoreFailure?: boolean } = {}) {
+  return runWindowsCommand("sc.exe", args, options)
+}
+
+function windowsServiceBinPath(binaryPath: string, options: DaemonInstallOptions): string {
+  const args = ["daemon"]
+  const workDir = resolveServiceWorkingDirectory(options)
+  args.push("--port", String(options.port ?? 3210))
+  args.push("--hostname", options.hostname ?? "127.0.0.1")
+  if (options.gatewayForce) args.push("--gateway-force")
+  args.push("--runtime-guard-interval-ms", "30000")
+  args.push("--directory", workDir)
+  return [
+    quoteWindowsCommandArg(binaryPath),
+    ...args.map((arg) => (arg.includes(" ") ? quoteWindowsCommandArg(arg) : arg)),
+  ].join(" ")
+}
+
+function windowsServiceEnv(options: DaemonInstallOptions): Record<string, string> {
+  const scope = options.scope ?? "machine"
+  const stateDir = resolveStateDir({ ...process.env, ZEE_WINDOWS_SCOPE: scope }, "win32")
+  const env: Record<string, string> = {
+    NODE_ENV: "production",
+    ZEE_HEADLESS: "1",
+    ZEE_ENFORCE_ALWAYS_ON: "1",
+    ZEE_WINDOWS_SCOPE: scope,
+    ZEE_STATE_DIR: stateDir,
+    ZEE_CONFIG_DIR: resolveConfigDir({ ...process.env, ZEE_WINDOWS_SCOPE: scope, ZEE_STATE_DIR: stateDir }, "win32"),
+    ZEE_LOG_DIR: resolveLogsDir({ ...process.env, ZEE_WINDOWS_SCOPE: scope, ZEE_STATE_DIR: stateDir }, "win32"),
+    ZEE_WORKSPACE_DIR: resolveWorkspaceDir(
+      { ...process.env, ZEE_WINDOWS_SCOPE: scope, ZEE_STATE_DIR: stateDir },
+      "win32",
+    ),
+    ZEE_POLICY_FILE: resolvePolicyPath({ ...process.env, ZEE_WINDOWS_SCOPE: scope }, "win32"),
+  }
+
+  if (options.port) env.ZEE_PORT = String(options.port)
+  if (options.hostname) env.ZEE_HOSTNAME = options.hostname
+  return env
+}
+
+function setWindowsServiceEnvironment(env: Record<string, string>) {
+  const data = Object.entries(env)
+    .map(([key, value]) => `${key}=${value}`)
+    .join("\\0")
+  runWindowsCommand("reg.exe", [
+    "add",
+    WINDOWS_SERVICE_REGISTRY_KEY,
+    "/v",
+    "Environment",
+    "/t",
+    "REG_MULTI_SZ",
+    "/d",
+    data,
+    "/f",
+  ])
+}
+
+function ensureWindowsDirectories(options: DaemonInstallOptions) {
+  const env = windowsServiceEnv(options)
+  const dirs = [
+    env.ZEE_STATE_DIR,
+    env.ZEE_CONFIG_DIR,
+    env.ZEE_LOG_DIR,
+    env.ZEE_WORKSPACE_DIR,
+    path.dirname(env.ZEE_POLICY_FILE),
+  ]
+  for (const dir of Array.from(new Set(dirs))) {
+    fs.mkdirSync(dir, { recursive: true })
+  }
+}
+
+function grantWindowsServiceAcls(options: DaemonInstallOptions): string[] {
+  const hints: string[] = []
+  const serviceAccount = options.serviceAccount ?? "virtual"
+  if (serviceAccount !== "virtual") return hints
+
+  const env = windowsServiceEnv(options)
+  const writableDirs = [env.ZEE_STATE_DIR, env.ZEE_CONFIG_DIR, env.ZEE_LOG_DIR, env.ZEE_WORKSPACE_DIR]
+  for (const dir of Array.from(new Set(writableDirs))) {
+    const result = runWindowsCommand(
+      "icacls.exe",
+      [dir, "/grant", `${WINDOWS_SERVICE_ACCOUNT}:(OI)(CI)M`, "/T", "/C"],
+      { ignoreFailure: true, timeout: 60_000 },
+    )
+    if (result.status !== 0) {
+      hints.push(`Warning: failed to grant ${WINDOWS_SERVICE_ACCOUNT} access to ${dir}`)
+    }
+  }
+
+  return hints
+}
+
+function registerWindowsEventSource(): string | undefined {
+  const result = runWindowsCommand(
+    "eventcreate.exe",
+    [
+      "/ID",
+      "1",
+      "/L",
+      "APPLICATION",
+      "/T",
+      "INFORMATION",
+      "/SO",
+      WINDOWS_SERVICE_NAME,
+      "/D",
+      "Zee Event Log source initialized",
+    ],
+    { ignoreFailure: true, timeout: 15_000 },
+  )
+  if (result.status !== 0) {
+    return "Warning: failed to initialize Windows Event Log source for Zee"
+  }
+  return undefined
+}
+
+function writeWindowsDaemonEnvTemplate(options: DaemonInstallOptions) {
+  const env = windowsServiceEnv(options)
+  const envPath = path.join(env.ZEE_CONFIG_DIR, "daemon.env")
+  if (fs.existsSync(envPath)) return
+  fs.writeFileSync(
+    envPath,
+    [
+      "# Zee Daemon Environment Configuration",
+      "# Add service-level provider keys here, or use Windows Credential Manager/DPAPI-backed config.",
+      "",
+      "# ANTHROPIC_API_KEY=your-key-here",
+      "# OPENAI_API_KEY=your-key-here",
+      "",
+    ].join("\r\n"),
+    { mode: 0o600 },
+  )
+}
+
+function windowsServiceExists(): boolean {
+  const result = runSc(["query", WINDOWS_SERVICE_NAME], { ignoreFailure: true, timeout: 10_000 })
+  return result.status === 0
+}
+
+function waitForWindowsServiceDeleted(timeoutMs = 20_000): boolean {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    if (!windowsServiceExists()) return true
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500)
+  }
+  return !windowsServiceExists()
+}
+
+function stopWindowsServiceIfRunning() {
+  runSc(["stop", WINDOWS_SERVICE_NAME], { ignoreFailure: true, timeout: 30_000 })
+}
+
+function deleteWindowsService() {
+  stopWindowsServiceIfRunning()
+  runSc(["delete", WINDOWS_SERVICE_NAME], { ignoreFailure: true, timeout: 30_000 })
+  waitForWindowsServiceDeleted()
+}
+
+async function installWindowsService(binaryPath: string, options: DaemonInstallOptions): Promise<DaemonInstallResult> {
+  const hints: string[] = []
+  const normalizedBinary = path.resolve(binaryPath)
+
+  if (path.basename(normalizedBinary).toLowerCase() !== "zee.exe") {
+    return {
+      success: false,
+      platform: "windows",
+      error: "Windows service installation requires the native zee.exe binary, not a shell launcher.",
+      hints: ["Build with: cd packages/zee && bun run build", "Or pass: zee daemon-install --binary <path-to-zee.exe>"],
+    }
+  }
+
+  if (!fs.existsSync(normalizedBinary)) {
+    return {
+      success: false,
+      platform: "windows",
+      error: `Binary not found: ${normalizedBinary}`,
+    }
+  }
+
+  if (windowsServiceExists()) {
+    if (!options.force) {
+      return {
+        success: true,
+        platform: "windows",
+        servicePath: WINDOWS_SERVICE_REGISTRY_KEY,
+        hints: ["Service already installed. Use --force to reinstall."],
+      }
+    }
+    deleteWindowsService()
+  }
+
+  try {
+    ensureWindowsDirectories(options)
+    writeWindowsDaemonEnvTemplate(options)
+  } catch (error) {
+    return {
+      success: false,
+      platform: "windows",
+      error: `Failed to prepare Windows service directories: ${error instanceof Error ? error.message : String(error)}`,
+    }
+  }
+
+  try {
+    const mirror = await syncBundledSkillsToMachine({ reason: "windows-daemon-install" })
+    if (mirror.status === "synced") {
+      hints.push(`Curated skills mirrored: ${mirror.skillCount} -> ${mirror.destination}`)
+    } else if (mirror.status === "failed") {
+      hints.push(`Warning: curated skill mirror failed (${mirror.reason ?? "unknown error"})`)
+    }
+  } catch (error) {
+    hints.push(`Warning: curated skill mirror failed (${error instanceof Error ? error.message : String(error)})`)
+  }
+
+  hints.push(...grantWindowsServiceAcls(options))
+  const eventSourceWarning = registerWindowsEventSource()
+  if (eventSourceWarning) hints.push(eventSourceWarning)
+
+  const createArgs = [
+    "create",
+    WINDOWS_SERVICE_NAME,
+    "binPath=",
+    windowsServiceBinPath(normalizedBinary, options),
+    "DisplayName=",
+    WINDOWS_SERVICE_DISPLAY_NAME,
+    "start=",
+    "delayed-auto",
+  ]
+  if ((options.serviceAccount ?? "virtual") === "virtual") {
+    createArgs.push("obj=", WINDOWS_SERVICE_ACCOUNT, "password=", "")
+  }
+  if (options.serviceAccount === "local-system") {
+    createArgs.push("obj=", "LocalSystem")
+  }
+
+  try {
+    runSc(createArgs, { timeout: 60_000 })
+    runSc(["description", WINDOWS_SERVICE_NAME, SERVICE_DESCRIPTION], { ignoreFailure: true })
+    runSc(["sidtype", WINDOWS_SERVICE_NAME, "unrestricted"], { ignoreFailure: true })
+    runSc(
+      ["failure", WINDOWS_SERVICE_NAME, "reset=", "86400", "actions=", "restart/5000/restart/10000/restart/30000"],
+      {
+        ignoreFailure: true,
+      },
+    )
+    runSc(["failureflag", WINDOWS_SERVICE_NAME, "1"], { ignoreFailure: true })
+    setWindowsServiceEnvironment(windowsServiceEnv(options))
+
+    if (options.start ?? true) {
+      const start = runSc(["start", WINDOWS_SERVICE_NAME], { ignoreFailure: true, timeout: 60_000 })
+      if (start.status !== 0) {
+        hints.push(`Service installed but did not start: ${start.stderr.trim() || start.stdout.trim()}`)
+      }
+    }
+  } catch (error) {
+    return {
+      success: false,
+      platform: "windows",
+      servicePath: WINDOWS_SERVICE_REGISTRY_KEY,
+      error: `Failed to install Windows service: ${error instanceof Error ? error.message : String(error)}`,
+    }
+  }
+
+  hints.push(`Service: ${WINDOWS_SERVICE_NAME}`)
+  hints.push(`Logs: ${windowsServiceEnv(options).ZEE_LOG_DIR}`)
+  hints.push(`Status: zee daemon-service-status`)
+  hints.push(`Stop: sc.exe stop ${WINDOWS_SERVICE_NAME}`)
+  hints.push(`Restart: sc.exe stop ${WINDOWS_SERVICE_NAME} && sc.exe start ${WINDOWS_SERVICE_NAME}`)
+
+  return {
+    success: true,
+    platform: "windows",
+    servicePath: WINDOWS_SERVICE_REGISTRY_KEY,
+    hints,
+  }
+}
+
+async function uninstallWindowsService(options: { removeData?: boolean } = {}): Promise<DaemonInstallResult> {
+  if (windowsServiceExists()) {
+    deleteWindowsService()
+  }
+
+  const hints = ["Windows service removed successfully"]
+  if (options.removeData) {
+    const env = windowsServiceEnv({ scope: "machine" })
+    for (const dir of [env.ZEE_STATE_DIR, env.ZEE_CONFIG_DIR, env.ZEE_LOG_DIR, env.ZEE_WORKSPACE_DIR]) {
+      try {
+        fs.rmSync(dir, { recursive: true, force: true })
+      } catch (error) {
+        hints.push(`Warning: failed to remove ${dir}: ${error instanceof Error ? error.message : String(error)}`)
+      }
+    }
+  } else {
+    hints.push("Data kept. Use --remove-data to delete service state and config.")
+  }
+
+  return {
+    success: true,
+    platform: "windows",
+    servicePath: WINDOWS_SERVICE_REGISTRY_KEY,
+    hints,
+  }
+}
+
+function parseScValue(output: string, key: string): string | undefined {
+  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const match = output.match(new RegExp(`^\\s*${escaped}\\s*:\\s*(.+)$`, "im"))
+  return match?.[1]?.trim()
+}
+
+function getWindowsUnitStatus(): UnitStatus {
+  const query = runSc(["queryex", WINDOWS_SERVICE_NAME], { ignoreFailure: true, timeout: 10_000 })
+  const installed = query.status === 0
+  const qc = installed ? runSc(["qc", WINDOWS_SERVICE_NAME], { ignoreFailure: true, timeout: 10_000 }) : undefined
+  const state = parseScValue(query.stdout, "STATE")
+  const pidRaw = parseScValue(query.stdout, "PID")
+  const pid = pidRaw ? Number.parseInt(pidRaw, 10) : undefined
+  const startType = qc ? parseScValue(qc.stdout, "START_TYPE") : undefined
+  const account = qc ? parseScValue(qc.stdout, "SERVICE_START_NAME") : undefined
+  const binaryPath = qc ? parseScValue(qc.stdout, "BINARY_PATH_NAME") : undefined
+  const enabled = Boolean(startType && /AUTO_START/i.test(startType))
+
+  return {
+    name: WINDOWS_SERVICE_NAME,
+    path: WINDOWS_SERVICE_REGISTRY_KEY,
+    installed,
+    running: Boolean(state && /RUNNING/i.test(state)),
+    enabled,
+    pid: Number.isFinite(pid) && pid && pid > 0 ? pid : undefined,
+    startType,
+    account,
+    binaryPath,
+  }
+}
+
+// =============================================================================
 // Main Install/Uninstall Functions
 // =============================================================================
 
@@ -585,17 +1010,24 @@ export async function installDaemon(options: DaemonInstallOptions = {}): Promise
   }
 
   // Find zee binary
-  const binaryPath = resolveZeeBinary()
+  const binaryPath = options.binaryPath ? path.resolve(options.binaryPath) : resolveZeeBinary()
   if (!binaryPath) {
     return {
       success: false,
       platform,
       error: "Could not find zee binary. Ensure it's installed and in PATH.",
-      hints: ["Install with: bun install -g zee", "Or: npm install -g zee"],
+      hints:
+        platform === "windows"
+          ? ["Install the Zee MSI, or pass: zee daemon-install --binary <path-to-zee.exe>"]
+          : ["Install with: bun install -g zee", "Or: npm install -g zee"],
     }
   }
 
   log.info("resolved binary", { path: binaryPath })
+
+  if (platform === "windows") {
+    return installWindowsService(binaryPath, options)
+  }
 
   // Check if already installed (unless force)
   if (!options.force) {
@@ -612,7 +1044,7 @@ export async function installDaemon(options: DaemonInstallOptions = {}): Promise
   return installSystemdService(binaryPath, options)
 }
 
-export async function uninstallDaemon(): Promise<DaemonInstallResult> {
+export async function uninstallDaemon(options: { removeData?: boolean } = {}): Promise<DaemonInstallResult> {
   const platform = getPlatform()
 
   if (platform === "unsupported") {
@@ -621,6 +1053,10 @@ export async function uninstallDaemon(): Promise<DaemonInstallResult> {
       platform: "unsupported",
       error: `Platform '${os.platform()}' is not supported.`,
     }
+  }
+
+  if (platform === "windows") {
+    return uninstallWindowsService(options)
   }
 
   return uninstallSystemdService()
@@ -632,6 +1068,10 @@ type UnitStatus = {
   installed: boolean
   running: boolean
   enabled: boolean
+  pid?: number
+  startType?: string
+  account?: string
+  binaryPath?: string
 }
 
 function getUnitStatus(name: string, servicePath: string): UnitStatus {
@@ -691,6 +1131,17 @@ export function getDaemonServiceStatus(): {
     }
   }
 
+  if (platform === "windows") {
+    const daemon = getWindowsUnitStatus()
+    return {
+      installed: daemon.installed,
+      running: daemon.running,
+      platform,
+      servicePath: WINDOWS_SERVICE_REGISTRY_KEY,
+      units: { daemon },
+    }
+  }
+
   const daemon = getUnitStatus(SYSTEMD_UNIT_NAME, SYSTEMD_UNIT_PATH)
 
   return {
@@ -708,7 +1159,7 @@ export function getDaemonServiceStatus(): {
 
 export const DaemonInstallCommand = cmd({
   command: "daemon-install",
-  describe: "Install zee daemon as a user systemd service (Linux)",
+  describe: "Install zee daemon as a managed service (systemd on Linux, Windows Service on Windows)",
   builder: (yargs) =>
     yargs
       .option("port", {
@@ -730,10 +1181,31 @@ export const DaemonInstallCommand = cmd({
         describe: "Working directory for daemon",
         type: "string",
       })
+      .option("binary", {
+        describe: "Path to zee native binary to register with the service manager",
+        type: "string",
+      })
       .option("force", {
         describe: "Force reinstall if already installed",
         type: "boolean",
         default: false,
+      })
+      .option("start", {
+        describe: "Start the service after installation",
+        type: "boolean",
+        default: true,
+      })
+      .option("scope", {
+        describe: "Windows install scope",
+        type: "string",
+        choices: ["machine", "user"],
+        default: "machine",
+      })
+      .option("service-account", {
+        describe: "Windows service account",
+        type: "string",
+        choices: ["virtual", "local-system"],
+        default: "virtual",
       })
       .option("non-interactive", {
         describe: "Run without prompts",
@@ -752,7 +1224,11 @@ export const DaemonInstallCommand = cmd({
       gateway: true,
       gatewayForce: args["gateway-force"] as boolean,
       workingDirectory: args.directory as string | undefined,
+      binaryPath: args.binary as string | undefined,
       force: args.force as boolean,
+      start: args.start as boolean,
+      scope: args.scope as "machine" | "user",
+      serviceAccount: args["service-account"] as "virtual" | "local-system",
       nonInteractive: args["non-interactive"] as boolean,
     }
 
@@ -766,7 +1242,9 @@ export const DaemonInstallCommand = cmd({
         process.exit(1)
       }
 
-      prompts.log.info("Platform: Linux (systemd)")
+      prompts.log.info(
+        platform === "windows" ? "Platform: Windows (Service Control Manager)" : "Platform: Linux (systemd)",
+      )
 
       // Check existing installation
       const status = getDaemonServiceStatus()
@@ -815,13 +1293,19 @@ export const DaemonUninstallCommand = cmd({
   command: "daemon-uninstall",
   describe: "Uninstall zee daemon services",
   builder: (yargs) =>
-    yargs.option("json", {
-      describe: "Output as JSON",
-      type: "boolean",
-      default: false,
-    }),
+    yargs
+      .option("remove-data", {
+        describe: "Windows: remove service data/config/log directories after unregistering the service",
+        type: "boolean",
+        default: false,
+      })
+      .option("json", {
+        describe: "Output as JSON",
+        type: "boolean",
+        default: false,
+      }),
   handler: async (args) => {
-    const result = await uninstallDaemon()
+    const result = await uninstallDaemon({ removeData: Boolean(args["remove-data"]) })
 
     if (args.json) {
       console.log(JSON.stringify(result, null, 2))
@@ -864,6 +1348,10 @@ export const DaemonServiceStatusCommand = cmd({
       console.log(`    Running:   ${status.units.daemon.running ? "yes" : "no"}`)
       console.log(`    Enabled:   ${status.units.daemon.enabled ? "yes" : "no"}`)
       console.log(`    Path:      ${status.units.daemon.path}`)
+      if (status.units.daemon.pid) console.log(`    PID:       ${status.units.daemon.pid}`)
+      if (status.units.daemon.account) console.log(`    Account:   ${status.units.daemon.account}`)
+      if (status.units.daemon.startType) console.log(`    Start:     ${status.units.daemon.startType}`)
+      if (status.units.daemon.binaryPath) console.log(`    Binary:    ${status.units.daemon.binaryPath}`)
     }
   },
 })

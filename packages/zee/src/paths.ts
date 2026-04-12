@@ -7,7 +7,7 @@
 
 import path from "path"
 import fs from "fs"
-import os from "os"
+import { resolveConfigDir, resolveDataDir } from "./global/dirs"
 
 function findZeeRoot(startDir: string): string | undefined {
   let current = path.resolve(startDir)
@@ -50,9 +50,7 @@ export function getZeeRoot(): string {
 }
 
 function getXdgDataDir(): string {
-  const xdgDataHome = process.env.XDG_DATA_HOME?.trim()
-  if (xdgDataHome) return path.join(xdgDataHome, "zee")
-  return path.join(os.homedir(), ".local", "share", "zee")
+  return resolveDataDir()
 }
 
 /**
@@ -160,9 +158,7 @@ export const Zee = {
    * Used for user configuration such as zee.jsonc.
    */
   dataDir(): string {
-    const xdgConfigHome = process.env.XDG_CONFIG_HOME?.trim()
-    if (xdgConfigHome) return path.join(xdgConfigHome, "zee")
-    return path.join(os.homedir(), ".config", "zee")
+    return resolveConfigDir()
   },
 
   credentials(): string {

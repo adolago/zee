@@ -1,0 +1,13 @@
+{
+  "name": "@adolago/zee-installer-windows",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun run script/build.ts",
+    "manifest": "bun run script/winget-manifest.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:"
+  }
+}

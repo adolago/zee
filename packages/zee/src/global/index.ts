@@ -2,7 +2,16 @@ import fs from "fs/promises"
 import fsSync from "fs"
 import path from "path"
 import os from "os"
-import { resolveCacheDir, resolveConfigDir, resolveDataDir, resolveStateDir, resolveWorkspaceDir } from "./dirs"
+import {
+  resolveCacheDir,
+  resolveConfigDir,
+  resolveDataDir,
+  resolveInstallRoot,
+  resolveLogsDir,
+  resolvePolicyPath,
+  resolveStateDir,
+  resolveWorkspaceDir,
+} from "./dirs"
 
 const app = "zee"
 
@@ -51,7 +60,10 @@ export namespace Global {
       return path.join(this.data, "bin")
     },
     get log() {
-      return path.join(this.data, "log")
+      return process.platform === "win32" ? resolveLogsDir() : path.join(this.data, "log")
+    },
+    get logs() {
+      return resolveLogsDir()
     },
     get cache() {
       return resolveCacheDir()
@@ -64,6 +76,12 @@ export namespace Global {
     },
     get workspace() {
       return resolveWorkspaceDir()
+    },
+    get policy() {
+      return resolvePolicyPath()
+    },
+    get installRoot() {
+      return resolveInstallRoot()
     },
     get tmp() {
       return path.join(os.tmpdir(), app)

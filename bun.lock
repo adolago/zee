@@ -250,6 +250,13 @@
         "solid-js": "1.9.10",
       },
     },
+    "packages/zee-installer-windows": {
+      "name": "@adolago/zee-installer-windows",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@types/bun": "catalog:",
+      },
+    },
   },
   "trustedDependencies": [
     "esbuild",
@@ -337,6 +344,8 @@
     "@actions/io": ["@actions/io@3.0.2", "", {}, "sha512-nRBchcMM+QK1pdjO7/idu86rbJI5YHUKCvKs0KxnSYbVe3F51UfGxuZX4Qy/fWlp6l7gWFwIkrOzN+oUK03kfw=="],
 
     "@adolago/zee": ["@adolago/zee@workspace:packages/zee"],
+
+    "@adolago/zee-installer-windows": ["@adolago/zee-installer-windows@workspace:packages/zee-installer-windows"],
 
     "@agentclientprotocol/sdk": ["@agentclientprotocol/sdk@0.13.1", "", { "peerDependencies": { "zod": "^3.25.0 || ^4.0.0" } }, "sha512-6byvu+F/xc96GBkdAx4hq6/tB3vT63DSBO4i3gYCz8nuyZMerVFna2Gkhm8EHNpZX0J9DjUxzZCW+rnHXUg0FA=="],
 

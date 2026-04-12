@@ -5,7 +5,7 @@ import { Global } from "../../global"
 import { Session } from "../../session"
 import { Todo } from "../../session/todo"
 import { Instance } from "../../project/instance"
-import { execSync } from "child_process"
+import { execFileSync, execSync, spawnSync } from "child_process"
 import { startAlwaysOnProcess } from "./always-on"
 import { runRuntimeProcessMaintenance } from "./runtime-process-guard"
 import { createRestartIterationHook } from "./restart-recovery"
@@ -104,7 +104,7 @@ export namespace Daemon {
     }
   }
 
-  const DAEMON_BASENAMES = new Set(["zee"])
+  const DAEMON_BASENAMES = new Set(["zee", "zee.exe", "zee.cmd", "zee.ps1"])
 
   function isZeeDaemonArgs(args: string[]): boolean {
     if (args.length === 0) return false
@@ -114,6 +114,32 @@ export namespace Daemon {
   }
 
   async function readProcessCmdline(pid: number): Promise<string | null> {
+    if (process.platform === "win32") {
+      try {
+        const output = execFileSync(
+          "powershell.exe",
+          [
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            `(Get-CimInstance Win32_Process -Filter "ProcessId = ${pid}").CommandLine`,
+          ],
+          {
+            encoding: "utf-8",
+            stdio: ["ignore", "pipe", "ignore"],
+            timeout: 5000,
+            windowsHide: true,
+          },
+        )
+        const trimmed = output.trim()
+        return trimmed || null
+      } catch {
+        return null
+      }
+    }
+
     try {
       return await fs.readFile(`/proc/${pid}/cmdline`, "utf-8")
     } catch {
@@ -133,6 +159,8 @@ export namespace Daemon {
   async function isZeeDaemonProcess(pid: number): Promise<boolean> {
     const procCmdline = await readProcessCmdline(pid)
     if (procCmdline) return isZeeDaemonArgs(parseDaemonCommandLineArgs(procCmdline))
+    if (process.platform === "win32") return false
+
     try {
       const psOutput = execSync(`ps -p ${pid} -o command=`, {
         stdio: ["ignore", "pipe", "ignore"],
@@ -281,7 +309,8 @@ export namespace Daemon {
   }
 
   export async function setupSignalHandlers(cleanup: (signal?: NodeJS.Signals) => Promise<void>) {
-    const signals: NodeJS.Signals[] = ["SIGINT", "SIGTERM", "SIGHUP"]
+    const signals: NodeJS.Signals[] =
+      process.platform === "win32" ? ["SIGINT", "SIGTERM"] : ["SIGINT", "SIGTERM", "SIGHUP"]
 
     for (const signal of signals) {
       process.on(signal, () => {
@@ -676,6 +705,7 @@ function getGatewayPort(): number {
 const SYSTEMD_ZEE_GATEWAY_UNIT = "zee-gateway.service"
 
 function isSystemdUserUnitEnabled(unit: string): boolean {
+  if (process.platform !== "linux") return false
   try {
     const output = execSync(`systemctl --user is-enabled ${unit} 2>/dev/null || true`, {
       encoding: "utf-8",
@@ -691,6 +721,7 @@ function isSystemdUserUnitEnabled(unit: string): boolean {
 }
 
 async function isPidInSystemdUnit(pid: number, unit: string): Promise<boolean> {
+  if (process.platform !== "linux") return false
   try {
     const cgroup = await fs.readFile(`/proc/${pid}/cgroup`, "utf-8")
     return cgroup.includes(unit)
@@ -699,7 +730,44 @@ async function isPidInSystemdUnit(pid: number, unit: string): Promise<boolean> {
   }
 }
 
+function listWindowsZeeProcesses(kind: "daemon" | "gateway"): Array<{ pid: number; cmd: string }> {
+  const regex = kind === "daemon" ? "\\bdaemon\\b" : "\\bgateway\\b"
+  try {
+    const script = [
+      "Get-CimInstance Win32_Process",
+      `Where-Object { $_.CommandLine -match 'zee' -and $_.CommandLine -match '${regex}' }`,
+      "ForEach-Object { [pscustomobject]@{ ProcessId = $_.ProcessId; CommandLine = $_.CommandLine } }",
+      "ConvertTo-Json -Compress",
+    ].join(" | ")
+    const output = execFileSync(
+      "powershell.exe",
+      ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script],
+      {
+        encoding: "utf-8",
+        stdio: ["ignore", "pipe", "ignore"],
+        timeout: 5000,
+        windowsHide: true,
+      },
+    ).trim()
+    if (!output) return []
+    const parsed = JSON.parse(output) as
+      | { ProcessId?: number; CommandLine?: string }
+      | Array<{ ProcessId?: number; CommandLine?: string }>
+    const items = Array.isArray(parsed) ? parsed : [parsed]
+    return items
+      .map((item) => ({
+        pid: Number(item.ProcessId),
+        cmd: String(item.CommandLine ?? ""),
+      }))
+      .filter((item) => Number.isFinite(item.pid) && item.pid > 0 && item.pid !== process.pid && item.cmd)
+  } catch {
+    return []
+  }
+}
+
 function listGatewayProcesses(): Array<{ pid: number; cmd: string }> {
+  if (process.platform === "win32") return listWindowsZeeProcesses("gateway")
+
   try {
     const output = execSync('pgrep -af "zee.*gateway" 2>/dev/null || true', {
       encoding: "utf-8",
@@ -720,6 +788,8 @@ function listGatewayProcesses(): Array<{ pid: number; cmd: string }> {
 }
 
 function listDaemonProcesses(): Array<{ pid: number; cmd: string }> {
+  if (process.platform === "win32") return listWindowsZeeProcesses("daemon")
+
   try {
     const output = execSync('pgrep -af "zee.*daemon([[:space:]]|$)" 2>/dev/null || true', {
       encoding: "utf-8",
@@ -736,6 +806,27 @@ function listDaemonProcesses(): Array<{ pid: number; cmd: string }> {
       .filter((entry): entry is { pid: number; cmd: string } => Boolean(entry))
   } catch {
     return []
+  }
+}
+
+async function terminateProcessTree(pid: number): Promise<void> {
+  if (process.platform === "win32") {
+    await new Promise<void>((resolve) => {
+      const killer = spawnSync("taskkill.exe", ["/pid", String(pid), "/t", "/f"], {
+        stdio: "ignore",
+        timeout: 10_000,
+        windowsHide: true,
+      })
+      void killer
+      resolve()
+    })
+    return
+  }
+
+  try {
+    process.kill(pid, "SIGTERM")
+  } catch {
+    return
   }
 }
 
@@ -770,11 +861,7 @@ async function stopGatewayProcesses(reason: string): Promise<void> {
   })
 
   for (const proc of killableProcs) {
-    try {
-      process.kill(proc.pid, "SIGTERM")
-    } catch {
-      // ignore missing process
-    }
+    await terminateProcessTree(proc.pid)
   }
 
   const deadline = Date.now() + 4000
@@ -794,7 +881,8 @@ async function stopGatewayProcesses(reason: string): Promise<void> {
   if (remaining.length > 0) {
     for (const pid of remaining) {
       try {
-        process.kill(pid, "SIGKILL")
+        if (process.platform === "win32") await terminateProcessTree(pid)
+        else process.kill(pid, "SIGKILL")
       } catch {
         // ignore
       }
@@ -814,11 +902,7 @@ async function stopDaemonProcesses(reason: string): Promise<void> {
   })
 
   for (const proc of processes) {
-    try {
-      process.kill(proc.pid, "SIGTERM")
-    } catch {
-      // ignore missing process
-    }
+    await terminateProcessTree(proc.pid)
   }
 
   const deadline = Date.now() + 4000
@@ -838,7 +922,8 @@ async function stopDaemonProcesses(reason: string): Promise<void> {
   if (remaining.length > 0) {
     for (const pid of remaining) {
       try {
-        process.kill(pid, "SIGKILL")
+        if (process.platform === "win32") await terminateProcessTree(pid)
+        else process.kill(pid, "SIGKILL")
       } catch {
         // ignore
       }
@@ -946,7 +1031,7 @@ export const DaemonCommand = cmd({
 
       UI.info(`Stopping daemon (PID: ${state?.pid})...`)
       try {
-        if (state?.pid) process.kill(state.pid, "SIGTERM")
+        if (state?.pid) await terminateProcessTree(state.pid)
         await Daemon.removePidFile()
         await new Promise((r) => setTimeout(r, 1000))
       } catch (e) {
@@ -1124,8 +1209,12 @@ export const DaemonStopCommand = cmd({
     }
 
     try {
-      process.kill(state.pid, "SIGTERM")
-      Output.log(`Sent SIGTERM to daemon (PID: ${state.pid})`)
+      await terminateProcessTree(state.pid)
+      Output.log(
+        process.platform === "win32"
+          ? `Requested daemon stop (PID: ${state.pid})`
+          : `Sent SIGTERM to daemon (PID: ${state.pid})`,
+      )
 
       // Wait for it to stop
       let attempts = 0
@@ -1141,8 +1230,13 @@ export const DaemonStopCommand = cmd({
       }
 
       // Force kill if still running
-      Output.log("Daemon did not stop gracefully, sending SIGKILL")
-      process.kill(state.pid, "SIGKILL")
+      Output.log(
+        process.platform === "win32"
+          ? "Daemon did not stop gracefully, forcing process tree cleanup"
+          : "Daemon did not stop gracefully, sending SIGKILL",
+      )
+      if (process.platform === "win32") await terminateProcessTree(state.pid)
+      else process.kill(state.pid, "SIGKILL")
       await Daemon.removePidFile()
       await Daemon.releaseLock()
       await stopDaemonProcesses("daemon-stop (forced)")

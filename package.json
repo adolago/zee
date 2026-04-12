@@ -25,6 +25,7 @@
       "packages/ui",
       "packages/util",
       "packages/web",
+      "packages/zee-installer-windows",
       "packages/hosted"
     ],
     "catalog": {

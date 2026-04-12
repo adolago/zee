@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process"
+import { execFileSync, spawnSync } from "node:child_process"
 import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
@@ -77,6 +77,14 @@ export type RuntimeMaintenanceReport = {
   kills: RuntimeMaintenanceKill[]
 }
 
+type RawRuntimeProcess = {
+  pid: number
+  command: string
+  ppid?: number
+  exePath?: string
+  serviceName?: string
+}
+
 export function parsePgrepOutput(output: string): Array<{ pid: number; command: string }> {
   return output
     .split(/\r?\n/)
@@ -90,6 +98,88 @@ export function parsePgrepOutput(output: string): Array<{ pid: number; command: 
       return { pid, command: match[2] ?? "" }
     })
     .filter((entry): entry is { pid: number; command: string } => Boolean(entry))
+}
+
+function parseWindowsCimProcessJson(output: string): RawRuntimeProcess[] {
+  const trimmed = output.trim()
+  if (!trimmed) return []
+  const parsed = JSON.parse(trimmed) as
+    | {
+        ProcessId?: number
+        ParentProcessId?: number
+        ExecutablePath?: string
+        CommandLine?: string
+      }
+    | Array<{
+        ProcessId?: number
+        ParentProcessId?: number
+        ExecutablePath?: string
+        CommandLine?: string
+      }>
+  const items = Array.isArray(parsed) ? parsed : [parsed]
+  const mapped: Array<RawRuntimeProcess | undefined> = items.map((item) => {
+    const pid = Number(item.ProcessId)
+    if (!Number.isFinite(pid) || pid <= 0) return undefined
+    const command = String(item.CommandLine || item.ExecutablePath || "")
+    const ppid = Number(item.ParentProcessId)
+    return {
+      pid,
+      command,
+      ...(Number.isFinite(ppid) ? { ppid } : {}),
+      ...(item.ExecutablePath ? { exePath: item.ExecutablePath } : {}),
+    }
+  })
+  return mapped.filter((entry): entry is RawRuntimeProcess => Boolean(entry?.command))
+}
+
+function queryWindowsServicePids(): Map<number, string> {
+  const services = new Map<number, string>()
+  for (const service of ["Zee"]) {
+    try {
+      const output = execFileSync("sc.exe", ["queryex", service], {
+        encoding: "utf-8",
+        stdio: ["ignore", "pipe", "ignore"],
+        timeout: 3000,
+        windowsHide: true,
+      })
+      const match = output.match(/^\s*PID\s*:\s*(\d+)\s*$/im)
+      if (!match) continue
+      const pid = Number.parseInt(match[1]!, 10)
+      if (Number.isFinite(pid) && pid > 0) services.set(pid, service)
+    } catch {
+      // Service not installed or SCM unavailable.
+    }
+  }
+  return services
+}
+
+function collectWindowsRawProcesses(): RawRuntimeProcess[] {
+  try {
+    const script = [
+      "Get-CimInstance Win32_Process",
+      "Where-Object { ($_.CommandLine -like '*zee*') -or ($_.CommandLine -like '*src/mcp/servers*') -or ($_.ExecutablePath -like '*zee.exe') }",
+      "Select-Object ProcessId,ParentProcessId,ExecutablePath,CommandLine",
+      "ConvertTo-Json -Compress",
+    ].join(" | ")
+    const output = execFileSync(
+      "powershell.exe",
+      ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script],
+      {
+        encoding: "utf-8",
+        stdio: ["ignore", "pipe", "ignore"],
+        timeout: 10_000,
+        windowsHide: true,
+      },
+    )
+    const servicePids = queryWindowsServicePids()
+    return parseWindowsCimProcessJson(output).map((entry) => ({
+      ...entry,
+      serviceName: servicePids.get(entry.pid),
+    }))
+  } catch (error) {
+    log.debug("windows process inventory failed", { error: String(error) })
+    return []
+  }
 }
 
 function getEnvInt(key: string): number | undefined {
@@ -149,6 +239,7 @@ async function resolveExpectedExecutablePaths(): Promise<Set<string>> {
 }
 
 function runPgrep(pattern: string): Array<{ pid: number; command: string }> {
+  if (process.platform === "win32") return []
   try {
     const output = execFileSync("pgrep", ["-af", pattern], {
       encoding: "utf-8",
@@ -163,6 +254,11 @@ function runPgrep(pattern: string): Array<{ pid: number; command: string }> {
   }
 }
 
+function collectRawRuntimeProcesses(): RawRuntimeProcess[] {
+  if (process.platform === "win32") return collectWindowsRawProcesses()
+  return [...runPgrep("zee"), ...runPgrep("src/mcp/servers/")]
+}
+
 function isPidAlive(pid: number): boolean {
   try {
     process.kill(pid, 0)
@@ -173,6 +269,7 @@ function isPidAlive(pid: number): boolean {
 }
 
 async function readProcPpid(pid: number): Promise<number | undefined> {
+  if (process.platform !== "linux") return undefined
   try {
     const status = await fs.readFile(`/proc/${pid}/status`, "utf-8")
     const match = status.match(/^PPid:\s+(\d+)$/m)
@@ -185,6 +282,7 @@ async function readProcPpid(pid: number): Promise<number | undefined> {
 }
 
 async function readProcEnv(pid: number): Promise<Record<string, string>> {
+  if (process.platform !== "linux") return {}
   try {
     const raw = await fs.readFile(`/proc/${pid}/environ`)
     const env: Record<string, string> = {}
@@ -201,6 +299,7 @@ async function readProcEnv(pid: number): Promise<Record<string, string>> {
 }
 
 async function readProcCgroup(pid: number): Promise<string | undefined> {
+  if (process.platform !== "linux") return undefined
   try {
     return await fs.readFile(`/proc/${pid}/cgroup`, "utf-8")
   } catch {
@@ -209,6 +308,7 @@ async function readProcCgroup(pid: number): Promise<string | undefined> {
 }
 
 async function readProcExePath(pid: number): Promise<string | undefined> {
+  if (process.platform !== "linux") return undefined
   try {
     return await fs.readlink(`/proc/${pid}/exe`)
   } catch {
@@ -217,6 +317,7 @@ async function readProcExePath(pid: number): Promise<string | undefined> {
 }
 
 async function readProcStdinPath(pid: number): Promise<string | undefined> {
+  if (process.platform !== "linux") return undefined
   try {
     return await fs.readlink(`/proc/${pid}/fd/0`)
   } catch {
@@ -236,7 +337,11 @@ function extractSystemdUnit(cgroup: string | undefined): string | undefined {
   return matches[matches.length - 1]?.[1]
 }
 
-async function isDescendantOfPid(pid: number, ancestorPid: number): Promise<boolean> {
+async function isDescendantOfPid(
+  pid: number,
+  ancestorPid: number,
+  parentByPid: Map<number, number | undefined> = new Map(),
+): Promise<boolean> {
   if (!Number.isFinite(pid) || !Number.isFinite(ancestorPid)) return false
   if (pid === ancestorPid) return true
 
@@ -244,7 +349,7 @@ async function isDescendantOfPid(pid: number, ancestorPid: number): Promise<bool
   const seen = new Set<number>()
   for (let depth = 0; depth < 64; depth += 1) {
     // eslint-disable-next-line no-await-in-loop
-    const ppid = await readProcPpid(current)
+    const ppid = parentByPid.has(current) ? parentByPid.get(current) : await readProcPpid(current)
     if (!ppid || ppid <= 1) return false
     if (ppid === ancestorPid) return true
     if (seen.has(ppid)) return false
@@ -378,8 +483,8 @@ export async function collectRuntimeSnapshot(
   const limits = resolveRuntimeProcessLimits(input.limits)
   const expectedPaths = await resolveExpectedExecutablePaths()
 
-  const raw = [...runPgrep("zee"), ...runPgrep("src/mcp/servers/")]
-  const unique = new Map<number, { pid: number; command: string }>()
+  const raw = collectRawRuntimeProcesses()
+  const unique = new Map<number, RawRuntimeProcess>()
   for (const entry of raw) {
     if (!shouldTrack(entry.command)) continue
     if (entry.pid === currentPid) continue
@@ -387,14 +492,15 @@ export async function collectRuntimeSnapshot(
   }
 
   const baseEntries = Array.from(unique.values())
+  const parentByPid = new Map(baseEntries.map((entry) => [entry.pid, entry.ppid]))
   const entries: RuntimeProcessEntry[] = await Promise.all(
     baseEntries.map(async (entry) => {
       const kind = classifyRuntimeProcess(entry.command)
-      const ppid = await readProcPpid(entry.pid)
+      const ppid = entry.ppid ?? (await readProcPpid(entry.pid))
       const cgroup = await readProcCgroup(entry.pid)
       const stdinPath = await readProcStdinPath(entry.pid)
-      const exeRawPath = await readProcExePath(entry.pid)
-      const systemdUnit = extractSystemdUnit(cgroup)
+      const exeRawPath = entry.exePath ?? (await readProcExePath(entry.pid))
+      const systemdUnit = entry.serviceName ?? extractSystemdUnit(cgroup)
       const systemdManaged = Boolean(systemdUnit)
       const env = kind === "mcp_server" ? await readProcEnv(entry.pid) : {}
       const taggedMcp = env.ZEE_MCP_SERVER === "1"
@@ -404,7 +510,7 @@ export async function collectRuntimeSnapshot(
       const parentPid = taggedParentPid ?? ppid
       const orphanable = kind === "mcp_server" || kind === "daemon" || kind === "gateway" || kind === "zee_other"
       const orphaned = orphanable && (!parentPid || parentPid <= 1 || !isPidAlive(parentPid))
-      const descendantOfCurrent = await isDescendantOfPid(entry.pid, currentPid)
+      const descendantOfCurrent = await isDescendantOfPid(entry.pid, currentPid, parentByPid)
       const exePath = normalizeExePath(exeRawPath)
       const exeDeleted = Boolean(exeRawPath?.endsWith(" (deleted)"))
       const zeeExecutable = isZeeExecutablePath(exePath)
@@ -434,7 +540,12 @@ export async function collectRuntimeSnapshot(
     }),
   )
 
-  const trackedEntries = entries.filter((entry) => entry.kind === "mcp_server" || entry.zeeExecutable)
+  const trackedEntries = entries.filter(
+    (entry) =>
+      entry.kind === "mcp_server" ||
+      entry.zeeExecutable ||
+      (process.platform === "win32" && shouldTrack(entry.command)),
+  )
 
   trackedEntries.sort((a, b) => a.pid - b.pid)
   const counts = computeCounts(trackedEntries)
@@ -667,6 +778,17 @@ function sleep(ms: number): Promise<void> {
 
 async function terminatePid(pid: number): Promise<"terminated" | "killed" | "missing" | "failed"> {
   if (!isPidAlive(pid)) return "missing"
+
+  if (process.platform === "win32") {
+    const result = spawnSync("taskkill.exe", ["/pid", String(pid), "/t", "/f"], {
+      stdio: "ignore",
+      timeout: 10_000,
+      windowsHide: true,
+    })
+    if (result.status !== 0 && isPidAlive(pid)) return "failed"
+    await sleep(100)
+    return isPidAlive(pid) ? "failed" : "killed"
+  }
 
   try {
     process.kill(pid, "SIGTERM")

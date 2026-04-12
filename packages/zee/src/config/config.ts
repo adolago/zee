@@ -21,6 +21,7 @@ import { ConfigMarkdown } from "./markdown"
 import { constants, existsSync } from "fs"
 import { Bus } from "@/bus"
 import type { ThemeJson } from "../cli/cmd/tui/context/theme"
+import { resolvePolicyPath } from "@/global/dirs"
 
 export namespace Config {
   const log = Log.create({ service: "config" })
@@ -33,13 +34,14 @@ export namespace Config {
       case "darwin":
         return "/Library/Application Support/zee"
       case "win32":
-        return path.join(process.env.ProgramData || "C:\\ProgramData", "zee")
+        return path.dirname(resolvePolicyPath())
       default:
         return "/etc/zee"
     }
   }
 
   const managedConfigDir = process.env.ZEE_TEST_MANAGED_CONFIG_DIR || getManagedConfigDir()
+  const managedPolicyPath = process.env.ZEE_TEST_POLICY_PATH || resolvePolicyPath()
 
   // Custom merge function that concatenates array fields instead of replacing them
   function mergeConfigConcatArrays(target: Info, source: Info): Info {
@@ -212,6 +214,14 @@ export namespace Config {
         result.mode ??= {}
         result.plugin ??= []
       }
+    }
+
+    if (existsSync(managedPolicyPath)) {
+      result = mergeConfigConcatArrays(result, await loadFile(managedPolicyPath))
+      result.agent ??= {}
+      result.mode ??= {}
+      result.plugin ??= []
+      log.debug("loaded managed policy", { path: managedPolicyPath })
     }
 
     if (Flag.ZEE_PERMISSION) {
@@ -1132,7 +1142,11 @@ export namespace Config {
         .optional()
         .default("token")
         .describe("Control UI auth mode; `none` is dangerous break-glass mode"),
-      allowPasswordOnly: z.boolean().optional().default(false).describe("Dangerous: allow password-only Control UI auth"),
+      allowPasswordOnly: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe("Dangerous: allow password-only Control UI auth"),
       allowInsecureHttp: z
         .boolean()
         .optional()
@@ -1148,10 +1162,7 @@ export namespace Config {
   export const GatewayControlUi = z
     .object({
       auth: GatewayControlUiAuth.optional().describe("Control UI authentication and downgrade guardrails"),
-      trustedOrigins: z
-        .array(z.string())
-        .optional()
-        .describe("Allowlist of trusted browser origins for Control UI"),
+      trustedOrigins: z.array(z.string()).optional().describe("Allowlist of trusted browser origins for Control UI"),
     })
     .strict()
     .meta({
@@ -1191,10 +1202,7 @@ export namespace Config {
             .enum(["deny", "allowlist", "full"])
             .optional()
             .describe("Node tool execution policy mode (`deny`, `allowlist`, `full`)"),
-          allowRemotePairing: z
-            .boolean()
-            .optional()
-            .describe("Allow non-loopback remote pairing requests"),
+          allowRemotePairing: z.boolean().optional().describe("Allow non-loopback remote pairing requests"),
           toolAllowlist: z.array(z.string()).optional().describe("Allowed tools when `securityMode=allowlist`"),
           maxPairedNodes: z.number().int().positive().optional().describe("Maximum active paired nodes"),
           credentialMaxAgeHours: z
@@ -1361,21 +1369,43 @@ export namespace Config {
       redisUrl: z.string().optional().describe("Redis connection URL"),
       qdrantUrl: z.string().optional().describe("Qdrant endpoint URL"),
       // qdrantApiKey removed: Qdrant is local-only, no remote support
-      qdrantCollection: z.string().optional().describe("Deprecated migration hint. Zee always uses the canonical agent_memory collection."),
+      qdrantCollection: z
+        .string()
+        .optional()
+        .describe("Deprecated migration hint. Zee always uses the canonical agent_memory collection."),
       qdrant: z
         .object({
           url: z.string().optional().describe("Qdrant endpoint URL (must be localhost)"),
-          collection: z.string().optional().describe("Deprecated migration hint. Zee always uses the canonical agent_memory collection."),
+          collection: z
+            .string()
+            .optional()
+            .describe("Deprecated migration hint. Zee always uses the canonical agent_memory collection."),
         })
         .optional()
         .describe("Nested Qdrant configuration (local-only)"),
       embedding: z
         .object({
-          profile: z.string().optional().describe("Deprecated migration hint. Zee always uses google/gemini-embedding-2-preview."),
+          profile: z
+            .string()
+            .optional()
+            .describe("Deprecated migration hint. Zee always uses google/gemini-embedding-2-preview."),
           provider: z.literal("google").optional().describe('Embedding provider ID ("google").'),
-          model: z.string().optional().describe("Deprecated migration hint. Zee ignores custom memory embedding models."),
-          dimensions: z.number().int().positive().optional().describe("Deprecated migration hint. Zee always uses 3072 dimensions."),
-          dimension: z.number().int().positive().optional().describe("Deprecated alias for dimensions. Zee always uses 3072."),
+          model: z
+            .string()
+            .optional()
+            .describe("Deprecated migration hint. Zee ignores custom memory embedding models."),
+          dimensions: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe("Deprecated migration hint. Zee always uses 3072 dimensions."),
+          dimension: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe("Deprecated alias for dimensions. Zee always uses 3072."),
           taskType: z
             .enum([
               "SEMANTIC_SIMILARITY",
@@ -1447,22 +1477,67 @@ export namespace Config {
               filings: z
                 .object({
                   enabled: z.boolean().optional().describe("Enable filings connector"),
-                  scheduleMinutes: z.number().int().positive().optional().describe("Filings connector cadence in minutes"),
-                  freshnessSloMinutes: z.number().int().positive().optional().describe("Maximum acceptable filing staleness in minutes"),
-                  retryAttempts: z.number().int().positive().optional().describe("Total retry attempts for transient filings failures"),
-                  retryDelayMs: z.number().int().positive().optional().describe("Base retry delay for filings failures in milliseconds"),
+                  scheduleMinutes: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("Filings connector cadence in minutes"),
+                  freshnessSloMinutes: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("Maximum acceptable filing staleness in minutes"),
+                  retryAttempts: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("Total retry attempts for transient filings failures"),
+                  retryDelayMs: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("Base retry delay for filings failures in milliseconds"),
                   symbols: z.array(z.string()).optional().describe("Connector-specific symbol override"),
                 })
                 .optional(),
               earnings: z
                 .object({
                   enabled: z.boolean().optional().describe("Enable earnings connector"),
-                  scheduleMinutes: z.number().int().positive().optional().describe("Earnings connector cadence in minutes"),
-                  freshnessSloMinutes: z.number().int().positive().optional().describe("Maximum acceptable earnings staleness in minutes"),
-                  retryAttempts: z.number().int().positive().optional().describe("Total retry attempts for transient earnings failures"),
-                  retryDelayMs: z.number().int().positive().optional().describe("Base retry delay for earnings failures in milliseconds"),
+                  scheduleMinutes: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("Earnings connector cadence in minutes"),
+                  freshnessSloMinutes: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("Maximum acceptable earnings staleness in minutes"),
+                  retryAttempts: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("Total retry attempts for transient earnings failures"),
+                  retryDelayMs: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("Base retry delay for earnings failures in milliseconds"),
                   symbols: z.array(z.string()).optional().describe("Connector-specific symbol override"),
-                  quarters: z.number().int().positive().optional().describe("How many quarters of earnings history to ingest"),
+                  quarters: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("How many quarters of earnings history to ingest"),
                   backfillMaxQuarters: z
                     .number()
                     .int()
@@ -1474,10 +1549,30 @@ export namespace Config {
               transcripts: z
                 .object({
                   enabled: z.boolean().optional().describe("Enable transcripts connector"),
-                  scheduleMinutes: z.number().int().positive().optional().describe("Transcripts connector cadence in minutes"),
-                  freshnessSloMinutes: z.number().int().positive().optional().describe("Maximum acceptable transcript staleness in minutes"),
-                  retryAttempts: z.number().int().positive().optional().describe("Total retry attempts for transient transcript failures"),
-                  retryDelayMs: z.number().int().positive().optional().describe("Base retry delay for transcript failures in milliseconds"),
+                  scheduleMinutes: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("Transcripts connector cadence in minutes"),
+                  freshnessSloMinutes: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("Maximum acceptable transcript staleness in minutes"),
+                  retryAttempts: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("Total retry attempts for transient transcript failures"),
+                  retryDelayMs: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("Base retry delay for transcript failures in milliseconds"),
                   endpointPath: z.string().optional().describe("Raw API path for transcript ingestion"),
                   lookbackDays: z.number().int().positive().optional().describe("Transcript lookback window in days"),
                   backfillMaxLookbackDays: z
@@ -1491,29 +1586,84 @@ export namespace Config {
               market: z
                 .object({
                   enabled: z.boolean().optional().describe("Enable market connector"),
-                  scheduleMinutes: z.number().int().positive().optional().describe("Market connector cadence in minutes"),
-                  freshnessSloMinutes: z.number().int().positive().optional().describe("Maximum acceptable market staleness in minutes"),
-                  retryAttempts: z.number().int().positive().optional().describe("Total retry attempts for transient market failures"),
-                  retryDelayMs: z.number().int().positive().optional().describe("Base retry delay for market failures in milliseconds"),
+                  scheduleMinutes: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("Market connector cadence in minutes"),
+                  freshnessSloMinutes: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("Maximum acceptable market staleness in minutes"),
+                  retryAttempts: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("Total retry attempts for transient market failures"),
+                  retryDelayMs: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("Base retry delay for market failures in milliseconds"),
                   symbols: z.array(z.string()).optional().describe("Connector-specific symbol override"),
                 })
                 .optional(),
               macro: z
                 .object({
                   enabled: z.boolean().optional().describe("Enable macro connector"),
-                  scheduleMinutes: z.number().int().positive().optional().describe("Macro connector cadence in minutes"),
-                  freshnessSloMinutes: z.number().int().positive().optional().describe("Maximum acceptable macro staleness in minutes"),
-                  retryAttempts: z.number().int().positive().optional().describe("Total retry attempts for transient macro failures"),
-                  retryDelayMs: z.number().int().positive().optional().describe("Base retry delay for macro failures in milliseconds"),
+                  scheduleMinutes: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("Macro connector cadence in minutes"),
+                  freshnessSloMinutes: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("Maximum acceptable macro staleness in minutes"),
+                  retryAttempts: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("Total retry attempts for transient macro failures"),
+                  retryDelayMs: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("Base retry delay for macro failures in milliseconds"),
                 })
                 .optional(),
               news: z
                 .object({
                   enabled: z.boolean().optional().describe("Enable news connector"),
                   scheduleMinutes: z.number().int().positive().optional().describe("News connector cadence in minutes"),
-                  freshnessSloMinutes: z.number().int().positive().optional().describe("Maximum acceptable news staleness in minutes"),
-                  retryAttempts: z.number().int().positive().optional().describe("Total retry attempts for transient news failures"),
-                  retryDelayMs: z.number().int().positive().optional().describe("Base retry delay for news failures in milliseconds"),
+                  freshnessSloMinutes: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("Maximum acceptable news staleness in minutes"),
+                  retryAttempts: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("Total retry attempts for transient news failures"),
+                  retryDelayMs: z
+                    .number()
+                    .int()
+                    .positive()
+                    .optional()
+                    .describe("Base retry delay for news failures in milliseconds"),
                   endpointPath: z.string().optional().describe("Raw API path for news ingestion"),
                   lookbackDays: z.number().int().positive().optional().describe("News lookback window in days"),
                   backfillMaxLookbackDays: z
@@ -1967,8 +2117,14 @@ export namespace Config {
             .describe("Fallback rules in priority order"),
           tiers: z
             .object({
-              flagship: z.array(z.string()).optional().describe("Flagship-tier model mappings for equivalence fallback"),
-              standard: z.array(z.string()).optional().describe("Standard-tier model mappings for equivalence fallback"),
+              flagship: z
+                .array(z.string())
+                .optional()
+                .describe("Flagship-tier model mappings for equivalence fallback"),
+              standard: z
+                .array(z.string())
+                .optional()
+                .describe("Standard-tier model mappings for equivalence fallback"),
               fast: z.array(z.string()).optional().describe("Fast-tier model mappings for equivalence fallback"),
             })
             .optional()

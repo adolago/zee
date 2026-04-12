@@ -1,0 +1,45 @@
+name: windows-installer
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build-msi:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: ./.github/actions/setup-bun
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Install WiX
+        run: dotnet tool install --global wix --version 4.*
+
+      - name: Build Windows binary
+        run: |
+          cd packages/zee
+          bun run build -- --targets win32-x64
+
+      - name: Build MSI
+        run: |
+          cd packages/zee-installer-windows
+          bun run build
+
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: zee-windows-installer
+          path: |
+            packages/zee-installer-windows/dist/ZeeSetup-x64.msi
+            packages/zee-installer-windows/dist/ZeeSetup-x64.sha256
+            packages/zee-installer-windows/dist/winget/*.yaml
