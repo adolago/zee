@@ -423,6 +423,21 @@ async function checkOpenBBBackend(): Promise<CheckResult> {
 
   const probe = await probeOpenBBAvailability()
   if (!probe.available) {
+    if (!OpenBB.apiUrlOverridden()) {
+      return {
+        id: "runtime.openbb-backend",
+        name: "OpenBB Backend",
+        category: "runtime",
+        status: "pass",
+        message: "OpenBB Platform API not running (optional until investing workflows are used)",
+        details: probe.error || probe.action,
+        severity: "info",
+        durationMs: Date.now() - start,
+        autoFixable: false,
+        metadata: { apiUrl, mode: probe.mode, configured: false },
+      }
+    }
+
     return {
       id: "runtime.openbb-backend",
       name: "OpenBB Backend",

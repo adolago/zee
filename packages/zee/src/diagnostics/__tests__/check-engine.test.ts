@@ -71,7 +71,7 @@ mock.module("../checks/integrity", () => ({
 describe("CheckEngine", () => {
   describe("runAll", () => {
     it("should run all categories and return a report", async () => {
-      const engine = new CheckEngine()
+      const engine = new CheckEngine({ categories: ["runtime", "config", "providers", "integrity"] })
       const report = await engine.runAll()
 
       expect(report.checks.length).toBe(4)
