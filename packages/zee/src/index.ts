@@ -32,7 +32,6 @@ import { DaemonInstallCommand, DaemonUninstallCommand, DaemonServiceStatusComman
 import { PluginCommand } from "./cli/cmd/plugin"
 import { SetupCommand } from "./cli/cmd/setup"
 import { OnboardCommand } from "./cli/cmd/onboard"
-import { PodsCommand } from "./cli/cmd/pods"
 import { PackageCommand } from "./cli/cmd/package"
 import { InspectCommand } from "./cli/cmd/inspect"
 import { BugReportCommand } from "./cli/cmd/bug-report"
@@ -205,9 +204,7 @@ const cli = yargs(hideBin(process.argv))
   .command(ProviderCommand)
   .command(OnboardCommand)
   .command(SetupCommand)
-  .command(PodsCommand)
   .command(PackageCommand)
-  .command(PodsCommand)
   .command(BugReportCommand)
   .command(ReliabilityCommand)
   .command(BenchmarkCommand)

@@ -26,5 +26,5 @@ This hosted implementation is designed for local or self-managed deployments. It
 
 ## Retention
 
-- Logs, telemetry, and usage records are pruned according to retention settings.
-- Defaults are configured via `HOSTED_RETENTION_LOGS_DAYS`, `HOSTED_RETENTION_TELEMETRY_DAYS`, and `HOSTED_RETENTION_USAGE_DAYS`.
+- Logs are pruned according to retention settings.
+- Defaults are configured via `HOSTED_RETENTION_LOGS_DAYS`.

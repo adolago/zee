@@ -25,7 +25,6 @@ import { PermissionNext } from "@/permission/next"
 import { Auth } from "@/auth"
 import { generateAwarenessSection } from "../../../../src/awareness"
 import { AppDeps } from "@/app/deps"
-import { FluxRecorder } from "@/flux"
 
 export namespace LLM {
   const log = Log.create({ service: "llm" })
@@ -247,24 +246,6 @@ export namespace LLM {
       Provider.getProvider(input.model.providerID),
       Auth.get(input.model.providerID),
     ])
-    const traceID = input.user.id ?? input.sessionID
-    const requestID = crypto.randomUUID()
-    FluxRecorder.record({
-      traceID,
-      requestID,
-      sessionID: input.sessionID,
-      messageID: input.user.id,
-      providerID: input.model.providerID,
-      modelID: input.model.id,
-      direction: "outbound",
-      domain: "provider",
-      kind: "api.outbound.request",
-      status: "ok",
-      metadata: {
-        stream: true,
-        small: input.small ?? false,
-      },
-    })
     const isCodex = provider.id === "openai" && auth?.type === "oauth"
 
     const system = SystemPrompt.header(input.model.providerID)
@@ -442,34 +423,6 @@ export namespace LLM {
       onError(error) {
         l.error("stream error", {
           error,
-        })
-        const streamError = (error as { error?: unknown }).error
-        const streamErrorMessage =
-          streamError instanceof Error
-            ? streamError.message
-            : typeof streamError === "object" &&
-                streamError !== null &&
-                "message" in streamError &&
-                typeof (streamError as { message?: unknown }).message === "string"
-              ? (streamError as { message: string }).message
-              : streamError !== undefined
-                ? String(streamError)
-                : undefined
-        FluxRecorder.record({
-          traceID,
-          requestID,
-          sessionID: input.sessionID,
-          messageID: input.user.id,
-          providerID: input.model.providerID,
-          modelID: input.model.id,
-          direction: "outbound",
-          domain: "provider",
-          kind: "api.outbound.response",
-          status: "error",
-          error: {
-            code: "stream_error",
-            message: streamErrorMessage,
-          },
         })
       },
       async experimental_repairToolCall(failed) {

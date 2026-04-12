@@ -210,14 +210,6 @@ export const BashTool = Tool.define("bash", async (initCtx) => {
 
 ${description}`
 
-  // Persona agents don't need git commit/PR workflow instructions
-  if (initCtx?.agent?.native === true) {
-    const gitSection = description.indexOf("\n# Committing changes with git")
-    if (gitSection !== -1) {
-      description = description.slice(0, gitSection).trimEnd()
-    }
-  }
-
   return {
     description,
     parameters: z.object({

@@ -1,6 +1,5 @@
 import { Bus } from "@/bus"
 import { BusEvent } from "@/bus/bus-event"
-import { FluxRecorder, type FluxEvent } from "@/flux"
 import { Flag } from "@/flag/flag"
 import { Log } from "@/util/log"
 import type { RuntimeContractSurface } from "./opencode-contract"
@@ -9,7 +8,6 @@ import z from "zod"
 const log = Log.create({ service: "runtime:opencode-rollout" })
 
 const DEFAULT_PRIMARY_SURFACES: RuntimeContractSurface[] = ["cli", "orchestration", "gateway"]
-const ROUTE_FLUX_KINDS = ["runtime.opencode.route.selected", "runtime.opencode.route.fallback"] as const
 const ROLLOUT_WINDOW_HOURS = 24
 const ENABLE_FLAG = "ZEE_RUNTIME_OPENCODE_SURFACES"
 const FORCE_LEGACY_FLAG = "ZEE_RUNTIME_OPENCODE_FORCE_LEGACY_SURFACES"
@@ -17,6 +15,11 @@ const ALLOW_LEGACY_FALLBACK_FLAG = "ZEE_RUNTIME_OPENCODE_ALLOW_LEGACY_FALLBACK"
 
 export type OpenCodeRuntimeRoute = "opencode_primary" | "legacy_fallback"
 export type OpenCodeRuntimeRouteReason = "default_primary" | "surface_disabled" | "forced_legacy"
+export type OpenCodeRuntimeRouteEvent = {
+  kind: "runtime.opencode.route.selected" | "runtime.opencode.route.fallback"
+  timestamp?: number
+  metadata?: Record<string, unknown>
+}
 
 export type OpenCodeRuntimeRouteSelection = {
   surface: RuntimeContractSurface
@@ -108,21 +111,17 @@ export type OpenCodeRuntimeRolloutReport = {
     reason: string
     runbook: string[]
   }
-  telemetry: {
-    eventType: string
-    fluxKinds: typeof ROUTE_FLUX_KINDS
-    metrics: {
-      surfaceCount: number
-      primarySurfaceCount: number
-      legacySurfaceCount: number
-      forcedLegacySurfaceCount: number
-      routeEventCount: number
-      fallbackEventCount: number
-      breachCount: number
-      releaseReady: boolean
-      windowHours: number
-      allowLegacyFallback: boolean
-    }
+  metrics: {
+    surfaceCount: number
+    primarySurfaceCount: number
+    legacySurfaceCount: number
+    forcedLegacySurfaceCount: number
+    routeEventCount: number
+    fallbackEventCount: number
+    breachCount: number
+    releaseReady: boolean
+    windowHours: number
+    allowLegacyFallback: boolean
   }
 }
 
@@ -170,45 +169,13 @@ function toIsoTimestamp(timestamp: number | undefined): string | undefined {
   return typeof timestamp === "number" ? new Date(timestamp).toISOString() : undefined
 }
 
-function listFluxEventsPaginated(query: {
-  kind: (typeof ROUTE_FLUX_KINDS)[number]
-  from: number
-  to: number
-}): FluxEvent[] {
-  const events: FluxEvent[] = []
-  let offset = 0
-
-  while (true) {
-    const page = FluxRecorder.list({
-      domain: "runtime",
-      kind: query.kind,
-      from: query.from,
-      to: query.to,
-      limit: 1000,
-      offset,
-    })
-
-    events.push(...page.events)
-    if (page.events.length < 1000) break
-    offset += page.events.length
-  }
-
-  return events
-}
-
-function collectOpenCodeRuntimeRouteEvents(windowStart: number, windowEnd: number): FluxEvent[] {
-  return ROUTE_FLUX_KINDS.flatMap((kind) =>
-    listFluxEventsPaginated({
-      kind,
-      from: windowStart,
-      to: windowEnd,
-    }),
-  )
+function collectOpenCodeRuntimeRouteEvents(_windowStart: number, _windowEnd: number): OpenCodeRuntimeRouteEvent[] {
+  return []
 }
 
 function buildSurfaceParity(input: {
   surfaces: OpenCodeRuntimeRolloutSurface[]
-  routeEvents: FluxEvent[]
+  routeEvents: OpenCodeRuntimeRouteEvent[]
 }): {
   surfaces: OpenCodeRuntimeParitySurface[]
   breaches: OpenCodeRuntimeFallbackBreach[]
@@ -218,7 +185,7 @@ function buildSurfaceParity(input: {
   fallbackRate: number
   releaseReady: boolean
 } {
-  const eventsBySurface = new Map<RuntimeContractSurface, FluxEvent[]>()
+  const eventsBySurface = new Map<RuntimeContractSurface, OpenCodeRuntimeRouteEvent[]>()
   for (const surface of DEFAULT_PRIMARY_SURFACES) {
     eventsBySurface.set(surface, [])
   }
@@ -407,8 +374,6 @@ export function recordOpenCodeRuntimeRoute(input: {
   metadata?: Record<string, unknown>
 }): OpenCodeRuntimeRouteSelection {
   const selection = resolveOpenCodeRuntimeRoute(input.surface)
-  const traceID = input.traceID ?? input.requestID ?? input.messageID ?? input.sessionID ?? crypto.randomUUID()
-  const kind = selection.route === "opencode_primary" ? "runtime.opencode.route.selected" : "runtime.opencode.route.fallback"
 
   if (selection.route === "legacy_fallback") {
     log.warn("OpenCode primary runtime not selected", {
@@ -421,35 +386,13 @@ export function recordOpenCodeRuntimeRoute(input: {
     })
   }
 
-  FluxRecorder.record({
-    traceID,
-    requestID: input.requestID,
-    sessionID: input.sessionID,
-    messageID: input.messageID,
-    providerID: input.providerID,
-    modelID: input.modelID,
-    direction: "internal",
-    domain: "runtime",
-    kind,
-    status: "ok",
-    metadata: {
-      surface: input.surface,
-      route: selection.route,
-      reason: selection.reason,
-      allowLegacyFallback: selection.allowLegacyFallback,
-      enabledSurfaces: selection.enabledSurfaces,
-      forcedLegacySurfaces: selection.forcedLegacySurfaces,
-      ...input.metadata,
-    },
-  })
-
   return selection
 }
 
 export function buildOpenCodeRuntimeRolloutReport(
   now: Date = new Date(),
   options: {
-    routeEvents?: FluxEvent[]
+    routeEvents?: OpenCodeRuntimeRouteEvent[]
   } = {},
 ): OpenCodeRuntimeRolloutReport {
   const surfaces = DEFAULT_PRIMARY_SURFACES.map((surface) => {
@@ -511,45 +454,41 @@ export function buildOpenCodeRuntimeRolloutReport(
         "5. Fix the parity gap, clear the forced-legacy override, and require `zee v3 release --strict` to pass before resuming rollout.",
       ],
     },
-    telemetry: {
-      eventType: OpenCodeRuntimeRolloutInspected.type,
-      fluxKinds: ROUTE_FLUX_KINDS,
-      metrics: {
-        surfaceCount: surfaces.length,
-        primarySurfaceCount,
-        legacySurfaceCount,
-        forcedLegacySurfaceCount,
-        routeEventCount: parity.routeEvents,
-        fallbackEventCount: parity.fallbackEvents,
-        breachCount: parity.breaches.length,
-        releaseReady: parity.releaseReady,
-        windowHours: ROLLOUT_WINDOW_HOURS,
-        allowLegacyFallback: sample.allowLegacyFallback,
-      },
+    metrics: {
+      surfaceCount: surfaces.length,
+      primarySurfaceCount,
+      legacySurfaceCount,
+      forcedLegacySurfaceCount,
+      routeEventCount: parity.routeEvents,
+      fallbackEventCount: parity.fallbackEvents,
+      breachCount: parity.breaches.length,
+      releaseReady: parity.releaseReady,
+      windowHours: ROLLOUT_WINDOW_HOURS,
+      allowLegacyFallback: sample.allowLegacyFallback,
     },
   }
 }
 
-export async function emitOpenCodeRuntimeRolloutTelemetry(report: OpenCodeRuntimeRolloutReport): Promise<void> {
+export async function publishOpenCodeRuntimeRolloutReport(report: OpenCodeRuntimeRolloutReport): Promise<void> {
   log.info("OpenCode runtime rollout inspected", {
     reportId: report.reportId,
     defaultRoute: report.defaultRoute,
-    metrics: report.telemetry.metrics,
+    metrics: report.metrics,
   })
 
   await Bus.publish(OpenCodeRuntimeRolloutInspected, {
     reportId: report.reportId,
     reportVersion: report.reportVersion,
-    surfaceCount: report.telemetry.metrics.surfaceCount,
-    primarySurfaceCount: report.telemetry.metrics.primarySurfaceCount,
-    legacySurfaceCount: report.telemetry.metrics.legacySurfaceCount,
-    forcedLegacySurfaceCount: report.telemetry.metrics.forcedLegacySurfaceCount,
-    routeEventCount: report.telemetry.metrics.routeEventCount,
-    fallbackEventCount: report.telemetry.metrics.fallbackEventCount,
-    breachCount: report.telemetry.metrics.breachCount,
-    releaseReady: report.telemetry.metrics.releaseReady,
-    windowHours: report.telemetry.metrics.windowHours,
-    allowLegacyFallback: report.telemetry.metrics.allowLegacyFallback,
+    surfaceCount: report.metrics.surfaceCount,
+    primarySurfaceCount: report.metrics.primarySurfaceCount,
+    legacySurfaceCount: report.metrics.legacySurfaceCount,
+    forcedLegacySurfaceCount: report.metrics.forcedLegacySurfaceCount,
+    routeEventCount: report.metrics.routeEventCount,
+    fallbackEventCount: report.metrics.fallbackEventCount,
+    breachCount: report.metrics.breachCount,
+    releaseReady: report.metrics.releaseReady,
+    windowHours: report.metrics.windowHours,
+    allowLegacyFallback: report.metrics.allowLegacyFallback,
   })
 }
 
@@ -573,7 +512,7 @@ export function summarizeOpenCodeRuntimeRollout(report: OpenCodeRuntimeRolloutRe
   const fallbackRate = `${(report.parity.fallbackRate * 100).toFixed(1)}%`
   const lines = [
     `OpenCode runtime rollout v${report.reportVersion}`,
-    `- default=${report.defaultRoute} primary=${report.telemetry.metrics.primarySurfaceCount} legacy=${report.telemetry.metrics.legacySurfaceCount}`,
+    `- default=${report.defaultRoute} primary=${report.metrics.primarySurfaceCount} legacy=${report.metrics.legacySurfaceCount}`,
     `- flags: ${report.controlFlags.enableFlag}=${report.controlFlags.configuredPrimarySurfaces.join(",")} ${report.controlFlags.forceLegacyFlag}=${report.controlFlags.forcedLegacySurfaces.join(",") || "none"}`,
     `- fallback: ${report.controlFlags.allowLegacyFallbackFlag}=${String(report.controlFlags.allowLegacyFallback)}`,
     `- parity: window=${report.parityWindow.hours}h route-events=${report.parity.routeEvents} fallback=${report.parity.fallbackEvents} rate=${fallbackRate} breaches=${report.parity.breaches.length} release=${report.parity.releaseReady ? "ready" : "blocked"}`,
@@ -586,7 +525,5 @@ export function summarizeOpenCodeRuntimeRollout(report: OpenCodeRuntimeRolloutRe
   }
 
   lines.push(`- rollback: ${report.rollback.recommended ? "recommended" : "not-required"} :: ${report.rollback.reason}`)
-  lines.push(`- telemetry: ${report.telemetry.eventType}`)
-  lines.push(`- flux: ${report.telemetry.fluxKinds.join(", ")}`)
   return lines.join("\n")
 }

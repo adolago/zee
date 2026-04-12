@@ -3,7 +3,6 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { z } from "zod";
 import type { ToolDefinition, ToolExecutionResult } from "../../mcp/types";
-import * as UsageStorage from "../../../packages/zee/src/usage/storage.js";
 import { bannerPushTool } from "./banner.js";
 import { sendWhatsAppMessage } from "./whatsapp-send.js";
 
@@ -264,78 +263,6 @@ export const filesTool: ToolDefinition = {
   }),
 };
 
-const SessionBreakdownParams = z.object({
-  sessionId: z.string().optional().describe("Session id (defaults to current session)"),
-  includeRecentEvents: z.boolean().default(true).describe("Include recent usage events"),
-  recentLimit: z.number().int().min(1).max(30).default(10).describe("How many recent events to include"),
-});
-
-export const sessionBreakdownTool: ToolDefinition = {
-  id: "zee:session-breakdown",
-  category: "domain",
-  init: async () => ({
-    description: `Show token/cost breakdown for a session using usage tracking storage.`,
-    parameters: SessionBreakdownParams,
-    execute: async (args, ctx): Promise<ToolExecutionResult> => {
-      const sessionId = args.sessionId?.trim() || ctx.sessionId;
-      ctx.metadata({ title: "Session Breakdown" });
-
-      try {
-        const usage = UsageStorage.getSessionUsage(sessionId);
-        if (!usage) {
-          return {
-            title: "Session Breakdown",
-            metadata: { sessionId, found: false },
-            output: `No usage records found for session ${sessionId}.`,
-          };
-        }
-
-        let recentBlock = "";
-        if (args.includeRecentEvents) {
-          const events = UsageStorage.queryEvents({
-            sessionId,
-            limit: args.recentLimit,
-          });
-          const rows = events.map((event) => {
-            const ts = new Date(event.timestamp).toISOString();
-            const totalTokens = event.inputTokens + event.outputTokens;
-            return `- ${ts} ${event.providerId}/${event.modelId} tokens=${totalTokens} cost=$${event.totalCost.toFixed(4)}`;
-          });
-          recentBlock = rows.length > 0 ? `\n\nRecent events:\n${rows.join("\n")}` : "";
-        }
-
-        return {
-          title: "Session Breakdown",
-          metadata: {
-            sessionId,
-            requests: usage.requests,
-            inputTokens: usage.inputTokens,
-            outputTokens: usage.outputTokens,
-            cost: usage.cost,
-          },
-          output: [
-            `Session: ${sessionId}`,
-            `Requests: ${usage.requests}`,
-            `Input tokens: ${usage.inputTokens}`,
-            `Output tokens: ${usage.outputTokens}`,
-            `Cost: $${usage.cost.toFixed(4)}`,
-            `First request: ${new Date(usage.firstRequest).toISOString()}`,
-            `Last request: ${new Date(usage.lastRequest).toISOString()}`,
-            recentBlock,
-          ].join("\n"),
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          title: "Session Breakdown Failed",
-          metadata: { sessionId, error: message },
-          output: `Failed to read usage storage: ${message}`,
-        };
-      }
-    },
-  }),
-};
-
 const NotifyParams = z.object({
   message: z.string().min(1).describe("Notification message"),
   channel: z.enum(["banner", "whatsapp", "both"]).default("banner").describe("Notification channel"),
@@ -475,7 +402,6 @@ export const lateNightGuardTool: ToolDefinition = {
 export const UX_TOOLS = [
   reviewTool,
   filesTool,
-  sessionBreakdownTool,
   notificationRelayTool,
   lateNightGuardTool,
 ];

@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test"
 import path from "path"
-import { Server } from "../../src/server/server"
 import { SkillsRoute } from "../../src/server/route/skills"
 import { Instance } from "../../src/project/instance"
 import { tmpdir } from "../fixture/fixture"
@@ -18,18 +17,6 @@ Instructions for ${name}.
 }
 
 describe("public API contracts", () => {
-  test("does not expose the legacy /personas endpoint", async () => {
-    const app = Server.App()
-
-    const openapiResponse = await app.request("/openapi")
-    expect(openapiResponse.status).toBe(200)
-    const spec = (await openapiResponse.json()) as { paths?: Record<string, unknown> }
-    expect(spec.paths?.["/personas"]).toBeUndefined()
-
-    const personasResponse = await app.request("/personas")
-    expect(personasResponse.status).toBe(404)
-  })
-
   test("skills APIs emit shared affinity and Zee-only context", async () => {
     await using tmp = await tmpdir({
       git: true,

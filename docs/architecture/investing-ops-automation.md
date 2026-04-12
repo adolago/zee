@@ -65,7 +65,7 @@ Supported tool actions:
 - the daily portfolio brief workflow materializes the latest persisted portfolio briefing
 - earnings workflows locate the latest matching synthesis execution, regenerate the packet if needed, and store the delivered content in the audit trail
 
-## Telemetry
+## diagnostics
 
 This slice emits:
 

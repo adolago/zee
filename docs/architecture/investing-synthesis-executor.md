@@ -82,20 +82,20 @@ Each evidence item contains:
 - `status`
 - `summary`
 
-## Telemetry
+## diagnostics
 
-The executor emits Flux events under `domain=investing`:
+The executor emits event bus events under `domain=investing`:
 
 - `investing.research.execution`
   - one event per execution run with workflow, task, and evidence counts
 - `investing.research.evidence`
   - one event per evidence item with citation, source label, and summary
 
-For earnings-oriented workflows, the executor also consumes `investing.event.delta` telemetry emitted by the event-delta builder when it materializes briefing-ready deltas.
+For earnings-oriented workflows, the executor also consumes `investing.event.delta` diagnostics emitted by the event-delta builder when it materializes briefing-ready deltas.
 
 For thesis-refresh workflows, the executor also triggers `investing.thesis.revision` once the versioned thesis change log is updated.
 
-The executor also relies on the planner's `investing.research.plan.task` telemetry when it marks a task `completed` or `blocked` after execution.
+The executor also relies on the planner's `investing.research.plan.task` diagnostics when it marks a task `completed` or `blocked` after execution.
 
 ## Operating loop
 

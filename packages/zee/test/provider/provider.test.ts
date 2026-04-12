@@ -167,36 +167,6 @@ test("anthropic provider is forced to opus 4.6", async () => {
   })
 })
 
-test("model blacklist excludes specific models", async () => {
-  await using tmp = await tmpdir({
-    init: async (dir) => {
-      await Bun.write(
-        path.join(dir, "zee.jsonc"),
-        JSON.stringify({
-          $schema: "zee",
-          provider: {
-            anthropic: {
-              blacklist: ["claude-sonnet-4-5"],
-            },
-          },
-        }),
-      )
-    },
-  })
-  await Instance.provide({
-    directory: tmp.path,
-    init: async () => {
-      Env.set("ANTHROPIC_API_KEY", "test-api-key")
-    },
-    fn: async () => {
-      const providers = await Provider.list()
-      expect(providers["anthropic"]).toBeDefined()
-      const models = Object.keys(providers["anthropic"].models)
-      expect(models).not.toContain("claude-sonnet-4-5")
-    },
-  })
-})
-
 test("xai provider is limited to grok 4.20 beta variants", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
@@ -256,7 +226,7 @@ test("minimax provider is limited to MiniMax-M2.5", async () => {
   })
 })
 
-test("google provider is removed from runtime provider list", async () => {
+test("google provider remains available as a core runtime provider", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
@@ -286,12 +256,13 @@ test("google provider is removed from runtime provider list", async () => {
     },
     fn: async () => {
       const providers = await Provider.list()
-      expect(providers["google"]).toBeUndefined()
+      expect(providers["google"]).toBeDefined()
+      expect(Object.values(providers["google"].models).some((model) => model.api.npm === "@ai-sdk/google")).toBe(true)
     },
   })
 })
 
-test("custom providers using @ai-sdk/google are filtered from runtime", async () => {
+test("non-core providers using @ai-sdk/google are ignored", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
@@ -424,7 +395,7 @@ test("custom model alias via config", async () => {
   })
 })
 
-test("custom provider with npm package", async () => {
+test("core provider accepts configured custom models", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
@@ -432,9 +403,8 @@ test("custom provider with npm package", async () => {
         JSON.stringify({
           $schema: "zee",
           provider: {
-            "custom-provider": {
-              name: "Custom Provider",
-              npm: "@ai-sdk/openai-compatible",
+            google: {
+              name: "Google",
               api: "https://api.custom.com/v1",
               env: ["CUSTOM_API_KEY"],
               models: {
@@ -460,9 +430,10 @@ test("custom provider with npm package", async () => {
     directory: tmp.path,
     fn: async () => {
       const providers = await Provider.list()
-      expect(providers["custom-provider"]).toBeDefined()
-      expect(providers["custom-provider"].name).toBe("Custom Provider")
-      expect(providers["custom-provider"].models["custom-model"]).toBeDefined()
+      expect(providers["google"]).toBeDefined()
+      expect(providers["google"].name).toBe("Google")
+      expect(providers["google"].models["custom-model"]).toBeDefined()
+      expect(providers["google"].models["custom-model"].api.npm).toBe("@ai-sdk/google")
     },
   })
 })
@@ -567,13 +538,20 @@ test("getModel throws ModelNotFoundError for invalid provider", async () => {
   })
 })
 
-test("getModel reports google as unavailable after runtime removal", async () => {
+test("getModel returns google models when google is configured", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
         path.join(dir, "zee.jsonc"),
         JSON.stringify({
           $schema: "zee",
+          provider: {
+            google: {
+              options: {
+                apiKey: "test-google-key",
+              },
+            },
+          },
         }),
       )
     },
@@ -581,7 +559,9 @@ test("getModel reports google as unavailable after runtime removal", async () =>
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      await expect(Provider.getModel("google", "gemini-3-pro-preview")).rejects.toThrow()
+      const model = await Provider.getModel("google", "gemini-3-flash-preview")
+      expect(model.providerID).toBe("google")
+      expect(model.id).toBe("gemini-3-flash-preview")
     },
   })
 })
@@ -680,7 +660,7 @@ test("defaultModel respects config model setting", async () => {
   })
 })
 
-test("provider with baseURL from config", async () => {
+test("core provider with baseURL from config", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
@@ -688,9 +668,8 @@ test("provider with baseURL from config", async () => {
         JSON.stringify({
           $schema: "zee",
           provider: {
-            "custom-openai": {
-              name: "Custom OpenAI",
-              npm: "@ai-sdk/openai-compatible",
+            google: {
+              name: "Google",
               env: [],
               models: {
                 "gpt-4": {
@@ -713,8 +692,8 @@ test("provider with baseURL from config", async () => {
     directory: tmp.path,
     fn: async () => {
       const providers = await Provider.list()
-      expect(providers["custom-openai"]).toBeDefined()
-      expect(providers["custom-openai"].options.baseURL).toBe("https://custom.openai.com/v1")
+      expect(providers["google"]).toBeDefined()
+      expect(providers["google"].options.baseURL).toBe("https://custom.openai.com/v1")
     },
   })
 })
@@ -727,9 +706,8 @@ test("model cost defaults to zero when not specified", async () => {
         JSON.stringify({
           $schema: "zee",
           provider: {
-            "test-provider": {
-              name: "Test Provider",
-              npm: "@ai-sdk/openai-compatible",
+            google: {
+              name: "Google",
               env: [],
               models: {
                 "test-model": {
@@ -751,7 +729,7 @@ test("model cost defaults to zero when not specified", async () => {
     directory: tmp.path,
     fn: async () => {
       const providers = await Provider.list()
-      const model = providers["test-provider"].models["test-model"]
+      const model = providers["google"].models["test-model"]
       expect(model.cost.input).toBe(0)
       expect(model.cost.output).toBe(0)
       expect(model.cost.cache.read).toBe(0)
@@ -914,9 +892,8 @@ test("provider api field sets model api.url", async () => {
         JSON.stringify({
           $schema: "zee",
           provider: {
-            "custom-api": {
-              name: "Custom API",
-              npm: "@ai-sdk/openai-compatible",
+            google: {
+              name: "Google",
               api: "https://api.example.com/v1",
               env: [],
               models: {
@@ -940,7 +917,7 @@ test("provider api field sets model api.url", async () => {
     fn: async () => {
       const providers = await Provider.list()
       // api field is stored on model.api.url, used by getSDK to set baseURL
-      expect(providers["custom-api"].models["model-1"].api.url).toBe("https://api.example.com/v1")
+      expect(providers["google"].models["model-1"].api.url).toBe("https://api.example.com/v1")
     },
   })
 })
@@ -953,9 +930,8 @@ test("explicit baseURL overrides api field", async () => {
         JSON.stringify({
           $schema: "zee",
           provider: {
-            "custom-api": {
-              name: "Custom API",
-              npm: "@ai-sdk/openai-compatible",
+            google: {
+              name: "Google",
               api: "https://api.example.com/v1",
               env: [],
               models: {
@@ -979,7 +955,7 @@ test("explicit baseURL overrides api field", async () => {
     directory: tmp.path,
     fn: async () => {
       const providers = await Provider.list()
-      expect(providers["custom-api"].options.baseURL).toBe("https://custom.override.com/v1")
+      expect(providers["google"].options.baseURL).toBe("https://custom.override.com/v1")
     },
   })
 })
@@ -1046,7 +1022,7 @@ test("disabled_providers prevents loading even with env var", async () => {
 
 // enabled_providers config option was removed - use disabled_providers instead
 
-test("whitelist and blacklist can be combined", async () => {
+test("whitelist limits available models", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
@@ -1055,8 +1031,7 @@ test("whitelist and blacklist can be combined", async () => {
           $schema: "zee",
           provider: {
             anthropic: {
-              whitelist: ["claude-opus-4-6", "claude-opus-4-6@default"],
-              blacklist: ["claude-opus-4-6@default"],
+              whitelist: ["claude-opus-4-6"],
             },
           },
         }),
@@ -1087,9 +1062,8 @@ test("model modalities default correctly", async () => {
         JSON.stringify({
           $schema: "zee",
           provider: {
-            "test-provider": {
-              name: "Test",
-              npm: "@ai-sdk/openai-compatible",
+            google: {
+              name: "Google",
               env: [],
               models: {
                 "test-model": {
@@ -1109,7 +1083,7 @@ test("model modalities default correctly", async () => {
     directory: tmp.path,
     fn: async () => {
       const providers = await Provider.list()
-      const model = providers["test-provider"].models["test-model"]
+      const model = providers["google"].models["test-model"]
       expect(model.capabilities.input.text).toBe(true)
       expect(model.capabilities.output.text).toBe(true)
     },
@@ -1124,9 +1098,8 @@ test("model with custom cost values", async () => {
         JSON.stringify({
           $schema: "zee",
           provider: {
-            "test-provider": {
-              name: "Test",
-              npm: "@ai-sdk/openai-compatible",
+            google: {
+              name: "Google",
               env: [],
               models: {
                 "test-model": {
@@ -1152,7 +1125,7 @@ test("model with custom cost values", async () => {
     directory: tmp.path,
     fn: async () => {
       const providers = await Provider.list()
-      const model = providers["test-provider"].models["test-model"]
+      const model = providers["google"].models["test-model"]
       expect(model.cost.input).toBe(5)
       expect(model.cost.output).toBe(15)
       expect(model.cost.cache.read).toBe(2.5)
@@ -1261,7 +1234,7 @@ test("multiple providers can be configured simultaneously", async () => {
   })
 })
 
-test("provider with custom npm package", async () => {
+test("non-core provider with custom npm package is ignored", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
@@ -1294,46 +1267,7 @@ test("provider with custom npm package", async () => {
     directory: tmp.path,
     fn: async () => {
       const providers = await Provider.list()
-      expect(providers["local-llm"]).toBeDefined()
-      expect(providers["local-llm"].models["llama-3"].api.npm).toBe("@ai-sdk/openai-compatible")
-      expect(providers["local-llm"].options.baseURL).toBe("http://localhost:11434/v1")
-    },
-  })
-})
-
-test("ollama provider defaults configured models to native ollama SDK", async () => {
-  await using tmp = await tmpdir({
-    init: async (dir) => {
-      await Bun.write(
-        path.join(dir, "zee.jsonc"),
-        JSON.stringify({
-          $schema: "zee",
-          provider: {
-            ollama: {
-              name: "Ollama",
-              env: [],
-              models: {
-                "llama3.2": {
-                  name: "Llama 3.2",
-                  tool_call: true,
-                  limit: { context: 8192, output: 2048 },
-                },
-              },
-              options: {
-                baseURL: "http://localhost:11434/api",
-              },
-            },
-          },
-        }),
-      )
-    },
-  })
-  await Instance.provide({
-    directory: tmp.path,
-    fn: async () => {
-      const providers = await Provider.list()
-      expect(providers["ollama"]).toBeDefined()
-      expect(providers["ollama"].models["llama3.2"].api.npm).toBe("@ai-sdk/ollama")
+      expect(providers["local-llm"]).toBeUndefined()
     },
   })
 })
@@ -1381,9 +1315,8 @@ test("provider with multiple env var options only includes apiKey when single en
         JSON.stringify({
           $schema: "zee",
           provider: {
-            "multi-env": {
-              name: "Multi Env Provider",
-              npm: "@ai-sdk/openai-compatible",
+            google: {
+              name: "Google",
               env: ["MULTI_ENV_KEY_1", "MULTI_ENV_KEY_2"],
               models: {
                 "model-1": {
@@ -1408,9 +1341,9 @@ test("provider with multiple env var options only includes apiKey when single en
     },
     fn: async () => {
       const providers = await Provider.list()
-      expect(providers["multi-env"]).toBeDefined()
+      expect(providers["google"]).toBeDefined()
       // When multiple env options exist, key should NOT be auto-set
-      expect(providers["multi-env"].key).toBeUndefined()
+      expect(providers["google"].key).toBeUndefined()
     },
   })
 })
@@ -1423,9 +1356,8 @@ test("provider with single env var includes apiKey automatically", async () => {
         JSON.stringify({
           $schema: "zee",
           provider: {
-            "single-env": {
-              name: "Single Env Provider",
-              npm: "@ai-sdk/openai-compatible",
+            google: {
+              name: "Google",
               env: ["SINGLE_ENV_KEY"],
               models: {
                 "model-1": {
@@ -1450,9 +1382,9 @@ test("provider with single env var includes apiKey automatically", async () => {
     },
     fn: async () => {
       const providers = await Provider.list()
-      expect(providers["single-env"]).toBeDefined()
+      expect(providers["google"]).toBeDefined()
       // Single env option should auto-set key
-      expect(providers["single-env"].key).toBe("my-api-key")
+      expect(providers["google"].key).toBe("my-api-key")
     },
   })
 })
@@ -1494,7 +1426,7 @@ test("model cost overrides existing cost values", async () => {
   })
 })
 
-test("completely new provider not in database can be configured", async () => {
+test("completely new provider not in core provider list is ignored", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
@@ -1534,12 +1466,7 @@ test("completely new provider not in database can be configured", async () => {
     directory: tmp.path,
     fn: async () => {
       const providers = await Provider.list()
-      expect(providers["brand-new-provider"]).toBeDefined()
-      expect(providers["brand-new-provider"].name).toBe("Brand New")
-      const model = providers["brand-new-provider"].models["new-model"]
-      expect(model.capabilities.reasoning).toBe(true)
-      expect(model.capabilities.attachment).toBe(true)
-      expect(model.capabilities.input.image).toBe(true)
+      expect(providers["brand-new-provider"]).toBeUndefined()
     },
   })
 })
@@ -1554,9 +1481,8 @@ test("model with tool_call false", async () => {
         JSON.stringify({
           $schema: "zee",
           provider: {
-            "no-tools": {
-              name: "No Tools Provider",
-              npm: "@ai-sdk/openai-compatible",
+            google: {
+              name: "Google",
               env: [],
               models: {
                 "basic-model": {
@@ -1576,7 +1502,7 @@ test("model with tool_call false", async () => {
     directory: tmp.path,
     fn: async () => {
       const providers = await Provider.list()
-      expect(providers["no-tools"].models["basic-model"].capabilities.toolcall).toBe(false)
+      expect(providers["google"].models["basic-model"].capabilities.toolcall).toBe(false)
     },
   })
 })
@@ -1589,9 +1515,8 @@ test("model defaults tool_call to true when not specified", async () => {
         JSON.stringify({
           $schema: "zee",
           provider: {
-            "default-tools": {
-              name: "Default Tools Provider",
-              npm: "@ai-sdk/openai-compatible",
+            google: {
+              name: "Google",
               env: [],
               models: {
                 model: {
@@ -1611,7 +1536,7 @@ test("model defaults tool_call to true when not specified", async () => {
     directory: tmp.path,
     fn: async () => {
       const providers = await Provider.list()
-      expect(providers["default-tools"].models["model"].capabilities.toolcall).toBe(true)
+      expect(providers["google"].models["model"].capabilities.toolcall).toBe(true)
     },
   })
 })
@@ -1624,9 +1549,8 @@ test("model headers are preserved", async () => {
         JSON.stringify({
           $schema: "zee",
           provider: {
-            "headers-provider": {
-              name: "Headers Provider",
-              npm: "@ai-sdk/openai-compatible",
+            google: {
+              name: "Google",
               env: [],
               models: {
                 model: {
@@ -1650,7 +1574,7 @@ test("model headers are preserved", async () => {
     directory: tmp.path,
     fn: async () => {
       const providers = await Provider.list()
-      const model = providers["headers-provider"].models["model"]
+      const model = providers["google"].models["model"]
       expect(model.headers).toEqual({
         "X-Custom-Header": "custom-value",
         Authorization: "Bearer special-token",
@@ -1667,9 +1591,8 @@ test("provider env fallback - second env var used if first missing", async () =>
         JSON.stringify({
           $schema: "zee",
           provider: {
-            "fallback-env": {
-              name: "Fallback Env Provider",
-              npm: "@ai-sdk/openai-compatible",
+            google: {
+              name: "Google",
               env: ["PRIMARY_KEY", "FALLBACK_KEY"],
               models: {
                 model: {
@@ -1694,7 +1617,7 @@ test("provider env fallback - second env var used if first missing", async () =>
     fn: async () => {
       const providers = await Provider.list()
       // Provider should load because fallback env var is set
-      expect(providers["fallback-env"]).toBeDefined()
+      expect(providers["google"]).toBeDefined()
     },
   })
 })
@@ -1725,7 +1648,7 @@ test("getModel returns consistent results", async () => {
   })
 })
 
-test("provider name defaults to id when not in database", async () => {
+test("provider not in core provider list is ignored instead of named", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
@@ -1755,7 +1678,7 @@ test("provider name defaults to id when not in database", async () => {
     directory: tmp.path,
     fn: async () => {
       const providers = await Provider.list()
-      expect(providers["my-custom-id"].name).toBe("my-custom-id")
+      expect(providers["my-custom-id"]).toBeUndefined()
     },
   })
 })
@@ -1916,9 +1839,8 @@ test("model limit defaults to zero when not specified", async () => {
         JSON.stringify({
           $schema: "zee",
           provider: {
-            "no-limit": {
-              name: "No Limit Provider",
-              npm: "@ai-sdk/openai-compatible",
+            google: {
+              name: "Google",
               env: [],
               models: {
                 model: {
@@ -1938,7 +1860,7 @@ test("model limit defaults to zero when not specified", async () => {
     directory: tmp.path,
     fn: async () => {
       const providers = await Provider.list()
-      const model = providers["no-limit"].models["model"]
+      const model = providers["google"].models["model"]
       expect(model.limit.context).toBe(0)
       expect(model.limit.output).toBe(0)
     },
@@ -2335,9 +2257,8 @@ test("custom model with variants enabled and disabled", async () => {
         JSON.stringify({
           $schema: "zee",
           provider: {
-            "custom-reasoning": {
-              name: "Custom Reasoning Provider",
-              npm: "@ai-sdk/openai-compatible",
+            google: {
+              name: "Google",
               env: [],
               models: {
                 "reasoning-model": {
@@ -2364,7 +2285,7 @@ test("custom model with variants enabled and disabled", async () => {
     directory: tmp.path,
     fn: async () => {
       const providers = await Provider.list()
-      const model = providers["custom-reasoning"].models["reasoning-model"]
+      const model = providers["google"].models["reasoning-model"]
       expect(model.variants).toBeDefined()
       // Enabled variants should exist
       expect(model.variants!["low"]).toBeDefined()

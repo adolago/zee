@@ -3,7 +3,7 @@ export const AuthScope = {
   ADMIN: "operator.admin",
   /** Read-only access (list sessions, view models, read config) */
   READ: "operator.read",
-  /** Observability access (flux events, traces, diagnostics) */
+  /** Read-only diagnostics access */
   OBSERVE: "operator.observe",
   /** Write access (create sessions, send messages, modify config) */
   WRITE: "operator.write",
@@ -52,17 +52,6 @@ export const CONTROL_PLANE_SCOPE_MATRIX: ControlPlaneRouteScopeEntry[] = [
   entry("GET", "/process/swarm/{swarmId}", AuthScope.OBSERVE, "Swarm process inventory."),
   entry("GET", "/process/workstealing/stats", AuthScope.OBSERVE, "Work-stealing metrics."),
   entry("GET", "/session/{sessionID}/events", AuthScope.OBSERVE, "Session SSE stream."),
-  entry("GET", "/usage/cost", AuthScope.OBSERVE, "Usage cost metrics."),
-  entry("GET", "/usage/events", AuthScope.OBSERVE, "Usage event log."),
-  entry("GET", "/usage/stats", AuthScope.OBSERVE, "Usage dashboard metrics."),
-  entry("GET", "/usage/summary", AuthScope.OBSERVE, "Usage summary."),
-  entry("GET", "/usage/summary/model/{id}", AuthScope.OBSERVE, "Model usage summary."),
-  entry("GET", "/usage/summary/provider/{id}", AuthScope.OBSERVE, "Provider usage summary."),
-  entry("GET", "/usage/summary/session/{id}", AuthScope.OBSERVE, "Session usage summary."),
-  entry("GET", "/v1/flux/events", AuthScope.OBSERVE, "Flux event inspection."),
-  entry("GET", "/v1/flux/schema", AuthScope.OBSERVE, "Flux schema inspection."),
-  entry("GET", "/v1/flux/sessions/{sessionID}/path", AuthScope.OBSERVE, "Flux session path inspection."),
-  entry("GET", "/v1/flux/trace/{traceID}", AuthScope.OBSERVE, "Flux trace inspection."),
 
   // Approval queue operations
   entry("GET", "/permission", AuthScope.APPROVALS, "Pending permission queue."),
@@ -136,8 +125,6 @@ export const CONTROL_PLANE_SCOPE_MATRIX: ControlPlaneRouteScopeEntry[] = [
   entry("POST", "/tui/select-session", AuthScope.ADMIN, "Drive TUI remotely."),
   entry("POST", "/tui/show-toast", AuthScope.ADMIN, "Drive TUI remotely."),
   entry("POST", "/tui/submit-prompt", AuthScope.ADMIN, "Drive TUI remotely."),
-  entry("DELETE", "/usage/events", AuthScope.ADMIN, "Purge usage telemetry."),
-
   // Read-oriented operator surfaces
   entry("GET", "/", AuthScope.READ, "List tools."),
   entry("GET", "/agent", AuthScope.READ, "List agents."),
@@ -212,7 +199,6 @@ export const CONTROL_PLANE_SCOPE_MATRIX: ControlPlaneRouteScopeEntry[] = [
   entry("GET", "/vcs", AuthScope.READ, "Read VCS info."),
   entry("GET", "/gateway/channels/status", AuthScope.OBSERVE, "Inspect gateway channel health."),
   entry("GET", "/gateway/status", AuthScope.OBSERVE, "Inspect gateway health."),
-  entry("GET", "/gateway/usage", AuthScope.OBSERVE, "Inspect gateway usage metrics."),
 
   // Mutation and workflow surfaces
   entry("PATCH", "/config", AuthScope.WRITE, "Update configuration."),
@@ -315,7 +301,6 @@ const CONTROL_PLANE_FAMILIES = [
   "/sync",
   "/themes",
   "/tui",
-  "/usage",
   "/v1",
   "/vcs",
 ] as const

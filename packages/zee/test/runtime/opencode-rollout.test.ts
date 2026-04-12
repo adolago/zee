@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test"
 import { reloadFlags } from "../../src/flag/flag"
-import { FluxRecorder, type FluxEvent } from "../../src/flux"
 import {
   buildOpenCodeRuntimeReleaseGate,
   buildOpenCodeRuntimeRolloutReport,
   recordOpenCodeRuntimeRoute,
   resolveOpenCodeRuntimeRoute,
   resolveOpenCodeRuntimeSurface,
+  type OpenCodeRuntimeRouteEvent,
 } from "../../src/runtime/opencode-rollout"
 
 function setEnv(name: string, value: string | undefined) {
@@ -56,15 +56,10 @@ function makeRouteEvent(params: {
   surface: "cli" | "orchestration" | "gateway"
   kind: "runtime.opencode.route.selected" | "runtime.opencode.route.fallback"
   reason?: "default_primary" | "surface_disabled" | "forced_legacy"
-}): FluxEvent {
+}): OpenCodeRuntimeRouteEvent {
   return {
-    id: `${params.surface}-${params.kind}-${params.timestamp}`,
     timestamp: new Date(params.timestamp).getTime(),
-    traceID: `trace-${params.surface}-${params.kind}-${params.timestamp}`,
-    direction: "internal",
-    domain: "runtime",
     kind: params.kind,
-    status: "ok",
     metadata: {
       surface: params.surface,
       route: params.kind === "runtime.opencode.route.selected" ? "opencode_primary" : "legacy_fallback",
@@ -110,28 +105,25 @@ describe("OpenCode runtime rollout", () => {
     expect(resolveOpenCodeRuntimeSurface({ client: "cli", sessionSurface: "api" })).toBe("cli")
   })
 
-  test("recordOpenCodeRuntimeRoute emits selected and fallback flux events", async () => {
+  test("recordOpenCodeRuntimeRoute returns selected and fallback decisions", async () => {
     await withRolloutEnv(
       {
         ZEE_RUNTIME_OPENCODE_FORCE_LEGACY_SURFACES: "gateway",
       },
       () => {
-        const selectedBefore = FluxRecorder.list({ kind: "runtime.opencode.route.selected" }).total
-        const fallbackBefore = FluxRecorder.list({ kind: "runtime.opencode.route.fallback" }).total
-
-        recordOpenCodeRuntimeRoute({
+        const selected = recordOpenCodeRuntimeRoute({
           surface: "cli",
           sessionID: "session_cli",
           messageID: "message_cli",
         })
-        recordOpenCodeRuntimeRoute({
+        const fallback = recordOpenCodeRuntimeRoute({
           surface: "gateway",
           sessionID: "session_gateway",
           messageID: "message_gateway",
         })
 
-        expect(FluxRecorder.list({ kind: "runtime.opencode.route.selected" }).total).toBe(selectedBefore + 1)
-        expect(FluxRecorder.list({ kind: "runtime.opencode.route.fallback" }).total).toBe(fallbackBefore + 1)
+        expect(selected.route).toBe("opencode_primary")
+        expect(fallback.route).toBe("legacy_fallback")
       },
     )
   })
@@ -168,7 +160,7 @@ describe("OpenCode runtime rollout", () => {
           maxFallbackEvents: 0,
         })
         expect(report.rollback.recommended).toBe(true)
-        expect(report.telemetry.metrics.breachCount).toBe(1)
+        expect(report.metrics.breachCount).toBe(1)
       },
     )
   })

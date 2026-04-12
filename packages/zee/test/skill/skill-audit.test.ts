@@ -189,11 +189,11 @@ describe("Skill.all() shared metadata", () => {
       init: async (dir) => {
         await Bun.write(
           path.join(dir, ".agents", "skills", "@zee", "zee-skill", "SKILL.md"),
-          skill("zee-skill", "Zee persona skill"),
+          skill("zee-skill", "Zee skill"),
         )
         await Bun.write(
-          path.join(dir, ".agents", "skills", "@stanley", "stan-skill", "SKILL.md"),
-          skill("stan-skill", "Stanley persona skill"),
+          path.join(dir, ".agents", "skills", "@archive", "archive-skill", "SKILL.md"),
+          skill("archive-skill", "Archive skill"),
         )
         await Bun.write(path.join(dir, ".agents", "skills", "common", "SKILL.md"), skill("common", "Shared skill"))
       },
@@ -204,7 +204,7 @@ describe("Skill.all() shared metadata", () => {
       fn: async () => {
         const zeeSkills = await Skill.all("zee")
         expect(zeeSkills.length).toBe(3)
-        expect(zeeSkills.map((item) => item.name)).toEqual(["common", "stan-skill", "zee-skill"])
+        expect(zeeSkills.map((item) => item.name)).toEqual(["archive-skill", "common", "zee-skill"])
         expect(zeeSkills.every((item) => item.affinity === "shared")).toBeTrue()
       },
     })
@@ -411,7 +411,7 @@ describe("Skill.search()", () => {
     })
   })
 
-  test("returns shared results without persona affinity sorting", async () => {
+  test("returns shared results without context affinity sorting", async () => {
     await using tmp = await tmpdir({
       git: true,
       init: async (dir) => {
@@ -420,8 +420,8 @@ describe("Skill.search()", () => {
           skill("zee-tool", "Zee tool with keyword"),
         )
         await Bun.write(
-          path.join(dir, ".agents", "skills", "@stanley", "stan-tool", "SKILL.md"),
-          skill("stan-tool", "Stanley tool with keyword"),
+          path.join(dir, ".agents", "skills", "@archive", "archive-tool", "SKILL.md"),
+          skill("archive-tool", "Archive tool with keyword"),
         )
       },
     })
@@ -431,10 +431,10 @@ describe("Skill.search()", () => {
       fn: async () => {
         const results = await Skill.search("keyword", "zee")
         expect(results.length).toBe(2)
-        expect(results.map((item) => item.name)).toEqual(["stan-tool", "zee-tool"])
+        expect(results.map((item) => item.name)).toEqual(["archive-tool", "zee-tool"])
         expect(results.every((item) => item.affinity === "shared")).toBeTrue()
         expect(results.find((item) => item.name === "zee-tool")?.context).toBe("zee")
-        expect(results.find((item) => item.name === "stan-tool")?.context).toBeUndefined()
+        expect(results.find((item) => item.name === "archive-tool")?.context).toBeUndefined()
       },
     })
   })
@@ -576,36 +576,6 @@ describe("Skill.recommend()", () => {
     })
   })
 
-  test("uses usage history to boost previously successful skills", async () => {
-    await using tmp = await tmpdir({
-      git: true,
-      init: async (dir) => {
-        await Bun.write(
-          path.join(dir, ".agents", "skills", "boost-a", "SKILL.md"),
-          skill("boost-a", "Handle neon panel commands"),
-        )
-        await Bun.write(
-          path.join(dir, ".agents", "skills", "boost-b", "SKILL.md"),
-          skill("boost-b", "Handle neon panel commands"),
-        )
-      },
-    })
-
-    await Instance.provide({
-      directory: tmp.path,
-      fn: async () => {
-        await Skill.recordUsage({
-          query: "toggle the neon panel",
-          skill: "boost-b",
-          outcome: "success",
-        })
-
-        const recommendations = await Skill.recommend("toggle the neon panel", "zee", { minScore: 1 })
-        expect(recommendations.length).toBeGreaterThan(0)
-        expect(recommendations[0].name).toBe("boost-b")
-      },
-    })
-  })
 })
 
 describe("Skill gating", () => {

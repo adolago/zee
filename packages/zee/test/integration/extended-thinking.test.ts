@@ -328,7 +328,7 @@ describe("Non-Reasoning Models", () => {
   })
 })
 
-describe("Persona Thinking Configs", () => {
+describe("Provider Thinking Configs", () => {
   const sessionID = "test-session"
 
   describe("Zee (GLM via ZhipuAI)", () => {

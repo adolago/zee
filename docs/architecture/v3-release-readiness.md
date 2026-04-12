@@ -33,7 +33,7 @@ The consolidated release report now closes `#518`.
 ## Runtime parity tie-in
 - `zee v3 status` and `zee v3 release` both embed the `inspect runtime-rollout` parity verdict.
 - The runtime gate is `runtime.opencode-parity`.
-- `zee v3 release` emits the same `runtime.opencode-rollout.inspected` bus telemetry used by the inspect command.
+- `zee v3 release` emits the same `runtime.opencode-rollout.inspected` bus diagnostics used by the inspect command.
 - The gate blocks release when:
   - any tracked surface is still pinned to legacy
   - any `runtime.opencode.route.fallback` traffic appears in the trailing `24h` parity window
@@ -41,7 +41,7 @@ The consolidated release report now closes `#518`.
 ## Security tie-in
 - v3 release gate consumes deep security audit output.
 - Node-client exposure is included in release readiness decisions.
-- `zee v3 release` emits the same `security.audit.checked` / `security.audit.finding` telemetry as the deep audit commands.
+- `zee v3 release` emits the same `security.audit.checked` / `security.audit.finding` diagnostics as the deep audit commands.
 
 ## Consolidated Report Tie-in
 - `zee v3 status` and `zee v3 release` now render the same `v3-release-gate` report.
@@ -50,4 +50,4 @@ The consolidated release report now closes `#518`.
   - `security`
   - `performance`
   - `docs`
-- `zee v3 release` emits `release.v3.report` telemetry with failure counts and performance/doc metrics.
+- `zee v3 release` emits `release.v3.report` diagnostics with failure counts and performance/doc metrics.

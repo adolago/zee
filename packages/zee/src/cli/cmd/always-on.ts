@@ -12,7 +12,6 @@ import { LifecycleHooks } from "../../hooks/lifecycle"
 import { initZeeBootstrap } from "../../bootstrap/zee"
 import { initSurfaces, shutdownSurfaces } from "../../bootstrap/surface"
 import { CircuitBreaker } from "../../provider/circuit-breaker"
-import * as UsageTracker from "../../usage/tracker"
 import { initWorkStealing, getWorkStealingService, initConsensus, getConsensusGate } from "../../coordination"
 import { Output } from "../output"
 import { Daemon, GatewaySupervisor } from "./daemon"
@@ -238,6 +237,18 @@ function resolveTelegramRoutingOverlap(
   return { conversation, ops, overlap }
 }
 
+async function emitDaemonLifecycle(directory: string, name: string, fn: () => Promise<void>): Promise<void> {
+  await Instance.provide({
+    directory,
+    fn,
+  }).catch((error) => {
+    log.error("daemon lifecycle hook failed", {
+      name,
+      error: error instanceof Error ? error.message : String(error),
+    })
+  })
+}
+
 export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<AlwaysOnProcess> {
   const {
     hostname,
@@ -308,18 +319,19 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
   await Daemon.writePidFile(state)
 
   // Emit daemon.start hook
-  await LifecycleHooks.emitDaemonStart({
-    pid: process.pid,
-    port: state.port,
-    hostname: state.hostname,
-    directory,
-    startTime: state.startTime,
+  await emitDaemonLifecycle(directory, "daemon.start", async () => {
+    await LifecycleHooks.emitDaemonStart({
+      pid: process.pid,
+      port: state.port,
+      hostname: state.hostname,
+      directory,
+      startTime: state.startTime,
+    })
   })
 
   // Track what was initialized for cleanup
   let persistenceEnabled = false
   let surfacesEnabled = false
-  let usageEnabled = false
   let workStealingEnabled = false
   let consensusEnabled = false
   let gatewayStarted = false
@@ -384,17 +396,6 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
     Output.log("Surfaces:   Multi-surface support enabled")
   } catch (error) {
     log.debug("Surface initialization skipped", {
-      error: error instanceof Error ? error.message : String(error),
-    })
-  }
-
-  // Initialize usage tracking
-  try {
-    await UsageTracker.init()
-    usageEnabled = true
-    Output.log("Usage:      Tracking enabled")
-  } catch (error) {
-    log.error("Failed to initialize usage tracking", {
       error: error instanceof Error ? error.message : String(error),
     })
   }
@@ -759,11 +760,13 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
 
     const shutdownReason: "signal" | "error" | "manual" = error ? "error" : signal ? "signal" : "manual"
 
-    await LifecycleHooks.emitDaemonShutdown({
-      pid: process.pid,
-      reason: shutdownReason,
-      signal,
-      error: error?.message,
+    await emitDaemonLifecycle(directory, "daemon.shutdown", async () => {
+      await LifecycleHooks.emitDaemonShutdown({
+        pid: process.pid,
+        reason: shutdownReason,
+        signal,
+        error: error?.message,
+      })
     })
 
     // Stop orchestration IPC server
@@ -794,11 +797,6 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
 
     if (visualSink?.close) {
       await visualSink.close().catch((e) => log.error("Visual sink shutdown error", { error: String(e) }))
-    }
-
-    // Shutdown usage tracking
-    if (usageEnabled) {
-      await UsageTracker.shutdown()
     }
 
     // Shutdown gateway
@@ -857,15 +855,17 @@ export async function startAlwaysOnProcess(opts: AlwaysOnOptions): Promise<Alway
   }
 
   // Emit daemon.ready hook
-  await LifecycleHooks.emitDaemonReady({
-    pid: process.pid,
-    port: state.port,
-    services: {
-      persistence: persistenceEnabled,
-      orchestration: ipcServer !== null,
-      whatsapp: false,
-    },
-    sessionsWithIncompleteTodos: 0,
+  await emitDaemonLifecycle(directory, "daemon.ready", async () => {
+    await LifecycleHooks.emitDaemonReady({
+      pid: process.pid,
+      port: state.port,
+      services: {
+        persistence: persistenceEnabled,
+        orchestration: ipcServer !== null,
+        whatsapp: false,
+      },
+      sessionsWithIncompleteTodos: 0,
+    })
   })
 
   Output.log(`

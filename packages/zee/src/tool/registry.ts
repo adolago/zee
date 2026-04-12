@@ -136,11 +136,6 @@ export namespace ToolRegistry {
     return tools.find((t) => t.id === id)
   }
 
-  // Tools excluded for native Zee agents.
-  // Currently empty -- Zee runs in TUI, CLI, and daemon, and needs
-  // the full tool set. The `all()` function already gates tools by client type.
-  const PERSONA_EXCLUDED_TOOLS = new Set<string>([])
-
   export async function tools(
     model: {
       providerID: string
@@ -149,24 +144,14 @@ export namespace ToolRegistry {
     agent?: Agent.Info,
   ) {
     const tools = await all()
-    const isPersona = agent?.native === true
     const result = await Promise.all(
-      tools
-        .filter((t) => {
-          // Persona agents get a leaner tool set
-          if (isPersona && PERSONA_EXCLUDED_TOOLS.has(t.id)) {
-            return false
-          }
-
-          return true
-        })
-        .map(async (t) => {
-          using _ = log.time(t.id)
-          return {
-            id: t.id,
-            ...(await t.init({ agent })),
-          }
-        }),
+      tools.map(async (t) => {
+        using _ = log.time(t.id)
+        return {
+          id: t.id,
+          ...(await t.init({ agent })),
+        }
+      }),
     )
     return result
   }

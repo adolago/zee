@@ -6,12 +6,8 @@ import { streamText, jsonSchema, type ModelMessage, type ToolSet } from "ai"
 import { Provider } from "../../provider/provider"
 import { Log } from "../../util/log"
 import { Fallback } from "../../provider/fallback"
-import { FluxRecorder } from "@/flux"
-import { RequestMeta } from "../request-meta"
 import { bindAbortRelay } from "../../util/net"
-import { recordPiMonoShimUsage } from "@/runtime/pimono-shim"
 import { Flag } from "@/flag/flag"
-import { recordOpenCodeRuntimeRoute } from "@/runtime/opencode-rollout"
 
 const log = Log.create({ service: "server:llm" })
 
@@ -366,25 +362,6 @@ export const LlmRoute = new Hono().post(
     const input = c.req.valid("json")
 
     if (Flag.ZEE_NO_NEW_LEGACY) {
-      const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
-      const requestID = RequestMeta.getRequestID(c.req.raw)
-      FluxRecorder.record({
-        traceID,
-        requestID,
-        direction: "internal",
-        domain: "session",
-        kind: "llm.bridge.stream.denied",
-        status: "denied",
-        route: "/v1/llm/stream",
-        method: "POST",
-        error: {
-          code: "legacy_bridge_disabled",
-          message: "Legacy LLM bridge endpoint is disabled.",
-        },
-        metadata: {
-          reason: "legacy_interface_disabled",
-        },
-      })
       return c.json(
         {
           success: false,
@@ -398,35 +375,6 @@ export const LlmRoute = new Hono().post(
     const modelID = input.model.trim()
     const apiId = (input.api ?? "openai-responses").trim() || "openai-responses"
     const fallbackSessionID = (input.options?.sessionId ?? "").trim() || `llm-bridge:${providerID}/${modelID}`
-    const sessionID = (input.options?.sessionId ?? "").trim() || undefined
-    const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
-    const requestID = RequestMeta.getRequestID(c.req.raw)
-    if (sessionID) RequestMeta.setSessionID(c.req.raw, sessionID)
-    recordPiMonoShimUsage({
-      boundaryID: "server.llm.pi-ai-bridge",
-      traceID,
-      requestID,
-      sessionID,
-      providerID,
-      modelID,
-      dedupeKey: requestID ?? traceID,
-      metadata: {
-        route: "/v1/llm/stream",
-        apiId,
-      },
-    })
-    recordOpenCodeRuntimeRoute({
-      surface: "gateway",
-      traceID,
-      requestID,
-      sessionID,
-      providerID,
-      modelID,
-      metadata: {
-        route: "/v1/llm/stream",
-        apiId,
-      },
-    })
 
     const model = await Provider.getModel(providerID, modelID)
 
@@ -440,23 +388,6 @@ export const LlmRoute = new Hono().post(
     requestAbort?.addEventListener("abort", bindAbortRelay(abortController), { once: true })
 
     return streamSSE(c, async (stream) => {
-      FluxRecorder.record({
-        traceID,
-        requestID,
-        sessionID,
-        providerID,
-        modelID,
-        direction: "internal",
-        domain: "session",
-        kind: "llm.bridge.stream.start",
-        status: "ok",
-        route: "/v1/llm/stream",
-        metadata: {
-          apiId,
-          messages: input.context.messages.length,
-          tools: input.context.tools?.length ?? 0,
-        },
-      })
       stream.onAbort(() => abortController.abort())
 
       const startedAt = Date.now()
@@ -632,22 +563,6 @@ export const LlmRoute = new Hono().post(
               partial.stopReason = "aborted"
               partial.errorMessage = part.reason ?? "aborted"
               partial.timestamp = Date.now()
-              FluxRecorder.record({
-                traceID,
-                requestID,
-                sessionID,
-                providerID,
-                modelID,
-                direction: "internal",
-                domain: "session",
-                kind: "llm.bridge.stream.error",
-                status: "aborted",
-                route: "/v1/llm/stream",
-                error: {
-                  code: "aborted",
-                  message: partial.errorMessage,
-                },
-              })
               await send({ type: "error", reason: "aborted", error: partial })
               return
             }
@@ -657,22 +572,6 @@ export const LlmRoute = new Hono().post(
               partial.stopReason = "error"
               partial.errorMessage = msg
               partial.timestamp = Date.now()
-              FluxRecorder.record({
-                traceID,
-                requestID,
-                sessionID,
-                providerID,
-                modelID,
-                direction: "internal",
-                domain: "session",
-                kind: "llm.bridge.stream.error",
-                status: "error",
-                route: "/v1/llm/stream",
-                error: {
-                  code: "provider_error",
-                  message: msg,
-                },
-              })
               await send({ type: "error", reason: "error", error: partial })
               return
             }
@@ -683,28 +582,6 @@ export const LlmRoute = new Hono().post(
         partial.usage = toPiUsage(finalUsage)
         partial.stopReason = stopReason
         partial.timestamp = Date.now()
-        FluxRecorder.record({
-          traceID,
-          requestID,
-          sessionID,
-          providerID,
-          modelID,
-          direction: "internal",
-          domain: "session",
-          kind: "llm.bridge.stream.done",
-          status: "ok",
-          route: "/v1/llm/stream",
-          token: {
-            input: partial.usage.input,
-            output: partial.usage.output,
-            cacheRead: partial.usage.cacheRead,
-            cacheWrite: partial.usage.cacheWrite,
-            total: partial.usage.totalTokens,
-          },
-          metadata: {
-            stopReason,
-          },
-        })
         await send({ type: "done", reason: doneReason, message: partial })
       } catch (err) {
         const msg = describeProviderError(err)
@@ -712,22 +589,6 @@ export const LlmRoute = new Hono().post(
         partial.stopReason = abortController.signal.aborted ? "aborted" : "error"
         partial.errorMessage = msg
         partial.timestamp = Date.now()
-        FluxRecorder.record({
-          traceID,
-          requestID,
-          sessionID,
-          providerID,
-          modelID,
-          direction: "internal",
-          domain: "session",
-          kind: "llm.bridge.stream.error",
-          status: abortController.signal.aborted ? "aborted" : "error",
-          route: "/v1/llm/stream",
-          error: {
-            code: abortController.signal.aborted ? "aborted" : "stream_error",
-            message: msg,
-          },
-        })
         await send({ type: "error", reason: abortController.signal.aborted ? "aborted" : "error", error: partial })
       }
     })

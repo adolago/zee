@@ -10,12 +10,12 @@ export * from "./types";
 export const ANTHROPIC = "anthropic";
 export const OPENAI = "openai";
 export const GOOGLE = "google";
-export const MISTRAL = "mistral";
-export const GROQ = "groq";
-export const TOGETHER = "together";
+export const OPENROUTER = "openrouter";
 export const DEEPSEEK = "deepseek";
+export const KIMI = "kimi-for-coding";
+export const MINIMAX = "minimax";
+export const ZAI = "zai-coding-plan";
 export const XAI = "xai";
-export const GITHUB_COPILOT = "github-copilot";
 
 // Subscription providers
 export const CLAUDE_MAX = "claude-max";

@@ -14,7 +14,7 @@ Shared modules consumed by the kernel and bundled into the distributable when re
 
 - `src/awareness/`: dynamic system prompt helpers
 - `src/config/`: shared config defaults and helpers
-- `src/domain/`: persona domain tools (Zee/Stanley/Johny)
+- `src/domain/`: Zee domain tools
 - `src/mcp/`: MCP layer (servers, registry, permission helpers)
 - `src/memory/`: unified memory layer
 - `src/swarm/`: swarm coordination (queen/workers/SPARC)

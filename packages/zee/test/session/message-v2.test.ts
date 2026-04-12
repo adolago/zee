@@ -410,8 +410,8 @@ describe("session.message-v2.toModelMessage", () => {
       },
       {
         info: assistantInfo(assistantID, userID, undefined, {
-          providerID: "bedrock",
-          modelID: "anthropic.claude-3-7-sonnet",
+          providerID: "anthropic",
+          modelID: "claude-3-7-sonnet",
         }),
         parts: [
           { ...basePart(assistantID, "a1"), type: "text", text: "done" },
@@ -443,13 +443,13 @@ describe("session.message-v2.toModelMessage", () => {
       },
     ]
 
-    const bedrockModel = {
+    const anthropicModel = {
       ...model,
-      providerID: "bedrock",
+      providerID: "anthropic",
       api: {
         ...model.api,
-        id: "anthropic.claude-3-7-sonnet",
-        npm: "@ai-sdk/amazon-bedrock",
+        id: "claude-3-7-sonnet",
+        npm: "@ai-sdk/anthropic",
       },
       capabilities: {
         ...model.capabilities,
@@ -458,7 +458,7 @@ describe("session.message-v2.toModelMessage", () => {
       },
     } as Provider.Model
 
-    expect(await MessageV2.toModelMessage(input, bedrockModel)).toStrictEqual([
+    expect(await MessageV2.toModelMessage(input, anthropicModel)).toStrictEqual([
       {
         role: "user",
         content: [{ type: "text", text: "run tool" }],

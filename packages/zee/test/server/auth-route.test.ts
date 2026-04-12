@@ -1,7 +1,6 @@
 import { describe, expect, test, afterAll } from "bun:test"
 import { Auth } from "../../src/auth"
 import { reloadFlags } from "../../src/flag/flag"
-import { FluxRecorder } from "../../src/flux"
 import { Provider } from "../../src/provider/provider"
 
 const originalEnvNoNewLegacy = process.env.ZEE_NO_NEW_LEGACY
@@ -44,8 +43,6 @@ describe("auth.set endpoint", () => {
   })
 
   test("accepts legacy api_key payload", async () => {
-    const before = FluxRecorder.list({ kind: "auth.legacy_payload.accepted" }).total
-    const shimBefore = FluxRecorder.list({ kind: "compat.shim.used" }).total
     const response = await AuthRoute.request("/openrouter", {
       method: "PUT",
       headers: {
@@ -62,12 +59,9 @@ describe("auth.set endpoint", () => {
     const stored = await Auth.get("openrouter")
     expect(stored?.type).toBe("api")
     expect(stored && "key" in stored ? stored.key : undefined).toBe("legacy-key")
-    expect(FluxRecorder.list({ kind: "auth.legacy_payload.accepted" }).total).toBe(before + 1)
-    expect(FluxRecorder.list({ kind: "compat.shim.used" }).total).toBe(shimBefore + 1)
   })
 
   test("blocks legacy api_key payload when no-new-legacy flag is enabled", async () => {
-    const before = FluxRecorder.list({ kind: "auth.legacy_payload.rejected" }).total
     try {
       process.env.ZEE_NO_NEW_LEGACY = "1"
       reloadFlags()
@@ -84,7 +78,6 @@ describe("auth.set endpoint", () => {
       expect(response.status).toBe(403)
       const body = (await response.json()) as { error?: string }
       expect(body.error).toBe("Legacy auth payloads are disabled. Use the modern auth payload schema.")
-      expect(FluxRecorder.list({ kind: "auth.legacy_payload.rejected" }).total).toBe(before + 1)
     } finally {
       if (originalEnvNoNewLegacy === undefined) {
         delete process.env.ZEE_NO_NEW_LEGACY

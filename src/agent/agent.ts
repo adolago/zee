@@ -101,9 +101,6 @@ export const ToolConfig = z.object({
   /** Tools to explicitly enable */
   whitelist: z.array(z.string()).optional(),
 
-  /** Tools to explicitly disable */
-  blacklist: z.array(z.string()).optional(),
-
   /** Per-tool overrides (true = enabled, false = disabled) */
   overrides: z.record(z.string(), z.boolean()).optional(),
 });

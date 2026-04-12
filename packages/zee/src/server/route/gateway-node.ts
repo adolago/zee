@@ -1,12 +1,10 @@
 import { Hono, type Context } from "hono"
 import { describeRoute, resolver, validator } from "hono-openapi"
 import { z } from "zod"
-import { FluxRecorder } from "@/flux"
 import { Config } from "../../config/config"
 import { errors } from "../error"
 import { isLoopbackHostname } from "../auth"
 import { Log } from "../../util/log"
-import { RequestMeta } from "../request-meta"
 import { getNodeClientRegistry, resolveNodeClientPolicy } from "@/gateway/node-client-registry"
 
 const log = Log.create({ service: "server:gateway-node" })
@@ -96,28 +94,8 @@ function recordNodeLifecycle(
     policy?: ReturnType<typeof resolveNodeClientPolicy>
   },
 ) {
-  const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
-  const requestID = RequestMeta.getRequestID(c.req.raw)
-  FluxRecorder.record({
-    traceID,
-    requestID,
-    direction: "internal",
-    domain: "gateway",
-    kind: "gateway.node.lifecycle",
-    status: input.status,
-    method: c.req.method,
-    path: c.req.path,
-    route: c.req.path,
-    metadata: {
-      action: input.action,
-      nodeId: input.nodeId,
-      reason: input.reason,
-      tokenVersion: input.tokenVersion,
-      securityMode: input.policy?.securityMode,
-      maxPairedNodes: input.policy?.maxPairedNodes,
-      credentialMaxAgeHours: input.policy?.credentialMaxAgeHours,
-    },
-  })
+  void c
+  void input
 }
 
 function resolveNodeAuthorizationMatch(
@@ -148,31 +126,8 @@ function recordNodeAuthorization(
     policy?: ReturnType<typeof resolveNodeClientPolicy>
   },
 ) {
-  const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
-  const requestID = RequestMeta.getRequestID(c.req.raw)
-  FluxRecorder.record({
-    traceID,
-    requestID,
-    direction: "internal",
-    domain: "gateway",
-    kind: "gateway.node.authorization",
-    status: input.status,
-    method: c.req.method,
-    path: c.req.path,
-    route: c.req.path,
-    metadata: {
-      nodeId: input.nodeId,
-      tool: input.tool,
-      authorized: input.authorized,
-      reason: input.reason,
-      mode: input.mode,
-      tokenVersion: input.tokenVersion,
-      matchedBy: input.matchedBy,
-      securityMode: input.policy?.securityMode,
-      maxPairedNodes: input.policy?.maxPairedNodes,
-      credentialMaxAgeHours: input.policy?.credentialMaxAgeHours,
-    },
-  })
+  void c
+  void input
 }
 
 export const GatewayNodeRoute = new Hono()

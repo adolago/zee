@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { createConnection, type Socket } from "node:net"
 import { recordOpenCodeRuntimeRoute } from "@/runtime/opencode-rollout"
+import { DEFAULT_SOCKET_PATH } from "@root/daemon/types"
 
 export type RuntimeAgent = "zee"
 
@@ -90,9 +91,7 @@ export interface OrchestrationClientOptions {
 }
 
 export function defaultSocketPath(): string {
-  const home = process.env.HOME || process.env.USERPROFILE || "/tmp"
-  const stateHome = process.env.XDG_STATE_HOME || `${home}/.local/state`
-  return `${stateHome}/zee/daemon/daemon.sock`
+  return DEFAULT_SOCKET_PATH
 }
 
 export async function requestOrchestration<TParams = unknown, TResult = unknown>(

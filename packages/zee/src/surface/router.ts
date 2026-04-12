@@ -13,8 +13,7 @@
  * |  GUI Surface   |     +------------------+     +------------------+
  * +----------------+---->|         |          ^
  * +----------------+---->|         v          |
- * |  Messaging     |     |   Analytics/      |
- * |  Surface       |     |   Hot Reload      |
+ * |  Messaging     |     |   Hot Reload      |
  * +----------------+     +------------------+
  * ```
  */
@@ -45,22 +44,10 @@ export type MessageHandler = (
   context: SurfaceContext,
 ) => Promise<SurfaceResponse | AsyncIterable<StreamChunk>>
 
-/** Surface analytics event */
-export type SurfaceAnalyticsEvent = {
-  surfaceId: string
-  eventType: "message_received" | "message_sent" | "error" | "connect" | "disconnect"
-  timestamp: number
-  durationMs?: number
-  messageLength?: number
-  errorType?: string
-}
-
 /** Router configuration */
 export type SurfaceRouterConfig = {
   /** Default message handler if no specific handler registered */
   defaultMessageHandler?: MessageHandler
-  /** Enable analytics collection */
-  enableAnalytics?: boolean
   /** Enable hot-reload of surfaces */
   enableHotReload?: boolean
   /** Permission handler for surfaces without interactive prompts */
@@ -87,7 +74,6 @@ type ActiveSession = {
  * - Surface registration and lifecycle
  * - Message routing between surfaces and agents
  * - Session tracking across surfaces
- * - Analytics collection
  * - Hot-reload of surface configurations
  */
 export class SurfaceRouter {
@@ -95,20 +81,17 @@ export class SurfaceRouter {
   private messageHandler?: MessageHandler
   private permissionHandler?: (request: PermissionRequest, surfaceId: string) => Promise<PermissionResponse>
   private activeSessions = new Map<string, ActiveSession>()
-  private analytics: SurfaceAnalyticsEvent[] = []
   private config: SurfaceRouterConfig
   private eventEmitter = new EventEmitter<{
     message: { surfaceId: string; message: SurfaceMessage }
     response: { surfaceId: string; response: SurfaceResponse }
     error: { surfaceId: string; error: Error }
-    analytics: SurfaceAnalyticsEvent
   }>()
   private hotReloadIntervals = new Map<string, NodeJS.Timeout>()
   private initialized = false
 
   constructor(config: SurfaceRouterConfig = {}) {
     this.config = {
-      enableAnalytics: true,
       enableHotReload: false,
       ...config,
     }
@@ -251,12 +234,6 @@ export class SurfaceRouter {
       // Connect the surface
       await surface.connect()
 
-      this.recordAnalytics({
-        surfaceId: surface.id,
-        eventType: "connect",
-        timestamp: Date.now(),
-      })
-
       log.info("Surface connected", { surfaceId: surface.id })
     } catch (error) {
       log.error("Failed to connect surface", {
@@ -270,12 +247,6 @@ export class SurfaceRouter {
   private async disconnectSurface(surface: Surface): Promise<void> {
     try {
       await surface.disconnect()
-
-      this.recordAnalytics({
-        surfaceId: surface.id,
-        eventType: "disconnect",
-        timestamp: Date.now(),
-      })
 
       log.info("Surface disconnected", { surfaceId: surface.id })
     } catch (error) {
@@ -311,20 +282,11 @@ export class SurfaceRouter {
   }
 
   private async handleIncomingMessage(surface: Surface, message: SurfaceMessage): Promise<void> {
-    const startTime = Date.now()
     const threadId = message.thread?.threadId || "default"
     const sessionKey = `${surface.id}:${threadId}`
 
     // Update session tracking
     this.updateSession(sessionKey, surface.id, threadId)
-
-    // Record analytics
-    this.recordAnalytics({
-      surfaceId: surface.id,
-      eventType: "message_received",
-      timestamp: startTime,
-      messageLength: message.body.length,
-    })
 
     // Emit event for observers
     this.eventEmitter.emit("message", { surfaceId: surface.id, message })
@@ -381,15 +343,6 @@ export class SurfaceRouter {
         await surface.sendResponse(result as SurfaceResponse, threadId)
       }
 
-      // Record analytics
-      const durationMs = Date.now() - startTime
-      this.recordAnalytics({
-        surfaceId: surface.id,
-        eventType: "message_sent",
-        timestamp: Date.now(),
-        durationMs,
-      })
-
       this.eventEmitter.emit("response", {
         surfaceId: surface.id,
         response: result as SurfaceResponse,
@@ -399,13 +352,6 @@ export class SurfaceRouter {
         surfaceId: surface.id,
         messageId: message.id,
         error: error instanceof Error ? error.message : String(error),
-      })
-
-      this.recordAnalytics({
-        surfaceId: surface.id,
-        eventType: "error",
-        timestamp: Date.now(),
-        errorType: error instanceof Error ? error.name : "unknown",
       })
 
       this.eventEmitter.emit("error", {
@@ -434,13 +380,6 @@ export class SurfaceRouter {
     log.error("Surface error", {
       surfaceId: surface.id,
       error: error.message,
-    })
-
-    this.recordAnalytics({
-      surfaceId: surface.id,
-      eventType: "error",
-      timestamp: Date.now(),
-      errorType: error.name,
     })
 
     this.eventEmitter.emit("error", { surfaceId: surface.id, error })
@@ -481,36 +420,6 @@ export class SurfaceRouter {
     // 2. Reload configuration if needed
     // 3. Reconnect surface if necessary
     log.debug("Checking surface config for hot-reload", { surfaceId: surface.id })
-  }
-
-  // ---------------------------------------------------------------------------
-  // Analytics
-  // ---------------------------------------------------------------------------
-
-  private recordAnalytics(event: SurfaceAnalyticsEvent): void {
-    if (!this.config.enableAnalytics) {
-      return
-    }
-
-    this.analytics.push(event)
-
-    // Emit for real-time observers
-    this.eventEmitter.emit("analytics", event)
-
-    // Prune old analytics (keep last 10000 events)
-    if (this.analytics.length > 10000) {
-      this.analytics = this.analytics.slice(-5000)
-    }
-  }
-
-  /**
-   * Get analytics data for all surfaces or a specific surface.
-   */
-  getAnalytics(surfaceId?: string): SurfaceAnalyticsEvent[] {
-    if (surfaceId) {
-      return this.analytics.filter((e) => e.surfaceId === surfaceId)
-    }
-    return [...this.analytics]
   }
 
   /**

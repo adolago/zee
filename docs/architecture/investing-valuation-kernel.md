@@ -59,7 +59,7 @@ Scenario defaults:
 
 These multipliers are intentionally simple in the kernel. The next valuation slices add richer assumption provenance and sensitivity frameworks on top of this base.
 
-## Telemetry
+## diagnostics
 
 This slice emits:
 

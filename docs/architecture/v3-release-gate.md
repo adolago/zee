@@ -64,7 +64,7 @@ The consolidated report now verifies the presence of these operator-facing docs:
 - `docs/architecture/v3-rollout-plan.md`
 - `docs/architecture/v3-launch-playbook.md`
 
-## Telemetry
+## diagnostics
 
 This slice emits:
 

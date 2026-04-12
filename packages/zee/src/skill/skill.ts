@@ -13,7 +13,6 @@ import { Bus } from "@/bus"
 import { Session } from "@/session"
 import { scanDirectoryWithSummary, type SkillScanFinding } from "./scanner"
 import { PermissionNext } from "@/permission/next"
-import { getSkillUsageBoostMap, recordSkillUsage, type SkillUsageOutcome } from "./usage-history"
 import { parse as parseYaml } from "yaml"
 
 export namespace Skill {
@@ -881,7 +880,6 @@ export namespace Skill {
     const minScore = options?.minScore ?? 3
     const candidates = await all(agent)
     const envContext = await createEnvResolutionContext()
-    const usageBoost = await getSkillUsageBoostMap(trimmed)
 
     const ranked: Recommendation[] = []
 
@@ -892,13 +890,7 @@ export namespace Skill {
       const lexical = scoreSkill(trimmed, skill)
       if (lexical.score <= 0) continue
 
-      const boost = usageBoost.get(skill.name)
-      const score = lexical.score + (boost?.boost ?? 0)
-
       const reasonParts = [lexical.reason]
-      if (boost) {
-        reasonParts.push(`memory boost (+${boost.boost.toFixed(1)})`)
-      }
       if (readiness.permission === "ask") {
         reasonParts.push("requires permission prompt")
       }
@@ -918,7 +910,7 @@ export namespace Skill {
         location: skill.location,
         affinity: skill.affinity,
         context: skill.context,
-        score,
+        score: lexical.score,
         reason: reasonParts.join("; "),
         readiness,
       })
@@ -926,14 +918,6 @@ export namespace Skill {
 
     ranked.sort((a, b) => b.score - a.score)
     return ranked.filter((item) => item.score >= minScore).slice(0, limit)
-  }
-
-  export async function recordUsage(input: {
-    query: string
-    skill: string
-    outcome: SkillUsageOutcome
-  }): Promise<void> {
-    await recordSkillUsage(input)
   }
 
   /** Audit report for skill health diagnostics. */

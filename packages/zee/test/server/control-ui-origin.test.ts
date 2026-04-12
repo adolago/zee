@@ -3,7 +3,6 @@ import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import { Config } from "../../src/config/config"
-import { FluxRecorder } from "../../src/flux"
 import { reloadFlags } from "../../src/flag/flag"
 import { Instance } from "../../src/project/instance"
 import { Server } from "../../src/server/server"
@@ -85,7 +84,6 @@ describe("control UI trusted origins", () => {
     Server.reset()
 
     const app = Server.App()
-    const before = FluxRecorder.list({ kind: "auth.policy.checked" }).total
 
     const denied = await app.request("/global/health/live", {
       method: "GET",
@@ -105,7 +103,6 @@ describe("control UI trusted origins", () => {
       },
     })
     expect(allowed.status).toBe(200)
-    expect(FluxRecorder.list({ kind: "auth.policy.checked" }).total).toBe(before + 2)
   })
 
   test("accepts X-Zee-Token for trusted browser origins in token mode", async () => {

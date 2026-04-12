@@ -9,7 +9,6 @@ import { FallbackChain } from "./fallback-chain"
 import { ModelEquivalence } from "./equivalence"
 import z from "zod"
 import type { StreamTextResult, ToolSet, TextStreamPart } from "ai"
-import { FluxRecorder } from "@/flux"
 
 /**
  * Fallback Orchestrator - Main entry point for LLM streaming with automatic fallback.
@@ -254,24 +253,6 @@ export namespace Fallback {
         source: context.source,
       })
     }
-    FluxRecorder.record({
-      traceID: context.sessionID,
-      requestID: context.sessionID,
-      sessionID: context.sessionID,
-      providerID: context.originalModel.providerID,
-      modelID: context.originalModel.id,
-      direction: "internal",
-      domain: "provider",
-      kind: "provider.fallback.used",
-      status: "ok",
-      metadata: {
-        source: context.source,
-        from: modelKey,
-        to: fallbackModel,
-        reason: error.message,
-        attempt: context.attempted.length,
-      },
-    })
 
     // Get new stream from fallback provider
     try {
@@ -388,26 +369,6 @@ export namespace Fallback {
             source,
           })
         }
-        if (attempt > 0) {
-          FluxRecorder.record({
-            traceID: input.sessionID,
-            requestID: input.sessionID,
-            sessionID: input.sessionID,
-            providerID: input.model.providerID,
-            modelID: input.model.id,
-            direction: "internal",
-            domain: "provider",
-            kind: "provider.fallback.used",
-            status: "ok",
-            metadata: {
-              source,
-              fallbackProvider: currentModel.providerID,
-              fallbackModel: currentModel.id,
-              reason: lastError?.message ?? "unknown",
-              attempt,
-            },
-          })
-        }
 
         // Wrap the stream to catch mid-stream errors and trigger fallback
         const streamContext: StreamContext = {
@@ -471,25 +432,6 @@ export namespace Fallback {
       attempted,
       lastError: lastError?.message ?? "unknown",
       source,
-    })
-    FluxRecorder.record({
-      traceID: input.sessionID,
-      requestID: input.sessionID,
-      sessionID: input.sessionID,
-      providerID: input.model.providerID,
-      modelID: input.model.id,
-      direction: "internal",
-      domain: "provider",
-      kind: "provider.fallback.exhausted",
-      status: "error",
-      error: {
-        code: "fallback_exhausted",
-        message: lastError?.message ?? "unknown",
-      },
-      metadata: {
-        attempted,
-        source,
-      },
     })
 
     throw lastError ?? new Error("All fallbacks exhausted")

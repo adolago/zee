@@ -66,9 +66,9 @@ zee investing ingest status
 
 `zee investing entity status` reports total catalog size plus counts by kind and lineage source.
 
-## Telemetry
+## diagnostics
 
-Flux events emitted for this slice:
+event bus events emitted for this slice:
 
 - `investing.entity.normalized`
   - emitted whenever a connector batch is normalized into the catalog

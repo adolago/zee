@@ -69,7 +69,7 @@ Each case result now includes:
 - per-case `thresholdBreaches[]`
 - scorer `reasons` for factuality, consistency, and timeliness
 
-## Telemetry
+## diagnostics
 
 This slice emits:
 

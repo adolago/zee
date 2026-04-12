@@ -79,7 +79,7 @@ Supported actions:
 
 The executor also auto-generates an artifact after each run and stores the resulting `artifactId` on the execution packet.
 
-## Telemetry
+## diagnostics
 
 This slice emits:
 

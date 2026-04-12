@@ -161,19 +161,6 @@ describe("ProviderTransform.variants - mapping parity", () => {
     expect(Object.keys(ProviderTransform.variants(grokMultiAgentModel))).toEqual(["low", "medium", "high", "xhigh"])
   })
 
-  test("azure gpt-5 uses low/medium/high reasoning variants", () => {
-    const azureModel = {
-      id: "gpt-5",
-      providerID: "azure",
-      api: { id: "gpt-5", npm: "@ai-sdk/azure" },
-      capabilities: { reasoning: true },
-      release_date: "2025-12-01",
-    } as any
-
-    const variants = ProviderTransform.variants(azureModel)
-    expect(Object.keys(variants)).toEqual(["low", "medium", "high"])
-  })
-
   test("anthropic thinking budgets match default limits", () => {
     const anthropicModel = {
       id: "claude-3-5-sonnet",
@@ -1168,41 +1155,6 @@ describe("ProviderTransform.message - providerOptions key remapping", () => {
     }) as any
 })
 
-describe("ProviderTransform.message - claude w/bedrock custom inference profile", () => {
-  test("adds cachePoint", () => {
-    const model = {
-      id: "amazon-bedrock/custom-claude-sonnet-4.5",
-      providerID: "amazon-bedrock",
-      api: {
-        id: "arn:aws:bedrock:xxx:yyy:application-inference-profile/zzz",
-        url: "https://api.test.com",
-        npm: "@ai-sdk/amazon-bedrock",
-      },
-      name: "Custom inference profile",
-      capabilities: {},
-      options: {},
-      headers: {},
-    } as any
-
-    const msgs = [
-      {
-        role: "user",
-        content: "Hello",
-      },
-    ] as any[]
-
-    const result = ProviderTransform.message(msgs, model, {})
-
-    expect(result[0].providerOptions?.bedrock).toEqual(
-      expect.objectContaining({
-        cachePoint: {
-          type: "default",
-        },
-      }),
-    )
-  })
-})
-
 describe("ProviderTransform.variants", () => {
   const createMockModel = (overrides: Partial<any> = {}): any => ({
     id: "test/test-model",
@@ -1531,44 +1483,9 @@ describe("ProviderTransform.variants", () => {
     })
   })
 
-  describe("@ai-sdk/groq", () => {
-    test("gpt-oss models use low/medium/high reasoningEffort", () => {
-      const model = createMockModel({
-        id: "groq/openai/gpt-oss-120b",
-        providerID: "groq",
-        api: {
-          id: "openai/gpt-oss-120b",
-          url: "https://api.groq.com/openai/v1",
-          npm: "@ai-sdk/groq",
-        },
-      })
-
-      const result = ProviderTransform.variants(model)
-      expect(Object.keys(result)).toEqual(["low", "medium", "high"])
-      expect(result.low).toEqual({ reasoningEffort: "low" })
-      expect(result.high).toEqual({ reasoningEffort: "high" })
-    })
-
-    test("qwen3 models use none/default reasoningEffort", () => {
-      const model = createMockModel({
-        id: "groq/qwen/qwen3-32b",
-        providerID: "groq",
-        api: {
-          id: "qwen/qwen3-32b",
-          url: "https://api.groq.com/openai/v1",
-          npm: "@ai-sdk/groq",
-        },
-      })
-
-      const result = ProviderTransform.variants(model)
-      expect(Object.keys(result)).toEqual(["none", "default"])
-      expect(result.none).toEqual({ reasoningEffort: "none" })
-      expect(result.default).toEqual({ reasoningEffort: "default" })
-    })
-  })
 })
 
-describe("ProviderTransform.options - persona thinking configs", () => {
+describe("ProviderTransform.options - retained thinking configs", () => {
   const sessionID = "test-session-123"
 
   describe("Zee (GLM-4.7 via Z.AI Coding Plan)", () => {
@@ -1590,7 +1507,7 @@ describe("ProviderTransform.options - persona thinking configs", () => {
     })
   })
 
-  describe("Stanley (Grok 4.20 via xAI openai-compatible)", () => {
+  describe("Grok 4.20 via xAI openai-compatible", () => {
     test("grok-4.20 multi-agent returns low/medium/high/xhigh reasoningEffort variants", () => {
       const model = {
         id: "x-ai/grok-4.20-multi-agent-experimental-beta-0304",

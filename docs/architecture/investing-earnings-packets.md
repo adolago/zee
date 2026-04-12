@@ -63,7 +63,7 @@ Supported actions:
 
 The CLI mirror is `zee investing earnings-packet ...`.
 
-## Telemetry
+## diagnostics
 
 This slice emits:
 

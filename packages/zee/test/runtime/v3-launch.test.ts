@@ -1,27 +1,24 @@
 import { describe, expect, test } from "bun:test"
 import path from "node:path"
 import { tmpdir } from "../fixture/fixture"
-import { buildOpenCodeRuntimeReleaseGate, buildOpenCodeRuntimeRolloutReport } from "../../src/runtime/opencode-rollout"
+import {
+  buildOpenCodeRuntimeReleaseGate,
+  buildOpenCodeRuntimeRolloutReport,
+  type OpenCodeRuntimeRouteEvent,
+} from "../../src/runtime/opencode-rollout"
 import { applyV3RolloutStage } from "../../src/runtime/v3-rollout"
 import { buildV3ReleaseReport, type V3ReleaseDocCheck } from "../../src/runtime/v3-release"
 import { goLiveV3Launch, recordV3LaunchSignoff } from "../../src/runtime/v3-launch"
 import type { SecurityAuditReport } from "../../src/security"
-import type { UsageSummary } from "../../src/usage/types"
-import type { FluxEvent } from "../../src/flux"
 
 function makeRouteEvent(params: {
   timestamp: string
   surface: "cli" | "orchestration" | "gateway"
   kind: "runtime.opencode.route.selected" | "runtime.opencode.route.fallback"
-}): FluxEvent {
+}): OpenCodeRuntimeRouteEvent {
   return {
-    id: `${params.surface}-${params.kind}-${params.timestamp}`,
     timestamp: new Date(params.timestamp).getTime(),
-    traceID: `trace-${params.surface}-${params.kind}-${params.timestamp}`,
-    direction: "internal",
-    domain: "runtime",
     kind: params.kind,
-    status: "ok",
     metadata: {
       surface: params.surface,
       route: params.kind === "runtime.opencode.route.selected" ? "opencode_primary" : "legacy_fallback",
@@ -43,24 +40,6 @@ function makeSecurityReport(): SecurityAuditReport {
       findingCount: 0,
       alertCount: 0,
     },
-  }
-}
-
-function makeUsageSummary(): UsageSummary {
-  return {
-    period: "day",
-    startTime: 1_700_000_000_000,
-    endTime: 1_700_000_086_400,
-    totalRequests: 14,
-    totalInputTokens: 48_000,
-    totalOutputTokens: 22_000,
-    totalCost: 1.45,
-    byProvider: {},
-    byModel: {},
-    avgLatencyMs: 800,
-    errorCount: 0,
-    errorRate: 0,
-    cacheHitRate: 0.3,
   }
 }
 
@@ -110,7 +89,6 @@ function makeReleaseReport() {
     security: makeSecurityReport(),
     nodePolicy: { enabled: false, securityMode: "deny" },
     nodeStats: { active: 0, revoked: 0, total: 0 },
-    usageSummary: makeUsageSummary(),
     docs: makeDocs(),
   })
 }

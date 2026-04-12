@@ -1,6 +1,6 @@
 # Investing Research Planner
 
-Zee's investing research planner gives Stanley a repeatable way to break multi-step research objectives into explicit tasks, persist plan state locally, and emit telemetry for operators.
+Zee's investing research planner gives Stanley a repeatable way to break multi-step research objectives into explicit tasks, persist plan state locally, and emit diagnostics for operators.
 
 ## Scope
 
@@ -88,9 +88,9 @@ The templates intentionally point Stanley toward the existing investing tool sur
 
 That keeps workflow decomposition aligned with the actual tool inventory instead of creating planner-only steps that cannot be executed.
 
-## Telemetry
+## diagnostics
 
-The planner emits Flux events under `domain=investing`:
+The planner emits event bus events under `domain=investing`:
 
 - `investing.research.plan`
   - emitted when a plan is created
@@ -101,8 +101,8 @@ The planner emits Flux events under `domain=investing`:
 
 Recommended checks:
 
-1. Query Flux for `kind=investing.research.plan` to track research intake volume by workflow.
-2. Query Flux for `kind=investing.research.plan.task` to find blocked tasks and stalled workflows.
+1. Query event bus for `kind=investing.research.plan` to track research intake volume by workflow.
+2. Query event bus for `kind=investing.research.plan.task` to find blocked tasks and stalled workflows.
 3. Inspect `research-plans.json` when reconciling planner state with a live research session.
 
 ## Operating loop

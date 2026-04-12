@@ -70,21 +70,9 @@ const applyRetention = () => {
     getSetting("retention_logs_days", String(env.RETENTION_LOGS_DAYS)),
     env.RETENTION_LOGS_DAYS,
   )
-  const retentionTelemetry = parseSettingNumber(
-    getSetting("retention_telemetry_days", String(env.RETENTION_TELEMETRY_DAYS)),
-    env.RETENTION_TELEMETRY_DAYS,
-  )
-  const retentionUsage = parseSettingNumber(
-    getSetting("retention_usage_days", String(env.RETENTION_USAGE_DAYS)),
-    env.RETENTION_USAGE_DAYS,
-  )
   const nowMs = now()
   db.prepare("DELETE FROM log_events WHERE created_at < ?")
     .run(nowMs - retentionLogs * 24 * 60 * 60 * 1000)
-  db.prepare("DELETE FROM telemetry_events WHERE created_at < ?")
-    .run(nowMs - retentionTelemetry * 24 * 60 * 60 * 1000)
-  db.prepare("DELETE FROM usage_events WHERE created_at < ?")
-    .run(nowMs - retentionUsage * 24 * 60 * 60 * 1000)
 }
 
 const recordBillingEvent = (workspaceId: string, event: string, metadata: Record<string, any> = {}) => {
@@ -134,7 +122,7 @@ const hasWorkspaceAccess = (userId: string, workspaceId: string) => {
 const getWorkspaceById = (workspaceId: string) =>
   db
     .prepare(
-      "SELECT id, org_id, name, plan, status, billing_customer_id, billing_portal_url, usage_cap_requests, usage_cap_tokens FROM workspaces WHERE id = ?",
+      "SELECT id, org_id, name, plan, status, billing_customer_id, billing_portal_url FROM workspaces WHERE id = ?",
     )
     .get(workspaceId) as
     | {
@@ -145,32 +133,16 @@ const getWorkspaceById = (workspaceId: string) =>
         status: string
         billing_customer_id: string | null
         billing_portal_url: string | null
-        usage_cap_requests: number | null
-        usage_cap_tokens: number | null
       }
     | undefined
 
 const planCatalog = {
-  free: { id: "free", name: "Free", requestCap: 2000, tokenCap: 250000 },
-  pro: { id: "pro", name: "Pro", requestCap: 100000, tokenCap: 20000000 },
-  enterprise: { id: "enterprise", name: "Enterprise", requestCap: null, tokenCap: null },
+  free: { id: "free", name: "Free" },
+  pro: { id: "pro", name: "Pro" },
+  enterprise: { id: "enterprise", name: "Enterprise" },
 }
 
 const getPlan = (planId: string) => planCatalog[planId as keyof typeof planCatalog] ?? planCatalog.free
-
-const startOfMonth = () => {
-  const date = new Date()
-  return new Date(date.getFullYear(), date.getMonth(), 1).getTime()
-}
-
-const usageSummary = (workspaceId: string) => {
-  const row = db
-    .prepare(
-      "SELECT COALESCE(SUM(requests), 0) as requests, COALESCE(SUM(tokens), 0) as tokens FROM usage_events WHERE workspace_id = ? AND created_at >= ?",
-    )
-    .get(workspaceId, startOfMonth()) as { requests: number; tokens: number }
-  return row
-}
 
 const generateShareSlug = () => {
   const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789"
@@ -468,15 +440,6 @@ api.get("/share/:slug", (c) => {
   return jsonResponse(c, parsed)
 })
 
-api.post("/telemetry", async (c) => {
-  const body = await c.req.json().catch(() => null)
-  if (!body?.kind) return jsonResponse(c, { error: "Missing kind" }, 400)
-  db.prepare("INSERT INTO telemetry_events (id, workspace_id, kind, payload, created_at) VALUES (?, ?, ?, ?, ?)")
-    .run(randomUUID(), body.workspace_id ?? null, String(body.kind), JSON.stringify(body.payload ?? {}), now())
-  applyRetention()
-  return jsonResponse(c, { ok: true })
-})
-
 api.post("/logs", async (c) => {
   const body = await c.req.json().catch(() => null)
   if (!body?.level || !body?.message) return jsonResponse(c, { error: "Missing level or message" }, 400)
@@ -493,14 +456,6 @@ api.post("/logs", async (c) => {
   return jsonResponse(c, { ok: true })
 })
 
-api.get("/analytics/summary", requireApiAuth, (c) => {
-  const user = c.get("user") as { id: string }
-  const workspaceId = c.req.query("workspace_id")
-  if (!workspaceId) return jsonResponse(c, { error: "Missing workspace_id" }, 400)
-  if (!hasWorkspaceAccess(user.id, workspaceId)) return jsonResponse(c, { error: "Forbidden" }, 403)
-  return jsonResponse(c, { summary: usageSummary(workspaceId) })
-})
-
 api.get("/billing/plans", (c) => {
   return jsonResponse(c, { plans: Object.values(planCatalog) })
 })
@@ -512,8 +467,7 @@ api.post("/workspaces/:workspaceId/plan", requireApiAuth, async (c) => {
   const body = await c.req.json().catch(() => null)
   const planId = String(body?.plan ?? env.DEFAULT_PLAN)
   const plan = getPlan(planId)
-  db.prepare("UPDATE workspaces SET plan = ?, usage_cap_requests = ?, usage_cap_tokens = ? WHERE id = ?")
-    .run(plan.id, plan.requestCap, plan.tokenCap, workspaceId)
+  db.prepare("UPDATE workspaces SET plan = ? WHERE id = ?").run(plan.id, workspaceId)
   recordBillingEvent(workspaceId, "plan.updated", { plan: plan.id })
   return jsonResponse(c, { ok: true })
 })
@@ -537,8 +491,6 @@ api.get("/billing/history", requireApiAuth, (c) => {
 api.post("/settings/retention", requireApiAuth, async (c) => {
   const body = await c.req.json().catch(() => null)
   if (body?.logs_days) setSetting("retention_logs_days", String(body.logs_days))
-  if (body?.telemetry_days) setSetting("retention_telemetry_days", String(body.telemetry_days))
-  if (body?.usage_days) setSetting("retention_usage_days", String(body.usage_days))
   applyRetention()
   return jsonResponse(c, { ok: true })
 })
@@ -555,15 +507,6 @@ api.post("/gateway/:workspaceId/chat", async (c) => {
 
   const workspace = getWorkspaceById(workspaceId)
   if (!workspace) return jsonResponse(c, { error: "Workspace not found" }, 404)
-
-  const plan = getPlan(workspace.plan)
-  const usage = usageSummary(workspaceId)
-  if (plan.requestCap !== null && usage.requests + 1 > plan.requestCap) {
-    return jsonResponse(c, { error: "Request limit exceeded" }, 429)
-  }
-  if (plan.tokenCap !== null && usage.tokens > plan.tokenCap) {
-    return jsonResponse(c, { error: "Token limit exceeded" }, 429)
-  }
 
   const payload = await c.req.json().catch(() => null)
   if (!payload?.messages) return jsonResponse(c, { error: "Missing messages" }, 400)
@@ -605,20 +548,6 @@ api.post("/gateway/:workspaceId/chat", async (c) => {
   }
 
   const data = await upstream.json()
-  const tokens = Number(data?.usage?.total_tokens ?? 0)
-  db.prepare(
-    "INSERT INTO usage_events (id, workspace_id, provider_id, model, tokens, requests, metadata, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-  ).run(
-    randomUUID(),
-    workspaceId,
-    providerId || null,
-    String(payload.model ?? ""),
-    tokens,
-    1,
-    JSON.stringify({ request_id: data?.id ?? null }),
-    now(),
-  )
-  applyRetention()
 
   return jsonResponse(c, data)
 })

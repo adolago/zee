@@ -39,7 +39,7 @@ Each dataset owner now becomes a routing key for alert delivery:
 - dataset owner `research-qa` maps to routing key `owner:research-qa`
 - dataset owner `release-quality-owner` maps to routing key `owner:release-quality-owner`
 
-Alerts are attached directly to the persisted run and emitted through Flux telemetry so downstream automation can fan them out without reparsing CLI output.
+Alerts are attached directly to the persisted run and emitted through event bus diagnostics so downstream automation can fan them out without reparsing CLI output.
 
 ## Operator surfaces
 
@@ -59,7 +59,7 @@ bun run --cwd packages/zee eval:gate
 
 The CI script seeds a deterministic fixture dataset, runs the strict CLI gate, and fails the workflow if the gate blocks.
 
-## Telemetry
+## diagnostics
 
 This slice emits:
 

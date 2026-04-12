@@ -279,6 +279,49 @@ export namespace Config {
     return !specs.some((spec) => /^(workspace:|catalog:)/.test(spec))
   }
 
+  async function installLocalPluginPackage(configDir: string, localPluginDir: string) {
+    const target = path.join(configDir, "node_modules", "@zee", "plugin")
+    await fs.mkdir(path.dirname(target), { recursive: true })
+    await fs.rm(target, { recursive: true, force: true }).catch(() => {})
+    await fs.cp(localPluginDir, target, {
+      recursive: true,
+      dereference: true,
+      filter: (srcPath) => {
+        const base = path.basename(srcPath)
+        return base !== "node_modules" && base !== "bun.lock" && base !== ".git"
+      },
+    })
+  }
+
+  async function removeManagedPluginDependency(pkgPath: string) {
+    const raw = await fs.readFile(pkgPath, "utf-8").catch(() => "")
+    if (!raw) return
+    let parsed: Record<string, any>
+    try {
+      parsed = JSON.parse(raw)
+    } catch {
+      return
+    }
+
+    let changed = false
+    for (const key of ["dependencies", "devDependencies", "optionalDependencies"] as const) {
+      const deps = parsed[key]
+      if (!deps || typeof deps !== "object" || Array.isArray(deps)) continue
+      if ("@zee/plugin" in deps) {
+        delete deps["@zee/plugin"]
+        changed = true
+      }
+      if (Object.keys(deps).length === 0) {
+        delete parsed[key]
+        changed = true
+      }
+    }
+
+    if (changed) {
+      await Bun.write(pkgPath, JSON.stringify(parsed, null, 2) + "\n")
+    }
+  }
+
   export async function installDependencies(dir: string) {
     // Benchmarks and certain automation should never mutate user config directories.
     // This env var is intentionally read at call time (not via Flag) to avoid stale values
@@ -310,17 +353,15 @@ export namespace Config {
 
     const pluginVersion = Installation.isLocal() || Installation.isPreview() ? "latest" : Installation.VERSION
     const localPluginDir = path.join(Global.Path.source, "packages", "plugin")
-    const localPluginSpecifier = `file:${localPluginDir}`
     const localPluginPkg = path.join(localPluginDir, "package.json")
     const localPluginAvailable = await Filesystem.exists(localPluginPkg)
     const localPluginPortable = localPluginAvailable ? await isPortableLocalPlugin(localPluginPkg) : false
-    const pluginSpecifier = localPluginAvailable
-      ? localPluginPortable
-        ? localPluginSpecifier
-        : undefined
-      : "@zee/plugin@" + pluginVersion
+    const shouldCopyLocalPlugin = localPluginAvailable && localPluginPortable
+    const pluginSpecifier = localPluginAvailable ? undefined : "@zee/plugin@" + pluginVersion
 
-    if (pluginSpecifier) {
+    if (shouldCopyLocalPlugin) {
+      await removeManagedPluginDependency(pkg)
+    } else if (pluginSpecifier) {
       await BunProc.run(["add", pluginSpecifier, "--exact"], {
         cwd: dir,
       }).catch((err) => {
@@ -338,6 +379,12 @@ export namespace Config {
     await BunProc.run(["install"], { cwd: dir }).catch((err) => {
       log.debug("failed to install plugin dependencies", { error: String(err), dir })
     })
+
+    if (shouldCopyLocalPlugin) {
+      await installLocalPluginPackage(dir, localPluginDir).catch((err) => {
+        log.debug("failed to copy local plugin package", { error: String(err), dir, localPluginDir })
+      })
+    }
   }
 
   function rel(item: string, patterns: string[]) {
@@ -1275,28 +1322,6 @@ export namespace Config {
       ref: "DaemonConfig",
     })
 
-  export const Flux = z
-    .object({
-      enabled: z.boolean().optional().describe("Enable flux event recording"),
-      retentionHours: z.number().int().positive().optional().describe("Flux event retention period in hours"),
-      redaction: z
-        .enum(["strict", "balanced", "debug"])
-        .optional()
-        .describe("Redaction policy for flux metadata/payloads"),
-      maxEvents: z.number().int().positive().optional().describe("Maximum number of flux events to retain"),
-      maxEventsPerTrace: z
-        .number()
-        .int()
-        .positive()
-        .optional()
-        .describe("Maximum number of flux events kept per trace"),
-      logMirror: z.boolean().optional().describe("Mirror recorded flux events into structured logs"),
-    })
-    .strict()
-    .meta({
-      ref: "FluxConfig",
-    })
-
   export const Layout = z.enum(["auto", "stretch"]).meta({
     ref: "LayoutConfig",
   })
@@ -1765,7 +1790,6 @@ export namespace Config {
       grammar: Grammar.optional().describe("Grammar checking configuration"),
       server: Server.optional().describe("Server configuration for zee serve and web commands"),
       daemon: Daemon.optional().describe("Daemon mode configuration for headless operation"),
-      flux: Flux.optional().describe("Token and API ingress-egress observability configuration"),
       heartbeat: z
         .object({
           enabled: z.boolean().optional().default(true).describe("Enable heartbeat check-ins"),
@@ -2044,11 +2068,6 @@ export namespace Config {
                   streamEditIntervalMs: z.number().int().positive().optional(),
                   releasePin: z.string().optional(),
                   releaseTimeoutMs: z.number().default(900_000),
-                })
-                .optional(),
-              analytics: z
-                .object({
-                  enabled: z.boolean().optional(),
                 })
                 .optional(),
               hotReload: z

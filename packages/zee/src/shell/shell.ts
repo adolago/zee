@@ -70,7 +70,7 @@ export namespace Shell {
       }
     }
   }
-  const BLACKLIST = new Set(["fish", "nu"])
+  const UNSUPPORTED_SHELLS = new Set(["fish", "nu"])
 
   function fallback() {
     if (process.platform === "win32") {
@@ -97,7 +97,7 @@ export namespace Shell {
 
   export const acceptable = lazy(() => {
     const s = process.env.SHELL
-    if (s && !BLACKLIST.has(process.platform === "win32" ? path.win32.basename(s) : path.basename(s))) return s
+    if (s && !UNSUPPORTED_SHELLS.has(process.platform === "win32" ? path.win32.basename(s) : path.basename(s))) return s
     return fallback()
   })
 }

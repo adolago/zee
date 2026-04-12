@@ -16,6 +16,7 @@ const repoRoot = path.resolve(dir, "..", "..")
 process.chdir(dir)
 
 import pkg from "../package.json"
+import rootPkg from "../../../package.json"
 import { Script } from "../src/pkg/script"
 import { normalizeModelsCatalogJson } from "../test/fixture/models-catalog"
 
@@ -200,7 +201,56 @@ function bundleZeeAssets(distRoot: string) {
   }
 }
 
-async function bundlePersonaSkills(distRoot: string) {
+function bundlePluginPackage(distRoot: string) {
+  const pluginRoot = path.join(repoRoot, "packages", "plugin")
+  const pluginSrc = path.join(pluginRoot, "src")
+  const pluginPackage = path.join(pluginRoot, "package.json")
+  if (!fs.existsSync(pluginSrc) || !fs.existsSync(pluginPackage)) return
+
+  const destRoot = path.join(distRoot, "packages", "plugin")
+  fs.mkdirSync(destRoot, { recursive: true })
+  fs.cpSync(pluginSrc, path.join(destRoot, "src"), {
+    recursive: true,
+    dereference: true,
+    filter: (srcPath) => {
+      const base = path.basename(srcPath)
+      return !base.includes(".test.") && base !== "node_modules"
+    },
+  })
+
+  const pluginPkg = JSON.parse(fs.readFileSync(pluginPackage, "utf-8")) as {
+    name: string
+    version: string
+    type: string
+    license?: string
+    exports?: Record<string, string>
+  }
+  const zodVersion =
+    (rootPkg.workspaces?.catalog as Record<string, string> | undefined)?.zod ??
+    (pkg.dependencies as Record<string, string> | undefined)?.zod ??
+    "4.1.8"
+
+  fs.writeFileSync(
+    path.join(destRoot, "package.json"),
+    JSON.stringify(
+      {
+        name: pluginPkg.name,
+        version: pluginPkg.version,
+        type: pluginPkg.type,
+        license: pluginPkg.license,
+        exports: pluginPkg.exports,
+        files: ["src"],
+        dependencies: {
+          zod: zodVersion,
+        },
+      },
+      null,
+      2,
+    ) + "\n",
+  )
+}
+
+async function bundleCuratedSkills(distRoot: string) {
   if (!fs.existsSync(agentsSkillsRoot)) return
   const destRoot = path.join(distRoot, ".zee", "skill")
   fs.mkdirSync(destRoot, { recursive: true })
@@ -548,7 +598,8 @@ for (const item of targets) {
   await Bun.file(`dist/${name}/bin/package.json`).write(pkgJson)
   // Bundle Zee-owned assets so standalone installs can resolve them via ZEE_ROOT.
   bundleZeeAssets(path.join(dir, "dist", name))
-  await bundlePersonaSkills(path.join(dir, "dist", name))
+  bundlePluginPackage(path.join(dir, "dist", name))
+  await bundleCuratedSkills(path.join(dir, "dist", name))
   bundleSrcModules(path.join(dir, "dist", name))
   binaries[name] = Script.version
 }

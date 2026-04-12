@@ -3,7 +3,6 @@ import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import { Config } from "../../src/config/config"
-import { FluxRecorder } from "../../src/flux"
 import { resetNodeClientRegistry } from "../../src/gateway/node-client-registry"
 import { Instance } from "../../src/project/instance"
 import { Server } from "../../src/server/server"
@@ -92,8 +91,7 @@ afterAll(async () => {
 })
 
 describe("gateway node routes", () => {
-  test("enforces a deterministic deny/allowlist/full authorization matrix and emits telemetry", async () => {
-    const before = FluxRecorder.list({ kind: "gateway.node.authorization" }).total
+  test("enforces a deterministic deny/allowlist/full authorization matrix", async () => {
     const app = Server.App()
     const pairResponse = await app.request("/gateway/node/pair", {
       method: "POST",
@@ -235,50 +233,10 @@ describe("gateway node routes", () => {
       reason: "Node policy is full",
     })
 
-    const authorizationEvents = FluxRecorder.list({ kind: "gateway.node.authorization" })
-    expect(authorizationEvents.total).toBe(before + 5)
-    expect(authorizationEvents.events.slice(-5).map((event) => event.metadata)).toMatchObject([
-      {
-        authorized: true,
-        mode: "allowlist",
-        tool: "zee_invest_research",
-        reason: "Tool is allowlisted",
-        matchedBy: "global",
-      },
-      {
-        authorized: true,
-        mode: "allowlist",
-        tool: "zee_invest_api",
-        reason: "Tool is allowlisted",
-        matchedBy: "node",
-      },
-      {
-        authorized: false,
-        mode: "allowlist",
-        tool: "zee_invest_unknown",
-        reason: "Tool is not allowlisted",
-        matchedBy: "none",
-      },
-      {
-        authorized: false,
-        mode: "deny",
-        tool: "zee_invest_research",
-        reason: "Node policy is deny",
-        matchedBy: "policy",
-      },
-      {
-        authorized: true,
-        mode: "full",
-        tool: "zee_invest_anything",
-        reason: "Node policy is full",
-        matchedBy: "policy",
-      },
-    ])
   })
 
-  test("rotates node credentials, invalidates the old token, and emits lifecycle telemetry", async () => {
+  test("rotates node credentials and invalidates the old token", async () => {
     const app = Server.App()
-    const before = FluxRecorder.list({ kind: "gateway.node.lifecycle" }).total
 
     const pairResponse = await app.request("/gateway/node/pair", {
       method: "POST",
@@ -336,7 +294,6 @@ describe("gateway node routes", () => {
       id: paired.node.id,
       tokenVersion: 2,
     })
-    expect(FluxRecorder.list({ kind: "gateway.node.lifecycle" }).total).toBe(before + 4)
   })
 
   test("requires credential rotation before reconnect or tool authorization when a token ages out", async () => {
@@ -431,7 +388,6 @@ describe("gateway node routes", () => {
   })
 
   test("rejects reconnect and tool authorization when node-client policy is disabled", async () => {
-    const before = FluxRecorder.list({ kind: "gateway.node.authorization" }).total
     const app = Server.App()
     const pairResponse = await app.request("/gateway/node/pair", {
       method: "POST",
@@ -480,15 +436,6 @@ describe("gateway node routes", () => {
     })
 
     expect(authorize.status).toBe(403)
-    const authorizationEvents = FluxRecorder.list({ kind: "gateway.node.authorization" })
-    expect(authorizationEvents.total).toBe(before + 1)
-    expect(authorizationEvents.events.at(-1)?.metadata).toMatchObject({
-      authorized: false,
-      mode: "deny",
-      tool: "zee_invest_research",
-      reason: "node-client pairing disabled by policy",
-      matchedBy: "none",
-    })
   })
 
   test("allows operators to revoke stale nodes even after the feature is disabled", async () => {

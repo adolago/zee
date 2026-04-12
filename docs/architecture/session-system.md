@@ -461,7 +461,7 @@ Sessions can be forked:
 
 - Track input/output tokens per message
 - Calculate costs per model pricing
-- Support cache token tracking (Anthropic, Bedrock)
+- Support cache token tracking for retained providers
 
 ### Memory Management
 

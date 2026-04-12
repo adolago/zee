@@ -145,7 +145,7 @@ export * from "./platforms/index.js"
 // Router
 // =============================================================================
 
-export type { MessageHandler, SurfaceAnalyticsEvent, SurfaceRouterConfig } from "./router.js"
+export type { MessageHandler, SurfaceRouterConfig } from "./router.js"
 
 export { SurfaceRouter, getSurfaceRouter, setSurfaceRouter, resetSurfaceRouter } from "./router.js"
 

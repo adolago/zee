@@ -3,7 +3,6 @@ import { Global } from "../global"
 import fs from "fs/promises"
 import z from "zod"
 import { Log } from "../util/log"
-import { FluxRecorder } from "@/flux"
 
 export const OAUTH_DUMMY_KEY = "zee-oauth-dummy-key"
 
@@ -127,17 +126,6 @@ export namespace Auth {
         return false
       }
 
-      const traceID = `auth:${providerID}`
-      const requestID = crypto.randomUUID()
-      FluxRecorder.record({
-        traceID,
-        requestID,
-        providerID,
-        direction: "outbound",
-        domain: "auth",
-        kind: "oauth.refresh.start",
-        status: "ok",
-      })
       log.info("refreshing token", { providerID, expiresIn: Math.round((auth.expires - Date.now()) / 1000) })
 
       const body: Record<string, string> = {
@@ -157,20 +145,6 @@ export namespace Auth {
 
       if (!response.ok) {
         log.error("token refresh failed", { providerID, status: response.status })
-        FluxRecorder.record({
-          traceID,
-          requestID,
-          providerID,
-          direction: "outbound",
-          domain: "auth",
-          kind: "oauth.refresh.fail",
-          status: "error",
-          statusCode: response.status,
-          error: {
-            code: "refresh_http_error",
-            message: `refresh failed with status ${response.status}`,
-          },
-        })
         return false
       }
 
@@ -189,35 +163,9 @@ export namespace Auth {
       })
 
       log.info("token refreshed", { providerID, expiresIn: json.expires_in })
-      FluxRecorder.record({
-        traceID,
-        requestID,
-        providerID,
-        direction: "outbound",
-        domain: "auth",
-        kind: "oauth.refresh.success",
-        status: "ok",
-        metadata: {
-          expiresIn: json.expires_in,
-          hasRefreshToken: Boolean(json.refresh_token),
-        },
-      })
       return true
     } catch (error) {
       log.error("token refresh error", { providerID, error: String(error) })
-      FluxRecorder.record({
-        traceID: `auth:${providerID}`,
-        requestID: crypto.randomUUID(),
-        providerID,
-        direction: "outbound",
-        domain: "auth",
-        kind: "oauth.refresh.fail",
-        status: "error",
-        error: {
-          code: "refresh_error",
-          message: error instanceof Error ? error.message : String(error),
-        },
-      })
       return false
     }
   }

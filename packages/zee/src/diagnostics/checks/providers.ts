@@ -147,64 +147,6 @@ async function checkProvider(provider: ProviderConfig): Promise<CheckResult> {
   }
 }
 
-async function checkOllama(): Promise<CheckResult> {
-  const start = Date.now()
-  const ollamaUrl = process.env.OLLAMA_HOST || "http://localhost:11434/api/tags"
-
-  try {
-    const controller = new AbortController()
-    const timeout = setTimeout(controller.abort.bind(controller), 3000)
-    const response = await fetch(ollamaUrl, { signal: controller.signal })
-    clearTimeout(timeout)
-    const latency = Date.now() - start
-
-    if (response.ok) {
-      const data = (await response.json()) as { models?: unknown[] }
-      const modelCount = data.models?.length || 0
-      return {
-        id: "providers.ollama",
-        name: "Ollama (Local)",
-        category: "providers",
-        status: "pass",
-        message: `${modelCount} model(s) available (${latency}ms)`,
-        severity: "info",
-        durationMs: latency,
-        autoFixable: false,
-        metadata: { modelCount, latencyMs: latency },
-      }
-    }
-    return {
-      id: "providers.ollama",
-      name: "Ollama (Local)",
-      category: "providers",
-      status: "warn",
-      message: `HTTP ${response.status}`,
-      severity: "warning",
-      durationMs: latency,
-      autoFixable: false,
-    }
-  } catch (error) {
-    const latency = Date.now() - start
-    const isConnection =
-      error instanceof Error && (error.message.includes("ECONNREFUSED") || error.message.includes("fetch failed"))
-    return {
-      id: "providers.ollama",
-      name: "Ollama (Local)",
-      category: "providers",
-      status: isConnection ? "skip" : "warn",
-      message: isConnection ? "Not running" : "Connection error",
-      details: isConnection
-        ? "Start Ollama with 'ollama serve'"
-        : error instanceof Error
-          ? error.message
-          : String(error),
-      severity: "info",
-      durationMs: latency,
-      autoFixable: false,
-    }
-  }
-}
-
 export async function runProviderChecks(options: CheckOptions): Promise<CheckResult[]> {
   const results: CheckResult[] = []
   const internetResult = await checkInternetConnectivity()
@@ -216,7 +158,6 @@ export async function runProviderChecks(options: CheckOptions): Promise<CheckRes
 
   const providerResults = await Promise.all(PROVIDERS.map((p) => checkProvider(p)))
   results.push(...providerResults)
-  results.push(await checkOllama())
 
   return results
 }

@@ -25,25 +25,24 @@ graph TD
 
   I --> J[Persistence.init (degradable)\nalways-on.ts:185]
   I --> K[CircuitBreaker.init (degradable)\nalways-on.ts:202]
-  I --> L[initPersonas (degradable)\nalways-on.ts:212]
+  I --> L[initAgents (degradable)\nalways-on.ts:212]
   I --> M[initSurfaces (degradable)\nalways-on.ts:225]
-  I --> N[UsageTracker.init (degradable)\nalways-on.ts:238]
-  I --> O[initWorkStealing (degradable)\nalways-on.ts:249]
-  I --> P[initConsensus (degradable)\nalways-on.ts:262]
-  I --> Q[Config.get with fallback\nalways-on.ts:305]
-  Q --> R[syncBundledSkillsToMachine (degradable)\nalways-on.ts:320]
-  Q --> S[startSkillWatcher (degradable)\nalways-on.ts:337]
-  Q --> T[HeartbeatRunner (degradable)\nalways-on.ts:360]
-  Q --> U[CronService + banner job (degradable)\nalways-on.ts:432]
-  Q --> V[GatewaySupervisor.start\nalways-on.ts:460]
-  Q --> W[startRuntimeProcessGuard\nalways-on.ts:477]
-  Q --> X[Daemon IPC server\nalways-on.ts:497]
-  Q --> Y[Restore sessions/todos (degradable)\nalways-on.ts:614]
-  Y --> Z[Emit daemon ready hook\nalways-on.ts:626]
-  Z --> AA[Return AlwaysOnProcess\nalways-on.ts:647]
+  I --> N[initWorkStealing (degradable)\nalways-on.ts]
+  I --> O[initConsensus (degradable)\nalways-on.ts]
+  I --> P[Config.get with fallback\nalways-on.ts]
+  P --> Q[syncBundledSkillsToMachine (degradable)\nalways-on.ts]
+  P --> R[startSkillWatcher (degradable)\nalways-on.ts]
+  P --> S[HeartbeatRunner (degradable)\nalways-on.ts]
+  P --> T[CronService + banner job (degradable)\nalways-on.ts]
+  P --> U[GatewaySupervisor.start\nalways-on.ts]
+  P --> V[startRuntimeProcessGuard\nalways-on.ts]
+  P --> W[Daemon IPC server\nalways-on.ts]
+  P --> X[Restore sessions/todos (degradable)\nalways-on.ts]
+  X --> Y[Emit daemon ready hook\nalways-on.ts]
+  Y --> Z[Return AlwaysOnProcess\nalways-on.ts]
 
-  AA --> AB[Tailscale exposure (optional)\ndaemon.ts:1034]
-  AA --> AC[Signal handlers + idle wait\ndaemon.ts:1048]
+  Z --> AA[Tailscale exposure (optional)\ndaemon.ts]
+  Z --> AB[Signal handlers + idle wait\ndaemon.ts]
 ```
 
 ## Hard vs Degradable Dependencies
@@ -62,9 +61,8 @@ graph TD
 
 - Persistence init (`packages/zee/src/cli/cmd/always-on.ts:185`)
 - Circuit breaker init (`packages/zee/src/cli/cmd/always-on.ts:202`)
-- Persona hooks init (`packages/zee/src/cli/cmd/always-on.ts:212`)
+- Agent hooks init (`packages/zee/src/cli/cmd/always-on.ts:212`)
 - Surfaces init (`packages/zee/src/cli/cmd/always-on.ts:225`)
-- Usage tracking init (`packages/zee/src/cli/cmd/always-on.ts:238`)
 - Work stealing init (`packages/zee/src/cli/cmd/always-on.ts:249`)
 - Consensus init (`packages/zee/src/cli/cmd/always-on.ts:262`)
 - Runtime config load fallback (`packages/zee/src/cli/cmd/always-on.ts:305`)
@@ -87,11 +85,10 @@ Cleanup path is centralized at `packages/zee/src/cli/cmd/always-on.ts:525` and r
 5. Stop skill watcher (`:554`)
 6. Stop runtime guard (`:556`)
 7. Close visual sink (`:561`)
-8. Shutdown usage tracker (`:566`)
-9. Stop gateway supervisor (`:571`)
-10. Shutdown persistence (`:576`)
-11. Shutdown circuit breaker (`:586`)
-12. Shutdown work stealing (`:590`)
-13. Shutdown consensus (`:597`)
-14. Shutdown surfaces (`:604`)
-15. Remove pid file + release lock + stop server (`:607`, `:608`, `:609`)
+8. Stop gateway supervisor (`:571`)
+9. Shutdown persistence (`:576`)
+10. Shutdown circuit breaker (`:586`)
+11. Shutdown work stealing (`:590`)
+12. Shutdown consensus (`:597`)
+13. Shutdown surfaces (`:604`)
+14. Remove pid file + release lock + stop server (`:607`, `:608`, `:609`)

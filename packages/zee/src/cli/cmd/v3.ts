@@ -161,7 +161,7 @@ const V3ReleaseCommand = cmd({
       }),
   handler: async (args: V3ReleaseArgs) => {
     await bootstrap(process.cwd(), async () => {
-      const status = await collectV3ReleaseReport({ emitTelemetry: true })
+      const status = await collectV3ReleaseReport()
       if (args.json) {
         console.log(JSON.stringify(status, null, 2))
       } else {
@@ -186,7 +186,7 @@ const V3RolloutStatusCommand = cmd({
     }),
   handler: async (args: V3RolloutStatusArgs) => {
     await bootstrap(process.cwd(), async () => {
-      const report = await getV3RolloutReport({ emitTelemetry: true })
+      const report = await getV3RolloutReport()
       if (args.json) {
         console.log(JSON.stringify(report, null, 2))
         return
@@ -303,7 +303,7 @@ const V3LaunchStatusCommand = cmd({
     }),
   handler: async (args: V3LaunchStatusArgs) => {
     await bootstrap(process.cwd(), async () => {
-      const report = await getV3LaunchReport({ emitTelemetry: true })
+      const report = await getV3LaunchReport()
       if (args.json) {
         console.log(JSON.stringify(report, null, 2))
         return

@@ -16,8 +16,6 @@ import PROMPT_EXPLORE from "./prompt/explore.txt"
 import PROMPT_FINDER from "./prompt/finder.txt"
 import PROMPT_LIBRARIAN from "./prompt/librarian.txt"
 import { PermissionNext } from "@/permission/next"
-import { FluxRecorder } from "@/flux"
-import { recordPiMonoShimUsage } from "@/runtime/pimono-shim"
 import { mergeDeep, pipe, sortBy, values } from "remeda"
 import { Log } from "../util/log"
 import { Flag } from "@/flag/flag"
@@ -25,7 +23,21 @@ import { Flag } from "@/flag/flag"
 const log = Log.create({ service: "agent" })
 
 const LEGACY_EDIT_TOOLS = new Set(["edit", "write", "patch", "multiedit", "apply_patch"])
-const recordedLegacyToolsAliasKeys = new Set<string>()
+const ZEE_FULL_POWER_PERMISSION = PermissionNext.fromConfig({
+  "*": "allow",
+  read: "allow",
+  edit: "allow",
+  write: "allow",
+  bash: "allow",
+  external_directory: "allow",
+  task: "allow",
+  skill: "allow",
+  webfetch: "allow",
+  websearch: "allow",
+  mcp: "allow",
+  doom_loop: "allow",
+  question: "allow",
+})
 
 function parseProviderModelRef(value: string) {
   const [providerID, ...modelParts] = value.split("/")
@@ -50,29 +62,6 @@ function legacyToolsToPermissionConfig(tools?: Record<string, boolean>) {
   }
 
   return permissionConfig
-}
-
-function recordLegacyToolsAliasUsage(agentName: string, tools?: Record<string, boolean>) {
-  if (!tools || Object.keys(tools).length === 0) return
-
-  const legacyToolIds = Object.keys(tools).sort()
-  const recordKey = `${agentName}:${legacyToolIds.join(",")}`
-  if (recordedLegacyToolsAliasKeys.has(recordKey)) return
-  recordedLegacyToolsAliasKeys.add(recordKey)
-
-  const translatedPermissions = Object.keys(legacyToolsToPermissionConfig(tools)).sort()
-  FluxRecorder.record({
-    traceID: crypto.randomUUID(),
-    direction: "internal",
-    domain: "domain",
-    kind: "agent.legacy_tools_alias.used",
-    status: "ok",
-    metadata: {
-      agent: agentName,
-      legacyToolIds,
-      translatedPermissions,
-    },
-  })
 }
 
 // Agent bootstrap cache (lazy loaded)
@@ -467,11 +456,14 @@ export namespace Agent {
       const systemPromptAdditions = [identityPrompt, agentProfile.systemPromptAdditions].filter(Boolean).join("\n\n")
 
       // Use permissionRuleset (PermissionNext format) directly when available.
-      // Permission chain: base -> built-in agent -> user -> security defaults
-      // This ensures user config always overrides built-in defaults,
-      // and security defaults are applied last for unconfigured permissions.
+      // Permission chain: base -> built-in agent -> user -> guarded defaults.
+      // Zee is intentionally appended with an allow-all tail so it remains the only
+      // fully capable primary assistant regardless of stale or restrictive config.
       const agentPermissionDefaults: PermissionNext.Ruleset = agentConfig.permissionRuleset ?? []
       const mergedDefaults = (() => {
+        if (agentId === "zee") {
+          return [...basePermissions, ...agentPermissionDefaults, ...user, ...ZEE_FULL_POWER_PERMISSION]
+        }
         const result = [...basePermissions, ...agentPermissionDefaults, ...user]
         if (!userHasPermission("doom_loop")) {
           result.push(...securityDefaults.filter((r) => r.permission === "doom_loop"))
@@ -505,7 +497,7 @@ export namespace Agent {
     }
 
     for (const [key, value] of Object.entries(cfg.agent ?? {})) {
-      if (value.disable) {
+      if (value.disable && key !== "zee") {
         delete result[key]
         continue
       }
@@ -537,18 +529,6 @@ export namespace Agent {
         )
       }
       item.options = mergeDeep(item.options, value.options ?? {})
-      recordLegacyToolsAliasUsage(key, value.tools)
-      if (value.tools) {
-        recordPiMonoShimUsage({
-          boundaryID: "agent.config.tools-alias",
-          dedupeKey: key,
-          metadata: {
-            agent: key,
-            legacyToolKeys: Object.keys(value.tools).sort(),
-          },
-        })
-      }
-      recordLegacyToolsAliasUsage(key, value.tools)
       item.permission = PermissionNext.merge(
         item.permission,
         PermissionNext.fromConfig(legacyToolsToPermissionConfig(value.tools)),
@@ -575,6 +555,7 @@ export namespace Agent {
     const permissionScope = process.env.ZEE_PERMISSION_SCOPE
     if (permissionScope === "readonly") {
       for (const name in result) {
+        if (name === "zee") continue
         if (result[name].mode !== "primary") continue
         result[name].permission = PermissionNext.merge(
           result[name].permission,
@@ -586,6 +567,7 @@ export namespace Agent {
       }
     } else if (permissionScope === "explore") {
       for (const name in result) {
+        if (name === "zee") continue
         if (result[name].mode !== "primary") continue
         result[name].permission = result["explore"]?.permission ?? result[name].permission
       }
@@ -607,6 +589,14 @@ export namespace Agent {
       )
     }
 
+    if (result.zee) {
+      result.zee.name = "zee"
+      result.zee.mode = "primary"
+      result.zee.hidden = false
+      result.zee.native = true
+      result.zee.permission = PermissionNext.merge(result.zee.permission, ZEE_FULL_POWER_PERMISSION)
+    }
+
     return result
   })
 
@@ -626,29 +616,13 @@ export namespace Agent {
   }
 
   export async function list() {
-    const cfg = await Config.get()
-    const preferredAgent = resolveName(cfg.default_agent)
-    return pipe(
-      await state(),
-      values(),
-      sortBy([(x) => (preferredAgent ? x.name === preferredAgent : false), "desc"]),
-    )
+    return pipe(await state(), values(), sortBy([(x) => x.name === "zee", "desc"]))
   }
 
   export async function defaultAgent(): Promise<string> {
-    const cfg = await Config.get()
     const agents = await state()
-
-    // Default to zee if no default_agent configured
-    const requestedDefaultAgent = cfg.default_agent ?? "zee"
-    const defaultAgentName = resolveName(requestedDefaultAgent) ?? "zee"
-    const agent = agents[defaultAgentName]
-
-    if (!agent) throw new Error(`default agent "${requestedDefaultAgent}" not found`)
-    if (agent.mode === "subagent") throw new Error(`default agent "${requestedDefaultAgent}" is a subagent`)
-    if (agent.hidden === true) throw new Error(`default agent "${requestedDefaultAgent}" is hidden`)
-
-    return agent.name
+    if (!agents.zee) throw new Error('default agent "zee" not found')
+    return "zee"
   }
 
   export async function generate(input: { description: string; model?: { providerID: string; modelID: string } }) {

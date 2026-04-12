@@ -69,8 +69,6 @@ type SurfaceBootstrapConfig = {
     releasePin?: string
     releaseTimeoutMs?: number
   }
-  /** Enable analytics collection */
-  enableAnalytics?: boolean
   /** Enable hot-reload of surface configs */
   enableHotReload?: boolean
 }
@@ -1178,7 +1176,6 @@ export async function initSurfaces(): Promise<void> {
   const config = await loadSurfaceConfig()
 
   router = getSurfaceRouter({
-    enableAnalytics: config.enableAnalytics ?? true,
     enableHotReload: config.enableHotReload ?? false,
   })
 
@@ -1440,7 +1437,6 @@ async function loadSurfaceConfig(): Promise<SurfaceBootstrapConfig> {
             releaseTimeoutMs: tg.releaseTimeoutMs,
           }
         : undefined,
-      enableAnalytics: config.experimental?.surfaces?.analytics?.enabled ?? true,
       enableHotReload: config.experimental?.surfaces?.hotReload?.enabled ?? false,
     }
 
@@ -1452,7 +1448,6 @@ async function loadSurfaceConfig(): Promise<SurfaceBootstrapConfig> {
 
     return {
       enableCLI: true,
-      enableAnalytics: true,
       enableHotReload: false,
     }
   }
@@ -1482,17 +1477,6 @@ export async function unregisterSurface(surfaceId: string): Promise<void> {
   }
 
   await router.unregisterSurface(surfaceId)
-}
-
-/**
- * Get analytics for all surfaces or a specific surface.
- */
-export function getSurfaceAnalytics(surfaceId?: string) {
-  if (!router) {
-    return []
-  }
-
-  return router.getAnalytics(surfaceId)
 }
 
 /**

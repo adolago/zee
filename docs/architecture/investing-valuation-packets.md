@@ -53,7 +53,7 @@ Exports currently support:
 - `json`
 - `markdown`
 
-## Telemetry
+## diagnostics
 
 This slice emits:
 

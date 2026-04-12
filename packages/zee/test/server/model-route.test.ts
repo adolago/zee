@@ -4,6 +4,7 @@ import { Provider } from "../../src/provider/provider"
 import { ProviderAuth } from "../../src/provider/auth"
 import { Instance } from "../../src/project/instance"
 import { Auth } from "../../src/auth"
+import { tmpdir } from "../fixture/fixture"
 
 const originalModelsGet = ModelsDev.get
 const originalModelsRefresh = ModelsDev.refresh
@@ -23,9 +24,9 @@ ModelsDev.get = async () => ({
     env: [],
     models: {},
   },
-  venice: {
-    id: "venice",
-    name: "Venice",
+  "legacy-service": {
+    id: "legacy-service",
+    name: "Legacy Service",
     env: [],
     models: {},
   },
@@ -42,12 +43,12 @@ afterAll(() => {
 })
 
 const { ModelRoute } = await import("../../src/server/route/model")
-const testDirectory = process.cwd()
 
 describe("model route", () => {
   test("skips defaults for providers without models", async () => {
+    await using tmp = await tmpdir()
     await Instance.provide({
-      directory: testDirectory,
+      directory: tmp.path,
       fn: async () => {
         const response = await ModelRoute.request("/provider")
         expect(response.status).toBe(200)
@@ -57,15 +58,16 @@ describe("model route", () => {
     })
   })
 
-  test("filters blocked providers from provider list", async () => {
+  test("filters non-core providers from provider list", async () => {
+    await using tmp = await tmpdir()
     await Instance.provide({
-      directory: testDirectory,
+      directory: tmp.path,
       fn: async () => {
         const response = await ModelRoute.request("/provider")
         expect(response.status).toBe(200)
         const data = await response.json()
         const ids = (data.all as Array<{ id: string }>).map((provider) => provider.id)
-        expect(ids).not.toContain("venice")
+        expect(ids).not.toContain("legacy-service")
         expect(ids).toContain("google")
       },
     })
@@ -82,13 +84,14 @@ describe("model route", () => {
       ],
     })
     try {
-      await Auth.set("languagetool", {
-        type: "api",
-        key: "test-key",
-      })
+      await using tmp = await tmpdir()
       await Instance.provide({
-        directory: testDirectory,
+        directory: tmp.path,
         fn: async () => {
+          await Auth.set("languagetool", {
+            type: "api",
+            key: "test-key",
+          })
           const response = await ModelRoute.request("/provider")
           expect(response.status).toBe(200)
           const data = await response.json()
@@ -115,12 +118,17 @@ describe("model route", () => {
     })
 
     try {
-      await Auth.set("gemini-cli", { type: "oauth", access: "a", refresh: "r", expires: Date.now() + 60_000 })
-      await Auth.set("google-antigravity", { type: "oauth", access: "a", refresh: "r", expires: Date.now() + 60_000 })
-
+      await using tmp = await tmpdir()
       await Instance.provide({
-        directory: testDirectory,
+        directory: tmp.path,
         fn: async () => {
+          await Auth.set("gemini-cli", { type: "oauth", access: "a", refresh: "r", expires: Date.now() + 60_000 })
+          await Auth.set("google-antigravity", {
+            type: "oauth",
+            access: "a",
+            refresh: "r",
+            expires: Date.now() + 60_000,
+          })
           const authResponse = await ModelRoute.request("/provider/auth")
           expect(authResponse.status).toBe(200)
           const authMethods = (await authResponse.json()) as Record<string, unknown>

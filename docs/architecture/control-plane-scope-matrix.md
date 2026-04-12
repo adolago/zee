@@ -13,10 +13,10 @@ Approved in-repo on `2026-03-15`.
 
 - Replace prefix and verb heuristics with an explicit route matrix for mounted operator endpoints.
 - Fail closed to `operator.admin` when a control-plane family route is not present in the matrix.
-- Emit Flux telemetry on every authenticated control-plane request:
+- Emit event bus diagnostics on every authenticated control-plane request:
   - `auth.scope.checked`
   - `auth.scope.fallback`
-- Keep the matrix aligned to the generated OpenAPI spec and the non-OpenAPI usage/cron/heartbeat routes.
+- Keep the matrix aligned to the generated OpenAPI spec and the non-OpenAPI cron/heartbeat routes.
 
 ## Public Exception
 
@@ -27,10 +27,10 @@ Approved in-repo on `2026-03-15`.
 
 | Scope | Route families | Intent |
 | --- | --- | --- |
-| `operator.observe` | event streams, process registry reads, usage telemetry, Flux inspection, session event SSE | Diagnostics, traces, and runtime observability without mutation rights |
+| `operator.observe` | event streams, process registry reads, event bus inspection, session event SSE | Diagnostics, traces, and runtime observability without mutation rights |
 | `operator.approvals` | permission queue, question queue, in-session approval replies | Human approval workflows |
 | `operator.pairing` | paired node inventory, pair/reconnect/revoke, node tool authorization | Device and node lifecycle management |
-| `operator.admin` | provider auth mutation, MCP mutation/tool calls, PTY, TUI RPC, process mutations, privileged gateway moderation, session shell, usage purge | High-risk execution and security-sensitive administration |
+| `operator.admin` | provider auth mutation, MCP mutation/tool calls, PTY, TUI RPC, process mutations, privileged gateway moderation, session shell | High-risk execution and security-sensitive administration |
 | `operator.read` | tool/config/project/provider/session/file/model/registry reads, health/status, Telegram metadata, memory reads, MCP status | Read-only operator inspection |
 | `operator.write` | config/project/theme updates, session mutations, worktree creation, cron/heartbeat triggers, messaging sends, memory writes, STT, legacy LLM bridge | Standard operator mutations that are not full admin |
 
@@ -64,4 +64,4 @@ Approved in-repo on `2026-03-15`.
 
 - Unit coverage checks explicit scope resolution and fail-closed fallback behavior.
 - OpenAPI parity coverage asserts that documented routes never use fallback resolution.
-- Hidden route coverage keeps `usage`, `cron`, and `heartbeat` endpoints out of the parity gap bucket.
+- Hidden route coverage keeps `cron` and `heartbeat` endpoints out of the parity gap bucket.

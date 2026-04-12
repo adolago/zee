@@ -117,7 +117,7 @@ zee investing eval run list --dataset-id <datasetId>
 ]
 ```
 
-## Telemetry
+## diagnostics
 
 This slice emits:
 

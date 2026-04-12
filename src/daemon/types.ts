@@ -149,5 +149,16 @@ function resolveStateHome(): string {
   return process.env.XDG_STATE_HOME || `${home}/.local/state`;
 }
 
+function sanitizePipeNameComponent(value: string): string {
+  const sanitized = value.replace(/[^A-Za-z0-9_.-]/g, "_").replace(/^_+|_+$/g, "");
+  return sanitized.slice(0, 80) || "user";
+}
+
+function resolveWindowsPipePath(): string {
+  const account = process.env.ZEE_SERVICE_NAME || process.env.USERNAME || process.env.USER || "user";
+  return `\\\\.\\pipe\\zee-${sanitizePipeNameComponent(account)}-daemon`;
+}
+
 /** Default socket path (moved under daemon/ to avoid state-root file scanners). */
-export const DEFAULT_SOCKET_PATH = `${resolveStateHome()}/zee/daemon/daemon.sock`;
+export const DEFAULT_SOCKET_PATH =
+  process.platform === "win32" ? resolveWindowsPipePath() : `${resolveStateHome()}/zee/daemon/daemon.sock`;

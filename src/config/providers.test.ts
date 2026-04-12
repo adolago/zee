@@ -22,10 +22,7 @@ describe("providers registry", () => {
       expect(PROVIDERS.fmp).toBeDefined();
       expect(PROVIDERS.sec).toBeDefined();
 
-      expect(PROVIDERS.voyage).toBeUndefined();
-      expect(PROVIDERS.splitwise).toBeUndefined();
       expect(PROVIDERS.elevenlabs).toBeUndefined();
-      expect(PROVIDERS.vllm).toBeUndefined();
       expect(PROVIDERS.edge).toBeUndefined();
     });
 
@@ -82,10 +79,7 @@ describe("providers registry", () => {
       expect(openai?.name).toBe("OpenAI");
     });
 
-    it("returns undefined for pruned and unknown providers", () => {
-      expect(getProvider("voyage")).toBeUndefined();
-      expect(getProvider("splitwise")).toBeUndefined();
-      expect(getProvider("kernel")).toBeUndefined();
+    it("returns undefined for unknown providers", () => {
       expect(getProvider("nonexistent")).toBeUndefined();
     });
   });
@@ -181,10 +175,7 @@ describe("providers registry", () => {
       expect(ids).toContain("fmp");
       expect(ids).toContain("sec");
 
-      expect(ids).not.toContain("voyage");
-      expect(ids).not.toContain("splitwise");
       expect(ids).not.toContain("elevenlabs");
-      expect(ids).not.toContain("vllm");
       expect(ids).not.toContain("edge");
     });
   });

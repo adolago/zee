@@ -241,10 +241,9 @@ interface MessagingPlatformHandler {
   - Surface lifecycle management
 
 ### Phase 4: Enhancement (COMPLETED)
-- [x] Surface analytics
-  - Event tracking: messages, errors, connect/disconnect
+- [x] Session statistics
   - Session statistics: active sessions, message counts
-  - Query interface: `getAnalytics()`, `getSessionStats()`
+  - Query interface: `getSessionStats()`
 - [x] Hot-reload configuration
   - Configurable via `enableHotReload` option
   - 30-second config check interval

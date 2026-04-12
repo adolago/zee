@@ -9,12 +9,10 @@ import { GatewayWsClient } from "@/gateway/ws-client"
 import { sendWhatsAppMessage } from "@root/domain/zee/whatsapp-send"
 import { emitInboundMessage, toPlatformMessage, type ForwardedMessage } from "../../surface/platforms/whatsapp"
 import { TelegramPlatformHandler } from "../../surface/platforms/telegram"
-import { FluxRecorder } from "@/flux"
 import { RequestMeta } from "../request-meta"
 import { extractGatewayRouteSecret, isMatchingSecret } from "@/security"
 import { Config } from "@/config/config"
 import { getServerRuntimeConfig, isTrustedControlOrigin } from "../auth"
-import { recordOpenCodeRuntimeRoute } from "@/runtime/opencode-rollout"
 
 const log = Log.create({ service: "server:gateway" })
 
@@ -252,73 +250,13 @@ const gatewayClient = new GatewayWsClient({
 async function callGateway<T = unknown>(
   method: string,
   params?: unknown,
-  options: { timeoutMs?: number; traceID?: string; requestID?: string; sessionID?: string; agentID?: string } = {},
+  options: { timeoutMs?: number; agentID?: string } = {},
 ): Promise<T> {
   log.debug("callGateway started", { method })
   const timeoutMs = options.timeoutMs ?? 10_000
-  const traceID = options.traceID ?? crypto.randomUUID()
-  recordOpenCodeRuntimeRoute({
-    surface: "gateway",
-    traceID,
-    requestID: options.requestID,
-    sessionID: options.sessionID,
-    metadata: {
-      method,
-      timeoutMs,
-      agentID: options.agentID,
-    },
-  })
-  const startedAt = Date.now()
-  FluxRecorder.record({
-    traceID,
-    requestID: options.requestID,
-    sessionID: options.sessionID,
-    direction: "outbound",
-    domain: "gateway",
-    kind: "gateway.rpc.request",
-    status: "ok",
-    metadata: {
-      method,
-      timeoutMs,
-      ...(options.agentID ? { agentID: options.agentID } : {}),
-    },
-  })
   try {
-    const result = await gatewayClient.call<T>(method, params, { timeoutMs })
-    FluxRecorder.record({
-      traceID,
-      requestID: options.requestID,
-      sessionID: options.sessionID,
-      direction: "outbound",
-      domain: "gateway",
-      kind: "gateway.rpc.response",
-      status: "ok",
-      latencyMs: Date.now() - startedAt,
-      metadata: {
-        method,
-        ...(options.agentID ? { agentID: options.agentID } : {}),
-      },
-    })
-    return result
+    return await gatewayClient.call<T>(method, params, { timeoutMs })
   } catch (error) {
-    FluxRecorder.record({
-      traceID,
-      requestID: options.requestID,
-      sessionID: options.sessionID,
-      direction: "outbound",
-      domain: "gateway",
-      kind: "gateway.rpc.response",
-      status: "error",
-      latencyMs: Date.now() - startedAt,
-      error: {
-        code: "gateway_rpc_error",
-        message: error instanceof Error ? error.message : String(error),
-      },
-      metadata: {
-        method,
-        ...(options.agentID ? { agentID: options.agentID } : {}),
-      },
-    })
     throw error
   }
 }
@@ -336,9 +274,6 @@ async function sendViaGateway(input: {
   mediaUrl?: string
   mediaUrls?: string[]
   gifPlayback?: boolean
-  traceID?: string
-  requestID?: string
-  sessionID?: string
   agentID?: string
 }): Promise<unknown> {
   const originalInput = {
@@ -372,9 +307,6 @@ async function sendViaGateway(input: {
         },
         {
           timeoutMs: DEFAULT_GATEWAY_SEND_TIMEOUT_MS,
-          traceID: input.traceID,
-          requestID: input.requestID,
-          sessionID: input.sessionID,
           agentID: input.agentID,
         },
       )
@@ -388,21 +320,6 @@ async function sendViaGateway(input: {
     }
     // Fallback to direct wacli send when embedded gateway runtime is unavailable.
     const message = error instanceof Error ? error.message : String(error)
-    FluxRecorder.record({
-      traceID: input.traceID ?? crypto.randomUUID(),
-      requestID: input.requestID,
-      sessionID: input.sessionID,
-      direction: "internal",
-      domain: "gateway",
-      kind: "gateway.fallback.invoked",
-      status: "ok",
-      metadata: {
-        provider: input.provider,
-        fallback: "wacli",
-        reason: message,
-        ...(input.agentID ? { agentID: input.agentID } : {}),
-      },
-    })
     log.warn("gateway send failed; falling back to wacli", {
       error: message,
       to: originalInput.to,
@@ -476,110 +393,25 @@ export const GatewayRoute = new Hono()
 
     const runtimeConfig = await getServerRuntimeConfig()
     const origin = c.req.header("Origin")
-    const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
-    const requestID = RequestMeta.getRequestID(c.req.raw)
     if (origin && !isTrustedControlOrigin(origin, runtimeConfig)) {
-      FluxRecorder.record({
-        traceID,
-        requestID,
-        direction: "internal",
-        domain: "gateway",
-        kind: "gateway.auth.denied",
-        status: "denied",
-        route: c.req.path,
-        method: c.req.method,
-        metadata: {
-          authRequired: true,
-          denialReason: "untrusted_origin",
-          origin,
-        },
-      })
       return c.json({ success: false, error: "Origin is not trusted" } satisfies GatewayResponse, 403)
     }
 
     const configuredSecret = await resolveGatewayRouteSecret()
     if (!configuredSecret) {
-      FluxRecorder.record({
-        traceID,
-        requestID,
-        direction: "internal",
-        domain: "gateway",
-        kind: "gateway.auth.validated",
-        status: "ok",
-        route: c.req.path,
-        method: c.req.method,
-        metadata: {
-          authRequired: false,
-        },
-      })
       await next()
       return
     }
 
-    FluxRecorder.record({
-      traceID,
-      requestID,
-      direction: "internal",
-      domain: "gateway",
-      kind: "secret.resolved",
-      status: "ok",
-      route: c.req.path,
-      method: c.req.method,
-      metadata: {
-        source: configuredSecret.source,
-      },
-    })
-
     if (!shouldRequireGatewayRouteAuth(c.req.raw)) {
-      FluxRecorder.record({
-        traceID,
-        requestID,
-        direction: "internal",
-        domain: "gateway",
-        kind: "gateway.auth.validated",
-        status: "ok",
-        route: c.req.path,
-        method: c.req.method,
-        metadata: {
-          authRequired: true,
-          bypass: "read_no_origin",
-        },
-      })
       await next()
       return
     }
 
     const providedSecret = resolveProvidedGatewayRouteSecret(c.req.raw)
     if (!isMatchingSecret(providedSecret, configuredSecret.secret)) {
-      FluxRecorder.record({
-        traceID,
-        requestID,
-        direction: "internal",
-        domain: "gateway",
-        kind: "gateway.auth.denied",
-        status: "denied",
-        route: c.req.path,
-        method: c.req.method,
-        metadata: {
-          authRequired: true,
-        },
-      })
       return c.json({ success: false, error: "Gateway auth required" } satisfies GatewayResponse, 401)
     }
-
-    FluxRecorder.record({
-      traceID,
-      requestID,
-      direction: "internal",
-      domain: "gateway",
-      kind: "gateway.auth.validated",
-      status: "ok",
-      route: c.req.path,
-      method: c.req.method,
-      metadata: {
-        authRequired: true,
-      },
-    })
 
     await next()
   })
@@ -639,8 +471,6 @@ export const GatewayRoute = new Hono()
 
       try {
         const to = normalizeWhatsAppRecipient(toRaw)
-        const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
-        const requestID = RequestMeta.getRequestID(c.req.raw)
         const agentID = RequestMeta.getAgentID(c.req.raw)
         const data = await sendViaGateway({
           provider: "whatsapp",
@@ -650,8 +480,6 @@ export const GatewayRoute = new Hono()
           mediaUrl: parsed.data.mediaUrl,
           mediaUrls: parsed.data.mediaUrls,
           gifPlayback: parsed.data.gifPlayback,
-          traceID,
-          requestID,
           agentID,
         })
         return c.json({ success: true, data } satisfies GatewayResponse)
@@ -933,10 +761,8 @@ export const GatewayRoute = new Hono()
     }),
     async (c) => {
       try {
-        const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
-        const requestID = RequestMeta.getRequestID(c.req.raw)
         const agentID = RequestMeta.getAgentID(c.req.raw)
-        const data = await callGateway("skills.status", {}, { traceID, requestID, agentID })
+        const data = await callGateway("skills.status", {}, { agentID })
         return c.json({ success: true, data } satisfies GatewayResponse)
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
@@ -964,10 +790,8 @@ export const GatewayRoute = new Hono()
     }),
     async (c) => {
       try {
-        const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
-        const requestID = RequestMeta.getRequestID(c.req.raw)
         const agentID = RequestMeta.getAgentID(c.req.raw)
-        const data = await callGateway("channels.status", {}, { traceID, requestID, agentID })
+        const data = await callGateway("channels.status", {}, { agentID })
         return c.json({ success: true, data } satisfies GatewayResponse)
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
@@ -995,44 +819,11 @@ export const GatewayRoute = new Hono()
     }),
     async (c) => {
       try {
-        const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
-        const requestID = RequestMeta.getRequestID(c.req.raw)
         const agentID = RequestMeta.getAgentID(c.req.raw)
-        const data = await callGateway("health", {}, { timeoutMs: 5_000, traceID, requestID, agentID })
+        const data = await callGateway("health", {}, { timeoutMs: 5_000, agentID })
         return c.json({ success: true, data } satisfies GatewayResponse)
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
-        return c.json({ success: false, error: message } satisfies GatewayResponse, 500)
-      }
-    },
-  )
-  .get(
-    "/usage",
-    describeRoute({
-      summary: "Gateway usage statistics",
-      description: "Get message counts and token usage from the Zee gateway.",
-      operationId: "gateway.usage",
-      responses: {
-        200: {
-          description: "Usage data",
-          content: { "application/json": { schema: resolver(GatewayResponseSchema) } },
-        },
-        500: {
-          description: "Gateway error",
-          content: { "application/json": { schema: resolver(GatewayResponseSchema) } },
-        },
-      },
-    }),
-    async (c) => {
-      try {
-        const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
-        const requestID = RequestMeta.getRequestID(c.req.raw)
-        const agentID = RequestMeta.getAgentID(c.req.raw)
-        const data = await callGateway("usage", {}, { traceID, requestID, agentID })
-        return c.json({ success: true, data } satisfies GatewayResponse)
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error)
-        log.warn("gateway usage failed", { error: message })
         return c.json({ success: false, error: message } satisfies GatewayResponse, 500)
       }
     },

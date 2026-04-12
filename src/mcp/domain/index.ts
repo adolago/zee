@@ -66,7 +66,7 @@ export function registerZeeTools(): void {
 
 /**
  * Register full Zee domain tools from src/domain/zee
- * Includes WhatsApp, Splitwise, Calendar, Browser, and more.
+ * Includes WhatsApp, Calendar, Browser, and more.
  */
 export async function registerZeeFullTools(): Promise<void> {
   try {

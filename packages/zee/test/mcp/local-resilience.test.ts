@@ -428,7 +428,7 @@ test("MCP status is read-only and does not trigger auto-reconnect attempts", asy
   })
 })
 
-test("local MCP startup is globally serialized across persona servers", async () => {
+test("local MCP startup is globally serialized across agent servers", async () => {
   localFailurePlans.calendar = { connectDelayMs: 15 }
   localFailurePlans.consciousness = { connectDelayMs: 15 }
   localFailurePlans.memory = { connectDelayMs: 15 }

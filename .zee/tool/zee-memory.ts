@@ -79,11 +79,9 @@ This memory can be recalled later using zee:memory-query.`
       const errorMsg = error instanceof Error ? error.message : String(error)
 
       if (errorMsg.includes("ECONNREFUSED") || errorMsg.includes("fetch failed")) {
-        return `Could not connect to memory storage (Qdrant).
+        return `Could not connect to local memory storage.
 
-The memory was NOT saved. To enable memory:
-1. Start Qdrant: docker run -p 6333:6333 qdrant/qdrant
-2. Or configure a different backend in Zee config
+The memory was NOT saved. Run zee memory prepare or zee setup to initialize the local SQLite memory runtime.
 
 Error: ${errorMsg}`
       }
@@ -179,11 +177,9 @@ ${formattedResults}`
       const errorMsg = error instanceof Error ? error.message : String(error)
 
       if (errorMsg.includes("ECONNREFUSED") || errorMsg.includes("fetch failed")) {
-        return `Could not connect to memory storage (Qdrant).
+        return `Could not connect to local memory storage.
 
-To enable memory search:
-1. Start Qdrant: docker run -p 6333:6333 qdrant/qdrant
-2. Or configure a different backend in Zee config
+Run zee memory prepare or zee setup to initialize local memory search.
 
 Error: ${errorMsg}`
       }

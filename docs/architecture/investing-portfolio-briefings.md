@@ -59,7 +59,7 @@ Supported actions:
 
 The existing `zee_invest_morning_brief` plugin output now appends the rendered portfolio briefing so the daily user-facing brief also reflects holdings and watchlist deltas.
 
-## Telemetry
+## diagnostics
 
 This slice emits:
 

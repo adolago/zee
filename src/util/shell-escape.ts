@@ -6,16 +6,16 @@
  */
 
 /**
- * Valid assistant identifiers - whitelist for validation
+ * Valid assistant identifiers.
  */
-export const VALID_PERSONAS = ["zee"] as const;
-export type AssistantId = (typeof VALID_PERSONAS)[number];
+export const VALID_ASSISTANTS = ["zee"] as const;
+export type AssistantId = (typeof VALID_ASSISTANTS)[number];
 
 /**
  * Check if a string is a valid assistant ID
  */
 export function isValidAssistant(assistant: string): assistant is AssistantId {
-  return VALID_PERSONAS.includes(assistant as AssistantId);
+  return VALID_ASSISTANTS.includes(assistant as AssistantId);
 }
 
 /**
@@ -27,7 +27,7 @@ export function validateAssistant(assistant: string | undefined): AssistantId | 
   const normalized = assistant.toLowerCase().trim();
   if (!isValidAssistant(normalized)) {
     throw new Error(
-      `Invalid assistant: "${assistant}". Valid assistants: ${VALID_PERSONAS.join(", ")}`
+      `Invalid assistant: "${assistant}". Valid assistants: ${VALID_ASSISTANTS.join(", ")}`
     );
   }
   return normalized;

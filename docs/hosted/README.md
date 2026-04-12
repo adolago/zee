@@ -5,7 +5,7 @@ The hosted service lives in `packages/hosted` and provides:
 - auth and workspace APIs
 - provider vault and OAuth callbacks
 - gateway routing
-- analytics and telemetry/log ingestion
+- billing metadata and log ingestion
 
 This guide is onboarding-first and focuses on getting new users to a working hosted instance quickly.
 
@@ -61,8 +61,7 @@ curl -X POST http://127.0.0.1:8787/api/share \
 - Org/workspace APIs and workspace API keys
 - Provider vault (API-key based) and OAuth callbacks
 - Gateway routing: `POST /api/gateway/:workspaceId/chat`
-- Usage analytics: `GET /api/analytics/summary`
-- Telemetry/log ingestion: `POST /api/telemetry`, `POST /api/logs`
+- Log ingestion: `POST /api/logs`
 
 ## Environment configuration
 
@@ -77,8 +76,6 @@ Hosted-specific variables include:
 - `HOSTED_VAULT_KEY`
 - `HOSTED_BILLING_PORTAL_URL`
 - `HOSTED_RETENTION_LOGS_DAYS`
-- `HOSTED_RETENTION_TELEMETRY_DAYS`
-- `HOSTED_RETENTION_USAGE_DAYS`
 
 ## Authentication onboarding
 

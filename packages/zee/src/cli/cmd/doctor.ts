@@ -5,7 +5,6 @@ import {
   CONTROL_UI_BREAK_GLASS_ACK,
   auditControlUiSecurity,
   auditControlUiSecurityDeep,
-  emitSecurityAuditTelemetry,
 } from "@/security"
 import {
   type RuntimeProcessLimits,
@@ -150,12 +149,6 @@ const DoctorSecurityCommand = cmd({
   handler: async (args: DoctorSecurityArgs) => {
     const config = await Config.get()
     const report = args.deep ? await auditControlUiSecurityDeep(config) : auditControlUiSecurity(config)
-    emitSecurityAuditTelemetry({
-      source: "doctor.security",
-      deep: Boolean(args.deep),
-      strict: Boolean(args.strict),
-      report,
-    })
 
     if (args.json) {
       console.log(

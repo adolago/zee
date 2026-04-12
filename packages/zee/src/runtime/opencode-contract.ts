@@ -39,18 +39,14 @@ export type RuntimeSurfaceContract = {
   adapterCapabilities: RuntimeContractRequirement[]
 }
 
-export type RuntimeContractTelemetry = {
-  eventType: string
-  metricNames: string[]
-  metrics: {
-    surfaceCount: number
-    entryPointCount: number
-    invariantCount: number
-    capabilityCount: number
-    transportCount: number
-    gatewayPresent: boolean
-    orchestrationPresent: boolean
-  }
+export type RuntimeContractMetrics = {
+  surfaceCount: number
+  entryPointCount: number
+  invariantCount: number
+  capabilityCount: number
+  transportCount: number
+  gatewayPresent: boolean
+  orchestrationPresent: boolean
 }
 
 export type OpenCodeRuntimeContractReport = {
@@ -66,7 +62,7 @@ export type OpenCodeRuntimeContractReport = {
     mode: "inventory_locked"
   }
   surfaces: RuntimeSurfaceContract[]
-  telemetry: RuntimeContractTelemetry
+  metrics: RuntimeContractMetrics
 }
 
 export const OpenCodeRuntimeContractInspected = BusEvent.define(
@@ -90,7 +86,7 @@ const SURFACES: RuntimeSurfaceContract[] = [
     objective:
       "Preserve Zee CLI session semantics while routing primary execution through an OpenCode-aligned runtime.",
     currentRuntime: "Yargs CLI dispatch with Zee SDK/HTTP client attachment and in-process bootstrap.",
-    targetRuntime: "OpenCode-first execution substrate behind Zee-native commands and persona semantics.",
+    targetRuntime: "OpenCode-first execution substrate behind Zee-native commands and agent semantics.",
     entryPoints: [
       {
         id: "cli.bootstrap",
@@ -155,7 +151,7 @@ const SURFACES: RuntimeSurfaceContract[] = [
       {
         id: "cli.session-identity",
         requirement:
-          "Session continuation, message routing, and persona selection must preserve Zee IDs and agent resolution.",
+          "Session continuation, message routing, and agent selection must preserve Zee IDs and agent resolution.",
         references: [
           { file: "packages/zee/src/cli/cmd/run.ts", symbol: "RunCommand" },
           { file: "packages/zee/src/agent/agent.ts", symbol: "Agent.get" },
@@ -487,48 +483,36 @@ export function buildOpenCodeRuntimeContractReport(now: Date = new Date()): Open
       mode: "inventory_locked",
     },
     surfaces,
-    telemetry: {
-      eventType: OpenCodeRuntimeContractInspected.type,
-      metricNames: [
-        "surfaceCount",
-        "entryPointCount",
-        "invariantCount",
-        "capabilityCount",
-        "transportCount",
-        "gatewayPresent",
-        "orchestrationPresent",
-      ],
-      metrics: {
-        surfaceCount: surfaces.length,
-        entryPointCount: entryPoints.length,
-        invariantCount: invariants.length,
-        capabilityCount: capabilities.length,
-        transportCount,
-        gatewayPresent: surfaces.some((surface) => surface.surface === "gateway"),
-        orchestrationPresent: surfaces.some((surface) => surface.surface === "orchestration"),
-      },
+    metrics: {
+      surfaceCount: surfaces.length,
+      entryPointCount: entryPoints.length,
+      invariantCount: invariants.length,
+      capabilityCount: capabilities.length,
+      transportCount,
+      gatewayPresent: surfaces.some((surface) => surface.surface === "gateway"),
+      orchestrationPresent: surfaces.some((surface) => surface.surface === "orchestration"),
     },
   }
 }
 
-export async function emitOpenCodeRuntimeContractTelemetry(report: OpenCodeRuntimeContractReport): Promise<void> {
+export async function publishOpenCodeRuntimeContractReport(report: OpenCodeRuntimeContractReport): Promise<void> {
   log.info("OpenCode runtime contract inspected", {
     contractId: report.contractId,
     contractVersion: report.contractVersion,
-    ...report.telemetry.metrics,
+    ...report.metrics,
   })
 
   await Bus.publish(OpenCodeRuntimeContractInspected, {
     contractId: report.contractId,
     contractVersion: report.contractVersion,
-    ...report.telemetry.metrics,
+    ...report.metrics,
   })
 }
 
 export function summarizeOpenCodeRuntimeContract(report: OpenCodeRuntimeContractReport): string {
   const lines = [
     `OpenCode runtime contract v${report.contractVersion}`,
-    `phase=${report.rolloutPhase} target=${report.defaultRuntime.target} surfaces=${report.telemetry.metrics.surfaceCount}`,
+    `phase=${report.rolloutPhase} target=${report.defaultRuntime.target} surfaces=${report.metrics.surfaceCount}`,
   ]
 
   for (const surface of report.surfaces) {
@@ -541,8 +525,6 @@ export function summarizeOpenCodeRuntimeContract(report: OpenCodeRuntimeContract
     )
   }
 
-  lines.push(
-    `telemetry event=${report.telemetry.eventType} entryPoints=${report.telemetry.metrics.entryPointCount} transports=${report.telemetry.metrics.transportCount}`,
-  )
+  lines.push(`metrics entryPoints=${report.metrics.entryPointCount} transports=${report.metrics.transportCount}`)
   return lines.join("\n")
 }

@@ -16,8 +16,6 @@ export const LOCAL_MEMORY_COLLECTION = "agent_memory";
 /** Default collection for agent state */
 export const LOCAL_MEMORY_COLLECTION_AGENT_STATE = "agent_state";
 
-/** Legacy collection used before the persona-collapse refactor. */
-export const LOCAL_MEMORY_COLLECTION_PERSONAS_LEGACY = "personas_memory";
 
 // =============================================================================
 // Embedding Configuration
@@ -32,9 +30,6 @@ export const EMBEDDING_DIMENSIONS = 384;
 /** Default collection for the current embedding model. */
 export const LOCAL_MEMORY_COLLECTION_MEMORY = LOCAL_MEMORY_COLLECTION;
 
-/** Legacy preview-specific collection name kept only for migration. */
-export const LOCAL_MEMORY_COLLECTION_PREVIEW_LEGACY =
-  "agent_memory_gemini_embedding_2_preview_3072";
 
 /** Mock embedding dimensions (for testing) */
 export const MOCK_EMBEDDING_DIMENSIONS = 384;

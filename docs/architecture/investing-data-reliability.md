@@ -81,9 +81,9 @@ Backfill guardrails:
 - other connectors reject unsupported override flags
 - symbol overrides are allowed for symbol-scoped connectors and are recorded with the operation
 
-## Telemetry
+## diagnostics
 
-The reliability layer emits Flux events under `domain=investing`:
+The reliability layer emits event bus events under `domain=investing`:
 
 - `investing.ingestion.retry`
   - emitted on every retry attempt with the connector, attempt number, configured retry budget, and delay
@@ -97,7 +97,7 @@ The always-on daemon also registers a global `investing.ingestion.freshness.moni
 ## Local operating loop
 
 1. Run `zee investing ingest status --json` to identify stale or missing connectors.
-2. If the connector is failing transiently, inspect Flux events for `investing.ingestion.retry`.
+2. If the connector is failing transiently, inspect event bus events for `investing.ingestion.retry`.
 3. If coverage is missing historically, run a bounded `zee investing ingest backfill ...` command.
 4. Re-check `zee investing entity status --json` to confirm normalized entities were produced.
 5. Inspect the two state files when reconciling repeated failures, stale data, or operator backfill history.

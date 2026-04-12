@@ -27,7 +27,6 @@ describe("resolveRequiredScope", () => {
     expect(resolveRequiredScope("PUT", "/auth/openai")).toBe(AuthScope.ADMIN)
     expect(resolveRequiredScope("GET", "/global/event")).toBe(AuthScope.OBSERVE)
     expect(resolveRequiredScope("GET", "/process/events")).toBe(AuthScope.OBSERVE)
-    expect(resolveRequiredScope("GET", "/usage/stats")).toBe(AuthScope.OBSERVE)
     expect(resolveRequiredScope("GET", "/gateway/node")).toBe(AuthScope.PAIRING)
     expect(resolveRequiredScope("GET", "/permission")).toBe(AuthScope.APPROVALS)
     expect(resolveRequiredScope("POST", "/memory/search")).toBe(AuthScope.READ)
@@ -64,14 +63,6 @@ describe("resolveRequiredScope", () => {
 
   test("covers non-OpenAPI control-plane routes with explicit bindings", () => {
     const hiddenRoutes = [
-      ["GET", "/usage/events"],
-      ["GET", "/usage/summary"],
-      ["GET", "/usage/summary/provider/openai"],
-      ["GET", "/usage/summary/model/gpt-4o"],
-      ["GET", "/usage/summary/session/session-1"],
-      ["GET", "/usage/stats"],
-      ["GET", "/usage/cost"],
-      ["DELETE", "/usage/events"],
       ["GET", "/cron/status"],
       ["GET", "/cron/jobs"],
       ["POST", "/cron/jobs"],

@@ -3,26 +3,20 @@ import type { SecurityAuditReport } from "../../src/security"
 import {
   buildOpenCodeRuntimeReleaseGate,
   buildOpenCodeRuntimeRolloutReport,
+  type OpenCodeRuntimeRouteEvent,
   type OpenCodeRuntimeRolloutReport,
 } from "../../src/runtime/opencode-rollout"
 import { buildV3ReleaseReport, summarizeV3ReleaseReport, type V3ReleaseDocCheck } from "../../src/runtime/v3-release"
-import type { UsageSummary } from "../../src/usage/types"
-import type { FluxEvent } from "../../src/flux"
 
 function makeRouteEvent(params: {
   timestamp: string
   surface: "cli" | "orchestration" | "gateway"
   kind: "runtime.opencode.route.selected" | "runtime.opencode.route.fallback"
   reason?: "default_primary" | "surface_disabled" | "forced_legacy"
-}): FluxEvent {
+}): OpenCodeRuntimeRouteEvent {
   return {
-    id: `${params.surface}-${params.kind}-${params.timestamp}`,
     timestamp: new Date(params.timestamp).getTime(),
-    traceID: `trace-${params.surface}-${params.kind}-${params.timestamp}`,
-    direction: "internal",
-    domain: "runtime",
     kind: params.kind,
-    status: "ok",
     metadata: {
       surface: params.surface,
       route: params.kind === "runtime.opencode.route.selected" ? "opencode_primary" : "legacy_fallback",
@@ -53,25 +47,6 @@ function makeSecurityReport(ok: boolean): SecurityAuditReport {
       findingCount: ok ? 0 : 1,
       alertCount: 0,
     },
-  }
-}
-
-function makeUsageSummary(overrides: Partial<UsageSummary> = {}): UsageSummary {
-  return {
-    period: "day",
-    startTime: 1_700_000_000_000,
-    endTime: 1_700_000_086_400,
-    totalRequests: 14,
-    totalInputTokens: 48_000,
-    totalOutputTokens: 22_000,
-    totalCost: 1.45,
-    byProvider: {},
-    byModel: {},
-    avgLatencyMs: 800,
-    errorCount: 0,
-    errorRate: 0,
-    cacheHitRate: 0.3,
-    ...overrides,
   }
 }
 
@@ -115,7 +90,7 @@ function makeDocs(overrides: Array<Partial<V3ReleaseDocCheck>> = []): V3ReleaseD
   }))
 }
 
-function makeRuntimeReport(routeEvents: FluxEvent[]): OpenCodeRuntimeRolloutReport {
+function makeRuntimeReport(routeEvents: OpenCodeRuntimeRouteEvent[]): OpenCodeRuntimeRolloutReport {
   return buildOpenCodeRuntimeRolloutReport(new Date("2026-03-15T12:00:00.000Z"), {
     routeEvents,
   })
@@ -156,19 +131,17 @@ describe("v3 release report", () => {
       security: makeSecurityReport(true),
       nodePolicy: { enabled: false, securityMode: "deny" },
       nodeStats: { active: 0, revoked: 0, total: 0 },
-      usageSummary: makeUsageSummary(),
       docs: makeDocs(),
     })
 
     expect(report.readyForRelease).toBe(true)
-    expect(report.categories.map((category) => category.id)).toEqual(["reliability", "security", "performance", "docs"])
+    expect(report.categories.map((category) => category.id)).toEqual(["reliability", "security", "docs"])
     expect(report.docs.missingCount).toBe(0)
-    expect(report.telemetry.kind).toBe("release.v3.report")
-    expect(report.gates.some((gate) => gate.id === "performance.usage-latency")).toBe(true)
+    expect(report.metrics.gateCount).toBe(report.gates.length)
     expect(report.gates.some((gate) => gate.id === "docs.architecture.required")).toBe(true)
   })
 
-  test("buildV3ReleaseReport blocks on runtime, performance, and docs failures", () => {
+  test("buildV3ReleaseReport blocks on runtime and docs failures", () => {
     const runtimeReport = makeRuntimeReport([
       makeRouteEvent({
         timestamp: "2026-03-15T11:05:00.000Z",
@@ -192,22 +165,15 @@ describe("v3 release report", () => {
       security: makeSecurityReport(true),
       nodePolicy: { enabled: true, securityMode: "full" },
       nodeStats: { active: 2, revoked: 0, total: 2 },
-      usageSummary: makeUsageSummary({
-        totalRequests: 9,
-        avgLatencyMs: 8200,
-        errorCount: 2,
-        errorRate: 2 / 9,
-      }),
       docs: makeDocs([{ exists: false }]),
     })
 
     const summary = summarizeV3ReleaseReport(report)
 
     expect(report.readyForRelease).toBe(false)
-    expect(report.telemetry.metrics.failureCount).toBeGreaterThan(0)
+    expect(report.metrics.failureCount).toBeGreaterThan(0)
     expect(report.docs.missingCount).toBe(1)
     expect(summary).toContain("ready=no")
-    expect(summary).toContain("[performance] performance.usage-latency")
     expect(summary).toContain("[docs] docs.architecture.required")
     expect(summary).toContain("runtime.opencode-parity")
   })

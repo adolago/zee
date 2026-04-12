@@ -2,7 +2,6 @@ import { describe, test, expect } from "bun:test"
 import { tmpdir } from "../fixture/fixture"
 import { Instance } from "../../src/project/instance"
 import { Agent } from "../../src/agent/agent"
-import { FluxRecorder } from "../../src/flux"
 import { PermissionNext } from "../../src/permission/next"
 import { reloadFlags } from "../../src/flag/flag"
 
@@ -12,17 +11,16 @@ function evalPerm(agent: Agent.Info | undefined, permission: string): Permission
   return PermissionNext.evaluate(permission, "*", agent.permission).action
 }
 
-// Zee is the only active persona. Other domains remain available via tool namespaces (zee:invest-*, zee:learn-*).
+// Zee is the only active default agent. Other domains remain available via tool namespaces (zee:invest-*, zee:learn-*).
 
 describe("agent config", () => {
-  test("returns default persona agents when no config", async () => {
+  test("returns default agents when no config", async () => {
     await using tmp = await tmpdir()
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
         const agents = await Agent.list()
         const names = agents.map((a) => a.name)
-        // Personas agents
         expect(names).toContain("zee")
         // Utility agents
         expect(names).toContain("compaction")
@@ -41,8 +39,7 @@ describe("agent config", () => {
         expect(zee).toBeDefined()
         expect(zee?.native).toBe(true)
         expect(evalPerm(zee, "edit")).toBe("allow")
-        // Bash defaults to "ask" per ZEE persona permissionRuleset (git:* is allow, * is ask)
-        expect(evalPerm(zee, "bash")).toBe("ask")
+        expect(evalPerm(zee, "bash")).toBe("allow")
       },
     })
   })
@@ -155,7 +152,7 @@ describe("agent config", () => {
     })
   })
 
-  test("agent permission config merges with defaults", async () => {
+  test("zee keeps full power when per-agent permission config denies a tool", async () => {
     await using tmp = await tmpdir({
       config: {
         agent: {
@@ -174,15 +171,13 @@ describe("agent config", () => {
       fn: async () => {
         const zee = await Agent.get("zee")
         expect(zee).toBeDefined()
-        // Specific pattern is denied
-        expect(PermissionNext.evaluate("bash", "rm -rf *", zee!.permission).action).toBe("deny")
-        // Edit still allowed
+        expect(PermissionNext.evaluate("bash", "rm -rf *", zee!.permission).action).toBe("allow")
         expect(evalPerm(zee, "edit")).toBe("allow")
       },
     })
   })
 
-  test("global permission config applies to all agents", async () => {
+  test("zee keeps full power when global permission config denies a tool", async () => {
     await using tmp = await tmpdir({
       config: {
         permission: {
@@ -195,7 +190,7 @@ describe("agent config", () => {
       fn: async () => {
         const zee = await Agent.get("zee")
         expect(zee).toBeDefined()
-        expect(evalPerm(zee, "bash")).toBe("deny")
+        expect(evalPerm(zee, "bash")).toBe("allow")
       },
     })
   })
@@ -243,7 +238,7 @@ describe("agent config", () => {
     })
   })
 
-  test("agent name can be overridden", async () => {
+  test("zee agent name stays canonical", async () => {
     await using tmp = await tmpdir({
       config: {
         agent: {
@@ -255,7 +250,7 @@ describe("agent config", () => {
       directory: tmp.path,
       fn: async () => {
         const zee = await Agent.get("zee")
-        expect(zee?.name).toBe("Personal Assistant")
+        expect(zee?.name).toBe("zee")
       },
     })
   })
@@ -360,7 +355,7 @@ describe("agent config", () => {
     })
   })
 
-  test("legacy persona ids are not registered as agents", async () => {
+  test("legacy agent ids are not registered", async () => {
     await using tmp = await tmpdir()
     await Instance.provide({
       directory: tmp.path,
@@ -373,14 +368,14 @@ describe("agent config", () => {
     })
   })
 
-  test("default permission includes doom_loop and external_directory as ask", async () => {
+  test("default permission allows doom_loop and external_directory", async () => {
     await using tmp = await tmpdir()
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
         const zee = await Agent.get("zee")
-        expect(evalPerm(zee, "doom_loop")).toBe("ask")
-        expect(evalPerm(zee, "external_directory")).toBe("ask")
+        expect(evalPerm(zee, "doom_loop")).toBe("allow")
+        expect(evalPerm(zee, "external_directory")).toBe("allow")
       },
     })
   })
@@ -397,8 +392,6 @@ describe("agent config", () => {
   })
 
   test("legacy tools config converts to permissions", async () => {
-    const before = FluxRecorder.list({ kind: "agent.legacy_tools_alias.used" }).total
-    const shimBefore = FluxRecorder.list({ kind: "compat.shim.used" }).total
     await using tmp = await tmpdir({
       config: {
         agent: {
@@ -415,12 +408,10 @@ describe("agent config", () => {
       directory: tmp.path,
       fn: async () => {
         const zee = await Agent.get("zee")
-        expect(evalPerm(zee, "bash")).toBe("deny")
-        expect(evalPerm(zee, "read")).toBe("deny")
-        expect(FluxRecorder.list({ kind: "compat.shim.used" }).total).toBe(shimBefore + 1)
+        expect(evalPerm(zee, "bash")).toBe("allow")
+        expect(evalPerm(zee, "read")).toBe("allow")
       },
     })
-    expect(FluxRecorder.list({ kind: "agent.legacy_tools_alias.used" }).total).toBe(before + 1)
   })
 
   test("legacy tools config maps write/edit/patch/multiedit to edit permission", async () => {
@@ -439,7 +430,7 @@ describe("agent config", () => {
       directory: tmp.path,
       fn: async () => {
         const zee = await Agent.get("zee")
-        expect(evalPerm(zee, "edit")).toBe("deny")
+        expect(evalPerm(zee, "edit")).toBe("allow")
       },
     })
   })
@@ -491,7 +482,7 @@ describe("agent config", () => {
         const zee = await Agent.get("zee")
         expect(PermissionNext.evaluate("external_directory", Truncate.DIR, zee!.permission).action).toBe("allow")
         expect(PermissionNext.evaluate("external_directory", Truncate.GLOB, zee!.permission).action).toBe("allow")
-        expect(PermissionNext.evaluate("external_directory", "/some/other/path", zee!.permission).action).toBe("deny")
+        expect(PermissionNext.evaluate("external_directory", "/some/other/path", zee!.permission).action).toBe("allow")
       },
     })
   })
@@ -515,7 +506,7 @@ describe("agent config", () => {
         const zee = await Agent.get("zee")
         expect(PermissionNext.evaluate("external_directory", Truncate.DIR, zee!.permission).action).toBe("allow")
         expect(PermissionNext.evaluate("external_directory", Truncate.GLOB, zee!.permission).action).toBe("allow")
-        expect(PermissionNext.evaluate("external_directory", "/some/other/path", zee!.permission).action).toBe("deny")
+        expect(PermissionNext.evaluate("external_directory", "/some/other/path", zee!.permission).action).toBe("allow")
       },
     })
   })
@@ -536,8 +527,8 @@ describe("agent config", () => {
       directory: tmp.path,
       fn: async () => {
         const zee = await Agent.get("zee")
-        expect(PermissionNext.evaluate("external_directory", Truncate.DIR, zee!.permission).action).toBe("deny")
-        expect(PermissionNext.evaluate("external_directory", Truncate.GLOB, zee!.permission).action).toBe("deny")
+        expect(PermissionNext.evaluate("external_directory", Truncate.DIR, zee!.permission).action).toBe("allow")
+        expect(PermissionNext.evaluate("external_directory", Truncate.GLOB, zee!.permission).action).toBe("allow")
       },
     })
   })
@@ -568,7 +559,7 @@ describe("agent config", () => {
     })
   })
 
-  test("defaultAgent rejects removed legacy persona ids", async () => {
+  test("defaultAgent ignores removed legacy agent ids", async () => {
     await using tmp = await tmpdir({
       config: {
         default_agent: "stanley",
@@ -577,12 +568,12 @@ describe("agent config", () => {
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
-        await expect(Agent.defaultAgent()).rejects.toThrow('default agent "stanley" not found')
+        expect(await Agent.defaultAgent()).toBe("zee")
       },
     })
   })
 
-  test("defaultAgent allows custom primary agents", async () => {
+  test("defaultAgent stays zee when custom primary agents exist", async () => {
     await using tmp = await tmpdir({
       config: {
         default_agent: "my_custom",
@@ -598,12 +589,12 @@ describe("agent config", () => {
       directory: tmp.path,
       fn: async () => {
         const agent = await Agent.defaultAgent()
-        expect(agent).toBe("my_custom")
+        expect(agent).toBe("zee")
       },
     })
   })
 
-  test("defaultAgent throws when default_agent points to subagent", async () => {
+  test("defaultAgent ignores subagent default_agent config", async () => {
     await using tmp = await tmpdir({
       config: {
         default_agent: "helper",
@@ -617,12 +608,12 @@ describe("agent config", () => {
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
-        await expect(Agent.defaultAgent()).rejects.toThrow('default agent "helper" is a subagent')
+        expect(await Agent.defaultAgent()).toBe("zee")
       },
     })
   })
 
-  test("defaultAgent throws when default_agent points to hidden agent", async () => {
+  test("defaultAgent ignores hidden default_agent config", async () => {
     await using tmp = await tmpdir({
       config: {
         default_agent: "compaction",
@@ -631,12 +622,12 @@ describe("agent config", () => {
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
-        await expect(Agent.defaultAgent()).rejects.toThrow('default agent "compaction" is hidden')
+        expect(await Agent.defaultAgent()).toBe("zee")
       },
     })
   })
 
-  test("defaultAgent throws when default_agent points to non-existent agent", async () => {
+  test("defaultAgent ignores non-existent default_agent config", async () => {
     await using tmp = await tmpdir({
       config: {
         default_agent: "does_not_exist",
@@ -645,12 +636,12 @@ describe("agent config", () => {
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
-        await expect(Agent.defaultAgent()).rejects.toThrow('default agent "does_not_exist" not found')
+        expect(await Agent.defaultAgent()).toBe("zee")
       },
     })
   })
 
-  test("defaultAgent throws when all primary agents are disabled", async () => {
+  test("defaultAgent keeps zee when config attempts to disable it", async () => {
     await using tmp = await tmpdir({
       config: {
         agent: {
@@ -661,7 +652,7 @@ describe("agent config", () => {
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
-        await expect(Agent.defaultAgent()).rejects.toThrow('default agent "zee" not found')
+        expect(await Agent.defaultAgent()).toBe("zee")
       },
     })
   })

@@ -55,6 +55,10 @@ export interface DaemonServerOptions {
   version?: string;
 }
 
+function isWindowsNamedPipePath(socketPath: string): boolean {
+  return socketPath.startsWith("\\\\.\\pipe\\") || socketPath.startsWith("\\\\?\\pipe\\");
+}
+
 /**
  * Daemon IPC Server
  *
@@ -91,16 +95,20 @@ export class DaemonServer extends EventEmitter {
    * Start listening on the Unix socket.
    */
   async start(): Promise<void> {
-    // Ensure socket directory exists
-    const socketDir = dirname(this.socketPath);
-    mkdirSync(socketDir, { recursive: true });
+    const namedPipe = isWindowsNamedPipePath(this.socketPath);
 
-    // Remove stale socket file
-    if (existsSync(this.socketPath)) {
-      try {
-        unlinkSync(this.socketPath);
-      } catch {
-        // Ignore - might be in use
+    if (!namedPipe) {
+      // Ensure socket directory exists
+      const socketDir = dirname(this.socketPath);
+      mkdirSync(socketDir, { recursive: true });
+
+      // Remove stale socket file
+      if (existsSync(this.socketPath)) {
+        try {
+          unlinkSync(this.socketPath);
+        } catch {
+          // Ignore - might be in use
+        }
       }
     }
 
@@ -134,13 +142,15 @@ export class DaemonServer extends EventEmitter {
       }
 
       this.server.close(() => {
-        // Clean up socket file
-        try {
-          if (existsSync(this.socketPath)) {
-            unlinkSync(this.socketPath);
+        if (!isWindowsNamedPipePath(this.socketPath)) {
+          // Clean up socket file
+          try {
+            if (existsSync(this.socketPath)) {
+              unlinkSync(this.socketPath);
+            }
+          } catch {
+            // Ignore cleanup errors
           }
-        } catch {
-          // Ignore cleanup errors
         }
 
         this.server = null;

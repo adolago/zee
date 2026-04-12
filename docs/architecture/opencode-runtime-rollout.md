@@ -1,6 +1,6 @@
 # OpenCode Runtime Rollout
 
-This document is the operator-facing control surface for issues `#486` and `#487`: switching Zee's primary execution path to the OpenCode runtime with staged enablement, parity telemetry, explicit fallback SLOs, and rollback guidance.
+This document is the operator-facing control surface for issues `#486` and `#487`: switching Zee's primary execution path to the OpenCode runtime with staged enablement, parity diagnostics, explicit fallback SLOs, and rollback guidance.
 
 ## Source Of Truth
 
@@ -31,12 +31,12 @@ zee v3 rollout status
 - `ZEE_RUNTIME_OPENCODE_FORCE_LEGACY_SURFACES`
   Comma-separated list of surfaces pinned to the legacy fallback path even if they appear in the primary list.
 - `ZEE_RUNTIME_OPENCODE_ALLOW_LEGACY_FALLBACK`
-  Boolean gate recorded in telemetry so operators can distinguish staged fallback mode from a hard cutover.
+  Boolean gate recorded in diagnostics so operators can distinguish staged fallback mode from a hard cutover.
 
 ## Parity Window And SLO
 
 - `zee inspect runtime-rollout` evaluates a trailing `24h` window of runtime route events.
-- Flux route counters are grouped per surface:
+- event bus route counters are grouped per surface:
   - `runtime.opencode.route.selected`
   - `runtime.opencode.route.fallback`
 - Release SLO:
@@ -50,7 +50,7 @@ zee v3 rollout status
 - `zee run` now creates sessions with `surface: "cli"`, so standard CLI prompts report against the CLI runtime surface.
 - Daemon workers execute `zee prompt --no-tui` and set `ZEE_CLIENT=daemon`, so orchestration traffic resolves to the orchestration rollout surface.
 - Messaging sessions still carry Zee-native session surfaces (`whatsapp`, `telegram`), which resolve to the gateway rollout surface.
-- The internal bridge route in `packages/zee/src/server/route/llm.ts` emits gateway rollout telemetry even though it bypasses normal session runtime creation.
+- The internal bridge route in `packages/zee/src/server/route/llm.ts` emits gateway rollout diagnostics even though it bypasses normal session runtime creation.
 
 ## Rollback
 
@@ -97,10 +97,10 @@ cd packages/zee
 bun run --conditions=browser ./src/index.ts v3 release --strict
 ```
 
-## Telemetry
+## diagnostics
 
 - Bus event: `runtime.opencode-rollout.inspected`
-- Flux kinds:
+- event bus kinds:
   - `runtime.opencode.route.selected`
   - `runtime.opencode.route.fallback`
 - Report metrics:

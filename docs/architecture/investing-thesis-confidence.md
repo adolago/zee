@@ -49,7 +49,7 @@ The `thesis-refresh` path now does two things before it writes a revision:
 
 The thesis snapshot appended to synthesis output now also shows the applied confidence rule and reasons so operators can audit the conviction before reading the persisted change log.
 
-## Telemetry
+## diagnostics
 
 This slice emits:
 

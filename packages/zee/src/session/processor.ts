@@ -18,12 +18,10 @@ import { Question } from "@/question"
 import { addWideEventFields, finishWideEvent, runWithWideEventContext } from "@/util/wide-events"
 import { Flag } from "@/flag/flag"
 import { withTimeout } from "@/util/timeout"
-import * as UsageTracker from "@/usage/tracker"
 import { StreamHealth } from "./stream-health"
 import { StreamEvents } from "./stream-events"
 import { AppDeps } from "@/app/deps"
 import { SessionSteering } from "./steering"
-import { FluxRecorder } from "@/flux"
 import {
   appendInvestingProvenance,
   extractTextFromParts,
@@ -654,57 +652,6 @@ export namespace SessionProcessor {
                           usage.tokens.reasoning +
                           usage.tokens.cache.read +
                           usage.tokens.cache.write
-                      FluxRecorder.record({
-                        traceID: traceId,
-                        requestID: input.assistantMessage.id,
-                        sessionID: input.sessionID,
-                        messageID: input.assistantMessage.id,
-                        providerID: input.model.providerID,
-                        modelID: input.model.id,
-                        direction: "internal",
-                        domain: "session",
-                        kind: "token.usage",
-                        status: "ok",
-                        token: {
-                          input: usage.tokens.input,
-                          output: usage.tokens.output,
-                          cacheRead: usage.tokens.cache.read,
-                          cacheWrite: usage.tokens.cache.write,
-                          reasoning: usage.tokens.reasoning,
-                          total: totalTokens,
-                        },
-                        metadata: {
-                          finishReason,
-                          cost: usage.cost,
-                        },
-                      })
-                      FluxRecorder.record({
-                        traceID: traceId,
-                        requestID: input.assistantMessage.id,
-                        sessionID: input.sessionID,
-                        messageID: input.assistantMessage.id,
-                        providerID: input.model.providerID,
-                        modelID: input.model.id,
-                        direction: "outbound",
-                        domain: "provider",
-                        kind: "api.outbound.response",
-                        status: finishReason === "other" ? "error" : "ok",
-                        latencyMs:
-                          input.assistantMessage.time.created > 0
-                            ? Date.now() - input.assistantMessage.time.created
-                            : undefined,
-                        token: {
-                          input: usage.tokens.input,
-                          output: usage.tokens.output,
-                          cacheRead: usage.tokens.cache.read,
-                          cacheWrite: usage.tokens.cache.write,
-                          reasoning: usage.tokens.reasoning,
-                          total: totalTokens,
-                        },
-                        metadata: {
-                          finishReason,
-                        },
-                      })
                       await Session.update(input.sessionID, (session) => {
                         if (!session.tokens) {
                           session.tokens = { input: 0, output: 0, reasoning: 0 }
@@ -713,33 +660,6 @@ export namespace SessionProcessor {
                         session.tokens.output += usage.tokens.output
                         session.tokens.reasoning += usage.tokens.reasoning
                       })
-                      // Record usage for analytics
-                      if (UsageTracker.isInitialized()) {
-                        UsageTracker.record({
-                          sessionId: input.sessionID,
-                          messageId: input.assistantMessage.id,
-                          providerId: input.model.providerID,
-                          modelId: input.model.id,
-                          modelName: input.model.name,
-                          inputTokens: usage.tokens.input,
-                          outputTokens: usage.tokens.output,
-                          cacheReadTokens: usage.tokens.cache.read,
-                          cacheWriteTokens: usage.tokens.cache.write,
-                          reasoningTokens: usage.tokens.reasoning,
-                          inputCost:
-                            usage.cost *
-                            (usage.tokens.input /
-                              (usage.tokens.input + usage.tokens.output + usage.tokens.reasoning || 1)),
-                          outputCost:
-                            usage.cost *
-                            ((usage.tokens.output + usage.tokens.reasoning) /
-                              (usage.tokens.input + usage.tokens.output + usage.tokens.reasoning || 1)),
-                          cacheCost: 0, // Cache cost already included in inputCost for Anthropic
-                          durationMs: Date.now() - (input.assistantMessage.time.created || Date.now()),
-                          streaming: true,
-                          toolCalls: Object.keys(toolcalls).length || undefined,
-                        }).catch((e) => log.warn("failed to record usage", { error: String(e) }))
-                      }
                       addWideEventFields({
                         meta: {
                           tokens: usage.tokens,
@@ -841,24 +761,7 @@ export namespace SessionProcessor {
                 }
               }
             } catch (e: any) {
-              // Record stream failure for diagnostics
               healthMonitor.fail(e)
-              FluxRecorder.record({
-                traceID: traceId,
-                requestID: input.assistantMessage.id,
-                sessionID: input.sessionID,
-                messageID: input.assistantMessage.id,
-                providerID: input.model.providerID,
-                modelID: input.model.id,
-                direction: "outbound",
-                domain: "provider",
-                kind: "api.outbound.response",
-                status: "error",
-                error: {
-                  code: e?.name ?? "error",
-                  message: e instanceof Error ? e.message : String(e),
-                },
-              })
               log.error("process", {
                 error: e,
                 stack: JSON.stringify(e.stack),

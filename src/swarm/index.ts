@@ -57,7 +57,6 @@ export type {
   WorkerStatus,
   WorkerConfig,
   WorkerState,
-  Persona,
   SwarmConfig,
   SwarmResult,
   WorkerMessage,

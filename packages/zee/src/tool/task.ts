@@ -133,14 +133,6 @@ export const TaskTool = Tool.define("task", async (ctx) => {
       .join("\n"),
   )
 
-  // Persona agents don't need the code-writing examples
-  if (ctx?.agent?.native === true) {
-    const exampleStart = description.indexOf("\nExample usage")
-    if (exampleStart !== -1) {
-      description = description.slice(0, exampleStart).trimEnd()
-    }
-  }
-
   return {
     description,
     parameters,

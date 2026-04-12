@@ -1,5 +1,4 @@
 import { Flag } from "@/flag/flag"
-import { FluxRecorder } from "@/flux"
 import { isLoopbackHostname } from "@/server/auth"
 
 export const CONTROL_UI_BREAK_GLASS_ACK = "I_UNDERSTAND_CONTROL_UI_AUTH_IS_INSECURE"
@@ -47,15 +46,6 @@ export type SecurityAuditMetrics = {
   nodeClientSecurityMode?: "deny" | "allowlist" | "full"
   alertCount?: number
   nodeExposureAlertCount?: number
-}
-
-export type SecurityAuditTelemetrySource = "security.audit" | "doctor.security" | "v3.release"
-
-export type SecurityAuditTelemetryInput = {
-  source: SecurityAuditTelemetrySource
-  deep: boolean
-  strict?: boolean
-  report: SecurityAuditReport
 }
 
 function asObject(value: unknown): Record<string, unknown> | undefined {
@@ -113,74 +103,6 @@ function summarizeFindings(
       alertCount: alerts.length,
     },
   }
-}
-
-export function emitSecurityAuditTelemetry(input: SecurityAuditTelemetryInput): { traceID: string } {
-  const traceID = crypto.randomUUID()
-  const metadata = {
-    source: input.source,
-    deep: input.deep,
-    strict: input.strict ?? false,
-    ok: input.report.ok,
-    errors: input.report.errors,
-    warnings: input.report.warnings,
-    ...input.report.metrics,
-  }
-
-  FluxRecorder.record({
-    traceID,
-    direction: "internal",
-    domain: "security",
-    kind: "security.audit.checked",
-    status: input.report.ok ? "ok" : "error",
-    method: "CLI",
-    path: input.source,
-    route: input.source,
-    metadata,
-  })
-
-  for (const finding of input.report.findings) {
-    FluxRecorder.record({
-      traceID,
-      direction: "internal",
-      domain: "security",
-      kind: "security.audit.finding",
-      status: finding.severity === "error" ? "error" : "ok",
-      method: "CLI",
-      path: input.source,
-      route: input.source,
-      metadata: {
-        source: input.source,
-        deep: input.deep,
-        severity: finding.severity,
-        code: finding.code,
-        hasRemediation: Boolean(finding.remediation),
-      },
-    })
-  }
-
-  for (const alert of input.report.alerts) {
-    FluxRecorder.record({
-      traceID,
-      direction: "internal",
-      domain: "security",
-      kind: "security.audit.alert",
-      status: alert.severity === "error" ? "error" : "denied",
-      method: "CLI",
-      path: input.source,
-      route: input.source,
-      metadata: {
-        source: input.source,
-        deep: input.deep,
-        severity: alert.severity,
-        code: alert.code,
-        findingCodes: alert.findingCodes,
-        runbookSteps: alert.runbook.length,
-      },
-    })
-  }
-
-  return { traceID }
 }
 
 export function auditControlUiSecurity(config: unknown): SecurityAuditReport {

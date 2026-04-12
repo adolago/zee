@@ -984,7 +984,7 @@ export const codexbarTool: ToolDefinition = {
   id: "zee:codexbar",
   category: "domain",
   init: async () => ({
-    description: `Run CodexBar CLI commands to check provider usage and resets. Pass CLI arguments via args array.`,
+    description: `Run CodexBar CLI commands to check provider status and reset windows. Pass CLI arguments via args array.`,
     parameters: CodexbarParams,
     execute: async (args, ctx): Promise<ToolExecutionResult> => {
       ctx.metadata({ title: "CodexBar" });

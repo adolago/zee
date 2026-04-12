@@ -156,7 +156,7 @@ Examples:
 Check Categories:
   runtime    - Bun version, directories, disk, memory
   config     - Configuration validation, deprecated options
-  providers  - AI provider connectivity (Anthropic, OpenAI, Ollama)
+  providers  - AI provider connectivity
   integrity  - Lock files, processes, session files
   skills     - Skill discovery, loading, conflicts, environment
   skills     - Skill discovery, loading, conflicts, env vars

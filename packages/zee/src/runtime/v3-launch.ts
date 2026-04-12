@@ -1,6 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
-import { FluxRecorder } from "@/flux"
 import { resolveStateDir } from "@/global/dirs"
 import { collectV3ReleaseReport, type V3ReleaseReport } from "@/runtime/v3-release"
 import { getV3RolloutReport, type V3RolloutReport, type V3RolloutStage } from "@/runtime/v3-rollout"
@@ -50,17 +49,14 @@ export interface V3LaunchReport {
     allowed: boolean
     playbook: string[]
   }
-  telemetry: {
-    kind: "release.v3.launch"
-    metrics: {
-      checklistCount: number
-      checklistFailures: number
-      signoffCount: number
-      approvedSignoffCount: number
-      rolloutStage: V3RolloutStage
-      releaseReady: boolean
-      launched: boolean
-    }
+  metrics: {
+    checklistCount: number
+    checklistFailures: number
+    signoffCount: number
+    approvedSignoffCount: number
+    rolloutStage: V3RolloutStage
+    releaseReady: boolean
+    launched: boolean
   }
 }
 
@@ -127,7 +123,7 @@ function buildChecklist(state: V3LaunchState, releaseReport: V3ReleaseReport, ro
       id: "release.report",
       label: "Consolidated release report passes",
       ok: releaseReport.readyForRelease,
-      details: `failures=${releaseReport.telemetry.metrics.failureCount}`,
+      details: `failures=${releaseReport.metrics.failureCount}`,
     },
     {
       id: "rollout.general",
@@ -144,9 +140,8 @@ function buildPlaybook(releaseReport: V3ReleaseReport, rolloutReport: V3RolloutR
     "1. Confirm `zee v3 release --strict` is still passing immediately before publication.",
     `2. Confirm \`zee v3 rollout status\` reports stage=${rolloutReport.state.currentStage}.`,
     `3. Restart Zee services if rollout changes are still pending: ${rolloutReport.restartCommand}.`,
-    "4. Watch release.v3.report, release.v3.rollout, and release.v3.launch telemetry during go-live.",
-    "5. Re-run `zee inspect runtime-rollout --no-json` after go-live and keep the rollback plan ready if parity regresses.",
-    `6. Track the current release failure count snapshot (${releaseReport.telemetry.metrics.failureCount}) during stabilization.`,
+    "4. Re-run `zee inspect runtime-rollout --no-json` after go-live and keep the rollback plan ready if parity regresses.",
+    `5. Track the current release failure count snapshot (${releaseReport.metrics.failureCount}) during stabilization.`,
   ]
 }
 
@@ -176,41 +171,16 @@ function buildLaunchReport(input: {
       allowed: checklistFailures === 0,
       playbook: buildPlaybook(input.releaseReport, input.rolloutReport),
     },
-    telemetry: {
-      kind: "release.v3.launch",
-      metrics: {
-        checklistCount: checklist.length,
-        checklistFailures,
-        signoffCount: input.state.signoffs.length,
-        approvedSignoffCount,
-        rolloutStage: input.rolloutReport.state.currentStage,
-        releaseReady: input.releaseReport.readyForRelease,
-        launched,
-      },
+    metrics: {
+      checklistCount: checklist.length,
+      checklistFailures,
+      signoffCount: input.state.signoffs.length,
+      approvedSignoffCount,
+      rolloutStage: input.rolloutReport.state.currentStage,
+      releaseReady: input.releaseReport.readyForRelease,
+      launched,
     },
   }
-}
-
-function emitV3LaunchTelemetry(method: "status" | "signoff" | "go-live", report: V3LaunchReport): void {
-  FluxRecorder.record({
-    traceID: crypto.randomUUID(),
-    direction: "internal",
-    domain: "runtime",
-    kind: report.telemetry.kind,
-    status: report.readyForLaunch || report.launched ? "ok" : "error",
-    method: method.toUpperCase(),
-    path: report.rolloutStage,
-    route: "v3.launch",
-    metadata: {
-      checklistCount: report.telemetry.metrics.checklistCount,
-      checklistFailures: report.telemetry.metrics.checklistFailures,
-      signoffCount: report.telemetry.metrics.signoffCount,
-      approvedSignoffCount: report.telemetry.metrics.approvedSignoffCount,
-      rolloutStage: report.rolloutStage,
-      releaseReady: report.releaseReady,
-      launched: report.launched,
-    },
-  })
 }
 
 export function summarizeV3LaunchReport(report: V3LaunchReport): string {
@@ -227,12 +197,10 @@ export function summarizeV3LaunchReport(report: V3LaunchReport): string {
     lines.push(`- signoff ${signoff.owner}: ${signoff.decision} by ${signoff.actor}`)
   }
 
-  lines.push(`- telemetry: ${report.telemetry.kind}`)
   return lines.join("\n")
 }
 
 export async function getV3LaunchReport(options: {
-  emitTelemetry?: boolean
   now?: Date
   releaseReport?: V3ReleaseReport
   rolloutReport?: V3RolloutReport
@@ -247,10 +215,6 @@ export async function getV3LaunchReport(options: {
     releaseReport,
     rolloutReport,
   })
-
-  if (options.emitTelemetry) {
-    emitV3LaunchTelemetry("status", report)
-  }
 
   return report
 }
@@ -286,7 +250,6 @@ export async function recordV3LaunchSignoff(input: {
     releaseReport: input.releaseReport ?? (await collectV3ReleaseReport()),
     rolloutReport: input.rolloutReport ?? (await getV3RolloutReport()),
   })
-  emitV3LaunchTelemetry("signoff", report)
   return report
 }
 
@@ -330,6 +293,5 @@ export async function goLiveV3Launch(input: {
     releaseReport,
     rolloutReport,
   })
-  emitV3LaunchTelemetry("go-live", report)
   return report
 }

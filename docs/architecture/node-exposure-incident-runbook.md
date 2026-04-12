@@ -26,5 +26,5 @@ Use this runbook when `zee security audit --deep --strict` or `zee doctor securi
 ## Recovery
 
 1. Re-run `zee doctor security --deep --strict` until the alert set is empty.
-2. Confirm `gateway.node.authorization` telemetry shows only expected allow/deny decisions after the incident.
+2. Confirm `gateway.node.authorization` diagnostics shows only expected allow/deny decisions after the incident.
 3. Record the remediation outcome in the operator incident log with the final audit output.

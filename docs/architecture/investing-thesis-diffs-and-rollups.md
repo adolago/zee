@@ -72,7 +72,7 @@ The rollup reports:
 
 Missing thesis coverage is explicit so portfolio ops can see where the thesis system still has gaps.
 
-## Telemetry
+## diagnostics
 
 This slice emits:
 
@@ -81,4 +81,4 @@ This slice emits:
 - `investing.thesis.rollup`
   - portfolio rollup generation with coverage counts and filter metadata
 
-These events complete the thesis epic metrics loop by making query usage and portfolio rollup coverage observable alongside the existing revision and confidence telemetry from `#509` and `#510`.
+These events complete the thesis epic metrics loop by making query usage and portfolio rollup coverage observable alongside the existing revision and confidence diagnostics from `#509` and `#510`.

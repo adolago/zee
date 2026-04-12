@@ -9,7 +9,7 @@
  * - Message formatters for consistent output
  * - Typography standards and utilities
  * - Status bar constants
- * - Persona-specific color mappings
+ * - Agent-specific color mappings
  * - Border/box drawing helpers
  *
  * ## Quick Start

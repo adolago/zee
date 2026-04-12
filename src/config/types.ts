@@ -273,9 +273,6 @@ export interface GeneralSettings {
   /** Cache directory */
   cacheDir?: string;
 
-  /** Enable telemetry */
-  telemetry?: boolean;
-
   /** Auto-update check */
   autoUpdate?: boolean;
 
@@ -342,7 +339,6 @@ export const DEFAULT_CONFIG: Partial<ZeeRootConfig> = {
     logLevel: "info",
     dataDir: "~/.local/share/zee",
     cacheDir: "~/.cache/zee",
-    telemetry: false,
     autoUpdate: true,
   },
 };

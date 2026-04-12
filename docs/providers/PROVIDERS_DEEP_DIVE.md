@@ -297,29 +297,16 @@ https://api.deepseek.com
 | xAI | API Key | No (X Premium) | Long context | Low |
 | DeepSeek | API Key | Yes | Cost-effective | Medium |
 | MiniMax | API Key | No | Chinese/Asian | Low |
-| Ollama | None | Free (local) | Offline/Private | Varies |
 
 ---
 
 ## Configuration Examples
 
-### Block Specific Models
-
-```json
-{
-  "provider": {
-    "openai": {
-      "blacklist": ["gpt-4o", "gpt-4o-mini"]
-    }
-  }
-}
-```
-
 ### Disable Entire Provider
 
 ```json
 {
-  "disabled_providers": ["xai", "alibaba"]
+  "disabled_providers": ["xai"]
 }
 ```
 

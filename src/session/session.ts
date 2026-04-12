@@ -384,7 +384,7 @@ export function calculateUsage(
   const cachedInputTokens = usage.cachedInputTokens ?? 0;
 
   // Some providers exclude cached tokens from input count
-  const excludesCachedTokens = !!(metadata?.['anthropic'] || metadata?.['bedrock']);
+  const excludesCachedTokens = !!metadata?.['anthropic'];
   const adjustedInputTokens = excludesCachedTokens
     ? (usage.inputTokens ?? 0)
     : (usage.inputTokens ?? 0) - cachedInputTokens;

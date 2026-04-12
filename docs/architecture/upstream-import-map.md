@@ -62,7 +62,6 @@ Observed drift summary:
 | `docs/architecture/opencode-lanes/lane-05-api-lsp-workflows.md` | Acceptance checklist complete (`3/3`) and parity harness baseline shipped (`P05-LSP-001`, `P05-SRV-001`, `P05-SES-001`, `P05-CFG-001`). | Remaining work is broader scenario depth and long-run regression stability. |
 | `docs/architecture/opencode-sync-policy.md` | Lane refresh checklist completed for this cycle. | Continue weekly/monthly cadence. |
 | `docs/architecture/feature-comparison.md` | Full feature matrix regenerated with fresh OpenCode/OpenClaw/Pi-mono pins and drift metadata. | Continue regenerating on each parity refresh. |
-| `docs/plans/rust-memory-boundary.md` | Boundary, migration phases, and verification plan documented. | Implementation has not started. |
 | `docs/architecture/upstream-import-map.md` | Active backlog now tracks `8` pending import lanes and grouped execution batches. | Execute Batch A priorities first. |
 
 ## Roadmap Refresh Note (2026-03-01)

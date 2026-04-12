@@ -1129,7 +1129,6 @@ export type ProviderConfig = {
     }
   }
   whitelist?: Array<string>
-  blacklist?: Array<string>
   options?: {
     apiKey?: string
     baseURL?: string

@@ -46,12 +46,12 @@ This document captures the reference node-client product path introduced for gat
   - state-level checks on active/revoked pair counts and policy mismatch
   - state integrity checks for unknown statuses, missing or duplicate token hashes
   - audit trail checks for missing `lastSeenAt`, `revokedAt`, or `revokeReason`
-- Both deep-audit commands emit Flux events:
+- Both deep-audit commands emit event bus events:
   - `security.audit.checked`
   - `security.audit.finding`
   - `security.audit.alert`
-- Node lifecycle routes emit Flux `gateway.node.lifecycle` events for pair, reconnect, rotate, and revoke transitions.
-- Node tool authorization emits Flux `gateway.node.authorization` events with the tool name, decision, mode, reason, and allowlist match source (`global`, `node`, `global+node`, `none`, or `policy`).
+- Node lifecycle routes emit event bus `gateway.node.lifecycle` events for pair, reconnect, rotate, and revoke transitions.
+- Node tool authorization emits event bus `gateway.node.authorization` events with the tool name, decision, mode, reason, and allowlist match source (`global`, `node`, `global+node`, `none`, or `policy`).
 - Node exposure drift alerts point operators to `docs/architecture/node-exposure-incident-runbook.md`.
 
 ## Follow-up hooks (iOS/Android)

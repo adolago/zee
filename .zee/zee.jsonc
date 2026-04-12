@@ -12,18 +12,19 @@
     "portfolio": { "enabled": true }
   },
   "memory": {
-    "qdrant": {
-      "url": "http://localhost:6333"
-    },
+    "backend": "sqlite",
     "embedding": {
-      "apiKey": "{env:GEMINI_API_KEY}"
+      "provider": "local",
+      "model": "zee-local-hash-embedding-v1",
+      "dimensions": 384
+    },
+    "localIndex": {
+      "enabled": true,
+      "backend": "sqlite-fts",
+      "degradedRead": "keyword_only"
     }
   },
   "zee": {
-    "splitwise": {
-      "enabled": true,
-      "token": "{env:SPLITWISE_TOKEN}"
-    },
     "codexbar": {
       "enabled": true
     }
@@ -42,36 +43,8 @@
       "options": {
         "baseURL": "https://api.x.ai/v1"
       }
-    },
-    "vllm": {
-      "options": {
-        "baseURL": "http://192.168.178.102:8000/v1"
-      }
-    },
-    "zee-model": {
-      "options": {
-        "baseURL": "http://192.168.178.102:8100/v1",
-        "apiKey": "local"
-      },
-      "models": {
-        "zee-qwen3-30b-phase5": {
-          "id": "zee-qwen3-30b-phase5",
-          "name": "Zee Qwen3-30B Phase 5",
-          "family": "qwen",
-          "release_date": "2026-02",
-          "attachment": false,
-          "reasoning": false,
-          "temperature": true,
-          "tool_call": false,
-          "streaming": false,
-          "limit": { "context": 4096, "output": 400 },
-          "modalities": { "input": ["text"], "output": ["text"] },
-          "options": {}
-        }
-      }
     }
   },
-  "disabled_providers": ["zai", "zhipuai", "zhipuai-coding-plan", "cerebras", "kimi-for-coding"],
   "fallback": {
     "enabled": true,
     "rules": [

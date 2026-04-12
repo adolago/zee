@@ -14,10 +14,7 @@ export const PROVIDERS = {
   anthropic: { label: "Anthropic", icon: "anthropic" },
   openai: { label: "OpenAI", icon: "openai" },
   google: { label: "Google", icon: "google" },
-  "github-copilot": { label: "GitHub Copilot", icon: "github-copilot" },
-  "amazon-bedrock": { label: "Amazon Bedrock", icon: "amazon-bedrock" },
   openrouter: { label: "OpenRouter", icon: "openrouter" },
-  "openai-compatible": { label: "OpenAI Compatible", icon: "openai" },
 } as const
 
 export const SKILL_FRONTMATTER_REQUIRED_KEYS = ["name", "description"] as const

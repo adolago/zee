@@ -89,9 +89,9 @@ zee investing thesis status --json
 
 Confidence rules and downgrade behavior are documented in `docs/architecture/investing-thesis-confidence.md`.
 
-## Telemetry
+## diagnostics
 
-Flux events emitted for this slice:
+event bus events emitted for this slice:
 
 - `investing.thesis.record`
   - emitted whenever a thesis record is created, updated, or advanced by a revision

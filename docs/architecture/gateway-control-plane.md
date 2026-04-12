@@ -107,7 +107,7 @@ Deep audit operator checks:
 - audit trail completeness: active nodes missing `lastSeenAt`, revoked nodes missing `revokedAt` or `revokeReason`
 - node exposure alerts now carry operator runbooks; see `docs/architecture/node-exposure-incident-runbook.md`
 
-Audit telemetry:
+Audit diagnostics:
 
 - `security.audit.checked`: summary event with error/warning totals plus paired-node metrics
 - `security.audit.finding`: one event per audit finding code for downstream dashboards or release gates

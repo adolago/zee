@@ -113,9 +113,9 @@ Important behaviors:
 - Connectors can override `freshnessSloMinutes`, `retryAttempts`, and `retryDelayMs`.
 - `earnings`, `transcripts`, and `news` expose bounded backfill controls for local operator workflows.
 
-## Telemetry
+## diagnostics
 
-The platform emits Flux events for dashboards and release gates:
+The platform emits event bus events for dashboards and release gates:
 
 - `investing.ingestion.schedule`
   - emitted once per enabled connector when the daemon registers schedules
@@ -134,7 +134,7 @@ Recommended operator checks:
 
 1. `zee investing ingest status --json` to inspect last-run timestamps and failure state.
 2. `zee investing entity status --json` to inspect catalog totals and lineage-source counts.
-3. Flux queries filtered to `domain=investing`.
+3. event bus queries filtered to `domain=investing`.
 4. Review `investing-ingestion.json` when reconciling connector freshness or repeated failures.
 5. Review `investing-entity-catalog.json` when reconciling canonical IDs or lineage metadata.
 6. Review `investing-ingestion-backfills.json` for operator-triggered historical recoveries.

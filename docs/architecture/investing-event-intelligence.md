@@ -95,11 +95,11 @@ Briefing outputs now consume event deltas in two places:
 3. Each classified record is enriched with materiality and coverage links using the configured holdings/watchlist context.
 4. Each enriched record is upserted by stable ID (`classified:<entity-id>`).
 5. Briefing builders select the highest-signal scored events and render stable event-delta summaries for daily and earnings-oriented outputs.
-6. Connector run telemetry includes classified-event counts, materiality-band counts, and coverage-link counts for that batch.
+6. Connector run diagnostics includes classified-event counts, materiality-band counts, and coverage-link counts for that batch.
 
-## Telemetry
+## diagnostics
 
-Flux events emitted for this slice:
+event bus events emitted for this slice:
 
 - `investing.event.classified`
   - one event per inserted or updated classified record

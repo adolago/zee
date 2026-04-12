@@ -1,7 +1,7 @@
 import { EOL } from "os"
 import { bootstrap } from "../../bootstrap"
 import { cmd } from "../cmd"
-import { measureContextTax, type ContextTaxBreakdown } from "../../../usage/context-tax"
+import { measureContextTax, type ContextTaxBreakdown } from "../../../context/context-tax"
 
 // Pricing per million tokens
 const PRICING: Record<string, { input: number; output: number }> = {

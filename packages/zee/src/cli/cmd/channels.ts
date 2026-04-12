@@ -8,11 +8,6 @@ const ChannelsListCommand = cmd({
   describe: "List configured channels + auth profiles",
   builder: (yargs) =>
     yargs
-      .option("usage", {
-        type: "boolean",
-        default: true,
-        describe: "Include model provider usage/quota snapshots",
-      })
       .option("json", {
         type: "boolean",
         default: false,

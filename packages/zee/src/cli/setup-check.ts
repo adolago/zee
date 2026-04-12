@@ -17,6 +17,7 @@ import { getLocalMemoryStatus } from "../../../../src/memory/local-runtime"
 import { Auth } from "../auth"
 import { Config } from "../config/config"
 import { ModelsDev } from "../provider/models"
+import { Provider } from "../provider/provider"
 
 const log = Log.create({ service: "setup-check" })
 
@@ -46,7 +47,6 @@ export interface SetupCheckResult {
 }
 
 const CONFIG_DISPLAY_MAX = 3
-const REMOVED_AGENT_PROVIDER_IDS = new Set(["kernel", "voyage", "splitwise", "gemini-cli"])
 const AGENT_PROVIDER_PRIORITY = [
   "google-antigravity",
   "google",
@@ -58,18 +58,6 @@ const AGENT_PROVIDER_PRIORITY = [
   "kimi-for-coding",
   "minimax",
   "xai",
-  "groq",
-  "mistral",
-  "deepinfra",
-  "cohere",
-  "togetherai",
-  "perplexity",
-  "azure",
-  "ollama",
-  "lmstudio",
-  "llamacpp",
-  "vllm",
-  "tgi",
 ] as const
 
 const FALLBACK_PROVIDER_ENV_KEYS: Record<string, string[]> = {
@@ -83,13 +71,6 @@ const FALLBACK_PROVIDER_ENV_KEYS: Record<string, string[]> = {
   minimax: ["MINIMAX_API_KEY"],
   "kimi-for-coding": ["MOONSHOT_API_KEY", "KIMI_API_KEY"],
   xai: ["XAI_API_KEY"],
-  groq: ["GROQ_API_KEY"],
-  mistral: ["MISTRAL_API_KEY"],
-  deepinfra: ["DEEPINFRA_API_KEY"],
-  cohere: ["COHERE_API_KEY"],
-  togetherai: ["TOGETHER_API_KEY"],
-  perplexity: ["PERPLEXITY_API_KEY"],
-  azure: ["AZURE_OPENAI_API_KEY"],
 }
 
 export interface AgentProviderSetupStatus {
@@ -210,15 +191,17 @@ function readConfigProviderAuth(providerConfig: unknown): boolean {
 }
 
 export async function checkAgentProviderReady(): Promise<AgentProviderSetupStatus> {
-  const [auth, config, models] = await Promise.all([
+  const [authRaw, config, modelsRaw] = await Promise.all([
     Auth.all().catch(() => ({})),
     Config.get().catch(() => undefined),
     ModelsDev.get().catch(() => ({})),
   ])
+  const auth = authRaw as Record<string, Auth.Info>
+  const models = modelsRaw as Record<string, ModelsDev.Provider>
 
   const modelProviderIds = new Set(
     Object.entries(models)
-      .filter(([id, provider]) => !REMOVED_AGENT_PROVIDER_IDS.has(id) && Object.keys(provider.models ?? {}).length > 0)
+      .filter(([id, provider]) => Provider.isCoreProvider(id) && Object.keys(provider.models ?? {}).length > 0)
       .map(([id]) => id),
   )
 
@@ -229,7 +212,7 @@ export async function checkAgentProviderReady(): Promise<AgentProviderSetupStatu
     ...configProviders,
     ...authProviders,
     ...modelProviderIds,
-  ].filter((id, index, all) => all.indexOf(id) === index && !REMOVED_AGENT_PROVIDER_IDS.has(id))
+  ].filter((id, index, all) => all.indexOf(id) === index && Provider.isCoreProvider(id))
 
   for (const providerId of candidates) {
     if (!modelProviderIds.has(providerId) && !configProviders.includes(providerId) && !authProviders.includes(providerId)) {

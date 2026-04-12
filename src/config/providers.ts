@@ -34,7 +34,7 @@ export interface ProviderDefinition {
   envAliases?: string[];
   /** Base URL (if configurable) */
   baseUrl?: string;
-  /** Whether provider requires local server (vLLM, Ollama) */
+  /** Whether provider is satisfied by a local service. */
   local?: boolean;
   /** Auth type */
   authType: "api" | "oauth" | "service-account" | "none";

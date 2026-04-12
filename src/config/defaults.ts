@@ -33,12 +33,14 @@ export const DEFAULT_PROVIDERS: Record<string, ProviderConfig> = {
   google: {
     timeout: 300000,
   },
-  groq: {
-    timeout: 60000, // 1 minute (fast inference)
+  openrouter: {
+    timeout: 300000,
   },
-  ollama: {
-    baseURL: 'http://localhost:11434',
-    timeout: 600000, // 10 minutes (local models can be slow)
+  deepseek: {
+    timeout: 300000,
+  },
+  xai: {
+    timeout: 300000,
   },
 };
 
@@ -222,7 +224,6 @@ export const DEFAULT_CONFIG: Config = {
   // Experimental features
   experimental: {
     batchTool: false,
-    openTelemetry: false,
     continueOnDeny: false,
   },
 };
@@ -269,7 +270,7 @@ export const MODEL_FALLBACK_CHAIN = [
   'anthropic/claude-sonnet-4-20250514',
   'anthropic/claude-3-5-sonnet-20241022',
   'openai/gpt-4o',
-  'groq/llama-3.3-70b-versatile',
+  'google/gemini-3-pro-preview',
 ];
 
 /**
@@ -279,7 +280,7 @@ export const SMALL_MODEL_FALLBACK_CHAIN = [
   'anthropic/claude-haiku-4-20250514',
   'anthropic/claude-3-5-haiku-20241022',
   'openai/gpt-4o-mini',
-  'groq/llama-3.1-8b-instant',
+  'google/gemini-3-flash-preview',
 ];
 
 // ============================================================================
@@ -301,7 +302,9 @@ export const ENV_VAR_MAPPING: Record<string, string> = {
   'ANTHROPIC_API_KEY': 'provider.anthropic.apiKey',
   'OPENAI_API_KEY': 'provider.openai.apiKey',
   'GOOGLE_API_KEY': 'provider.google.apiKey',
-  'GROQ_API_KEY': 'provider.groq.apiKey',
+  'OPENROUTER_API_KEY': 'provider.openrouter.apiKey',
+  'DEEPSEEK_API_KEY': 'provider.deepseek.apiKey',
+  'XAI_API_KEY': 'provider.xai.apiKey',
 
   // Surface-specific
   'ZEE_WHATSAPP_SESSION': 'surface.zee.sessionName',

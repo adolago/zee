@@ -46,7 +46,6 @@ import { createAdapter } from "@zee/adapter"
 
 const adapter = createAdapter({
   zeeUrl: "http://127.0.0.1:3210",
-  defaultPersona: "zee",
   theme: "tui",
 })
 
@@ -92,7 +91,7 @@ Apply `theme-tui` class or `data-theme="tui"` attribute to enable the TUI look:
 
 Translates OpenCode sessions to Zee format:
 
-- `create()` - Create new sessions with persona routing
+- `create()` - Create new sessions routed through Zee
 - `get()` - Fetch session by ID
 - `list()` - List sessions with filters
 - `delete()` - Remove sessions
@@ -117,7 +116,7 @@ Maps OpenCode tools to Zee equivalents:
 Syncs configuration between systems:
 
 - Model selection
-- Persona/agent mapping
+- Zee agent mapping
 - Permission handling
 - UI preferences
 

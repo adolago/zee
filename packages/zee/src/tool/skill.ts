@@ -70,15 +70,6 @@ export const SkillTool = Tool.define<any, SkillMetadata>("skill", async (ctx) =>
 
         const output = [`## Skill: ${skill.name}`, "", `**Base directory**: ${dir}`, "", content.trim()].join("\n")
 
-        const userQuery = extractLatestUserText(ctx.messages)
-        if (userQuery) {
-          await Skill.recordUsage({
-            query: userQuery,
-            skill: skill.name,
-            outcome: "success",
-          }).catch(() => {})
-        }
-
         return {
           title: `Loaded skill: ${skill.name}`,
           output,
@@ -151,24 +142,4 @@ function buildCompactDescription(skills: Skill.AnnotatedInfo[]): string {
   }
 
   return lines.join("\n")
-}
-
-function extractLatestUserText(messages: unknown): string {
-  if (!Array.isArray(messages)) return ""
-
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i] as any
-    if (msg?.info?.role !== "user" || !Array.isArray(msg?.parts)) continue
-
-    const text = msg.parts
-      .filter((part: any) => part?.type === "text" && typeof part?.text === "string")
-      .map((part: any) => part.text.trim())
-      .filter(Boolean)
-      .join("\n")
-      .trim()
-
-    if (text) return text
-  }
-
-  return ""
 }

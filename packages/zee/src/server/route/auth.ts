@@ -4,9 +4,6 @@ import { z } from "zod"
 import { Auth } from "../../auth"
 import { Provider } from "../../provider/provider"
 import { errors } from "../error"
-import { FluxRecorder } from "@/flux"
-import { RequestMeta } from "../request-meta"
-import { recordPiMonoShimUsage } from "@/runtime/pimono-shim"
 import { Flag } from "@/flag/flag"
 
 export const AuthRoute = new Hono()
@@ -48,27 +45,10 @@ export const AuthRoute = new Hono()
     async (c) => {
       const providerID = c.req.valid("param").providerID
       const body = c.req.valid("json")
-      const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
-      const requestID = RequestMeta.getRequestID(c.req.raw)
 
       if (body) {
         const usedLegacyPayload = !("type" in body) && "api_key" in body
         if (usedLegacyPayload && Flag.ZEE_NO_NEW_LEGACY) {
-          FluxRecorder.record({
-            traceID,
-            requestID,
-            providerID,
-            direction: "internal",
-            domain: "auth",
-            kind: "auth.legacy_payload.rejected",
-            status: "denied",
-            route: "/auth/:providerID",
-            method: "PUT",
-            metadata: {
-              payloadShape: "api_key",
-              reason: "legacy_interface_disabled",
-            },
-          })
           return c.json(
             {
               success: false,
@@ -89,49 +69,6 @@ export const AuthRoute = new Hono()
 
         if (auth) {
           await Auth.set(providerID, auth)
-          FluxRecorder.record({
-            traceID,
-            requestID,
-            providerID,
-            direction: "internal",
-            domain: "auth",
-            kind: "secret.resolved",
-            status: "ok",
-            route: "/auth/:providerID",
-            method: "PUT",
-            metadata: {
-              source: "api:auth.set",
-              authType: auth.type,
-            },
-          })
-          if (usedLegacyPayload) {
-            recordPiMonoShimUsage({
-              boundaryID: "server.auth.api-key-payload",
-              traceID,
-              requestID,
-              providerID,
-              dedupeKey: requestID ?? traceID,
-              metadata: {
-                route: "/auth/:providerID",
-                method: "PUT",
-                payloadShape: "api_key",
-              },
-            })
-            FluxRecorder.record({
-              traceID,
-              requestID,
-              providerID,
-              direction: "internal",
-              domain: "auth",
-              kind: "auth.legacy_payload.accepted",
-              status: "ok",
-              route: "/auth/:providerID",
-              method: "PUT",
-              metadata: {
-                payloadShape: "api_key",
-              },
-            })
-          }
         }
       }
       await Provider.reload()
@@ -141,21 +78,6 @@ export const AuthRoute = new Hono()
         await Auth.remove(providerID)
         await Provider.reload()
         const message = error instanceof Error ? error.message : String(error)
-        FluxRecorder.record({
-          traceID,
-          requestID,
-          providerID,
-          direction: "internal",
-          domain: "auth",
-          kind: "event",
-          status: "error",
-          route: "/auth/:providerID",
-          method: "PUT",
-          error: {
-            code: "auth_validation_failed",
-            message,
-          },
-        })
         return c.json({ data: null, errors: [{ message, daemonPid: process.pid }], success: false }, 400)
       }
       return c.json(true)
@@ -187,24 +109,8 @@ export const AuthRoute = new Hono()
     ),
     async (c) => {
       const providerID = c.req.valid("param").providerID
-      const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
-      const requestID = RequestMeta.getRequestID(c.req.raw)
       await Auth.remove(providerID)
       await Provider.reload()
-      FluxRecorder.record({
-        traceID,
-        requestID,
-        providerID,
-        direction: "internal",
-        domain: "auth",
-        kind: "event",
-        status: "ok",
-        route: "/auth/:providerID",
-        method: "DELETE",
-        metadata: {
-          action: "auth.remove",
-        },
-      })
       return c.json(true)
     },
   )

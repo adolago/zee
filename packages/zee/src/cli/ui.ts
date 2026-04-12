@@ -135,7 +135,7 @@ export namespace UI {
   export const themeToAnsi = themeToAnsiImpl
 
   /**
-   * Persona-specific colors
+   * Agent-specific colors
    * @deprecated Use direct import: `import { assistantColors } from "@/cli"`
    */
   export const assistantColors = assistantColorsImpl

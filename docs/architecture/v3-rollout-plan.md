@@ -49,7 +49,7 @@ Forward promotion is blocked unless the consolidated `v3-release-gate` report is
 
 Rollback to `paused` is always allowed.
 
-## Telemetry
+## diagnostics
 
 This slice emits:
 

@@ -384,8 +384,6 @@ export const ConfigSchema = z.object({
   experimental: z.object({
     /** Enable batch tool */
     batchTool: z.boolean().optional(),
-    /** Enable OpenTelemetry */
-    openTelemetry: z.boolean().optional(),
     /** Continue agent loop on tool denial */
     continueOnDeny: z.boolean().optional(),
     /** Primary-only tools */

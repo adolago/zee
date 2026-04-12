@@ -30,7 +30,7 @@ Exit criteria:
 
 - Ship OpenCode runtime adapter and route command execution through it.
 - Add compatibility shims for legacy pi-mono interfaces.
-- Add telemetry for parity gaps and fallback usage.
+- Add diagnostics for parity gaps and fallback usage.
 
 Exit criteria:
 - Primary CLI and orchestration paths can run in OpenCode mode.
@@ -53,7 +53,7 @@ Exit criteria:
 - Build ingestion and normalization for filings, earnings, transcripts, price/volume, macro, and news.
 - Persist unified research memory graph with queryable lineage.
 - Standardize identifier strategy across instruments and sources.
-- Operator runbook for connector scheduling and telemetry: `docs/architecture/investing-ingestion-platform.md`.
+- Operator runbook for connector scheduling and diagnostics: `docs/architecture/investing-ingestion-platform.md`.
 - Canonical entity and lineage contract: `docs/architecture/investing-entity-schema.md`.
 - Reliability and backfill runbook: `docs/architecture/investing-data-reliability.md`.
 

@@ -1,13 +1,9 @@
-import { FluxRecorder } from "@/flux"
 import { Log } from "@/util/log"
 import { PIMONO_COMPAT_BOUNDARIES, type PiMonoCompatBoundary } from "./pimono-compat"
 
 const log = Log.create({ service: "runtime:pimono-shim" })
 
 const warnedBoundaries = new Set<string>()
-const recordedBoundaryKeys = new Set<string>()
-
-export const PIMONO_SHIM_FLUX_KIND = "compat.shim.used"
 
 function resolveBoundary(boundaryID: string): PiMonoCompatBoundary {
   const boundary = PIMONO_COMPAT_BOUNDARIES.find((item) => item.id === boundaryID)
@@ -41,35 +37,6 @@ export function recordPiMonoShimUsage(input: {
       exitPath: boundary.exitPath,
     })
   }
-
-  const traceID = input.traceID ?? input.requestID ?? input.messageID ?? input.sessionID ?? boundary.id
-  const recordKey = [boundary.id, input.dedupeKey ?? traceID].join(":")
-  if (recordedBoundaryKeys.has(recordKey)) {
-    return boundary
-  }
-  recordedBoundaryKeys.add(recordKey)
-
-  FluxRecorder.record({
-    traceID,
-    requestID: input.requestID,
-    sessionID: input.sessionID,
-    messageID: input.messageID,
-    providerID: input.providerID,
-    modelID: input.modelID,
-    direction: "internal",
-    domain: "domain",
-    kind: PIMONO_SHIM_FLUX_KIND,
-    status: "ok",
-    metadata: {
-      boundaryID: boundary.id,
-      surface: boundary.surface,
-      boundaryKind: boundary.kind,
-      boundaryStatus: boundary.status,
-      legacyInterface: boundary.legacyInterface,
-      exitPath: boundary.exitPath,
-      ...input.metadata,
-    },
-  })
 
   return boundary
 }

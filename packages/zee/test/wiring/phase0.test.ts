@@ -2,8 +2,8 @@
  * Wiring Plan - Phase 0 Acceptance Tests
  *
  * These tests verify that the wiring implementations are in place:
- * 1. Tool registry lists Johny tools when persona=johny
- * 2. Tool registry lists WhatsApp tools when persona=zee
+ * 1. Learning tools are exported
+ * 2. Zee tools include WhatsApp
  * 3. Memory search uses local-only retrieval without reranker wiring
  * 4. Retry logic has no secret leakage vectors
  * 5. No orphaned imports from deleted files
@@ -48,7 +48,7 @@ describe("wiring.phase0", () => {
   // Test 2: Zee WhatsApp tools are exported
   // ============================================================================
   describe("zee tools", () => {
-    test(" Zee domain exports WhatsApp tools without Splitwise", async () => {
+    test(" Zee domain exports WhatsApp tools", async () => {
       // Read the Zee tools source file
       const zeeToolsPath = path.join(process.cwd(), "../../src/domain/zee/tools.ts")
       const content = await fs.readFile(zeeToolsPath, "utf-8")
@@ -57,8 +57,6 @@ describe("wiring.phase0", () => {
       expect(content).toContain('import { WHATSAPP_TOOLS } from "./whatsapp.js"')
       // Should include WhatsApp tools in the export
       expect(content).toContain("...WHATSAPP_TOOLS")
-
-      expect(content).not.toContain('id: "zee:splitwise"')
 
       // Should export ZEE_TOOLS array with all tools
       expect(content).toContain("export const ZEE_TOOLS")

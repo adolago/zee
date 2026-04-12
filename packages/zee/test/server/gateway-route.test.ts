@@ -2,7 +2,6 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:tes
 import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
-import { FluxRecorder } from "../../src/flux"
 import { Log } from "../../src/util/log"
 import { Server } from "../../src/server/server"
 
@@ -151,10 +150,6 @@ describe.skipIf(!bunServeSupported)("gateway routes", () => {
         ok: true,
         payload: { ok: true, uptimeMs: 1200 },
       },
-      usage: {
-        ok: true,
-        payload: { sent: 12, received: 7 },
-      },
     }
   })
 
@@ -163,7 +158,6 @@ describe.skipIf(!bunServeSupported)("gateway routes", () => {
     const previousWacliBin = process.env.ZEE_WACLI_BIN
 
     try {
-      const before = FluxRecorder.list({ kind: "gateway.fallback.invoked" }).total
       process.env.ZEE_GATEWAY_URL = "ws://127.0.0.1:1"
       delete process.env.ZEE_GATEWAY_PORT
 
@@ -190,7 +184,6 @@ describe.skipIf(!bunServeSupported)("gateway routes", () => {
       expect(data.data.provider).toBe("wacli")
       expect(Array.isArray(data.data.results)).toBe(true)
       expect(data.data.results.length).toBeGreaterThan(0)
-      expect(FluxRecorder.list({ kind: "gateway.fallback.invoked" }).total).toBe(before + 1)
     } finally {
       if (previousGatewayUrl === undefined) delete process.env.ZEE_GATEWAY_URL
       else process.env.ZEE_GATEWAY_URL = previousGatewayUrl
@@ -341,31 +334,6 @@ describe.skipIf(!bunServeSupported)("gateway routes", () => {
     const data = await response.json()
     expect(data.success).toBe(true)
     expect(data.data).toEqual({ ok: true, uptimeMs: 1200 })
-  })
-
-  test("GET /gateway/usage bridges to usage", async () => {
-    const app = Server.App()
-    const response = await app.request("/gateway/usage")
-
-    expect(response.status).toBe(200)
-    const data = await response.json()
-    expect(data.success).toBe(true)
-    expect(data.data).toEqual({ sent: 12, received: 7 })
-  })
-
-  test("GET /gateway/usage returns 500 when usage method fails", async () => {
-    methodResponses.usage = {
-      ok: false,
-      error: { code: "downstream_error", message: "usage unavailable" },
-    }
-
-    const app = Server.App()
-    const response = await app.request("/gateway/usage")
-
-    expect(response.status).toBe(500)
-    const data = await response.json()
-    expect(data.success).toBe(false)
-    expect(data.error).toContain("usage unavailable")
   })
 
   test("POST /gateway/whatsapp/send requires gateway auth when secret is configured", async () => {

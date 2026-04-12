@@ -308,7 +308,7 @@ function getEnabledServices(_agentName: string): string[] {
   try {
     const codexbar = getZeeCodexbarConfig()
     if (codexbar.enabled) {
-      services.push("CodexBar (usage tracking)")
+      services.push("CodexBar")
     }
   } catch {
     // Config not available

@@ -68,8 +68,7 @@ export namespace ProviderTransform {
   }
 
   function normalizeMessages(msgs: ModelMessage[], model: Provider.Model): ModelMessage[] {
-    const isAnthropicSdk =
-      model.api.npm === "@ai-sdk/anthropic" || model.api.npm === "@ai-sdk/google-vertex/anthropic"
+    const isAnthropicSdk = model.api.npm === "@ai-sdk/anthropic"
 
     // Anthropic rejects messages with empty content - filter out empty string messages
     // and remove empty text/reasoning parts from array content
@@ -187,18 +186,16 @@ export namespace ProviderTransform {
 
     // Catch-all: strip reasoning parts for providers that don't handle them natively.
     // - @ai-sdk/anthropic: handles reasoning parts natively (handled above)
-    // - @ai-sdk/openai-compatible, @ai-sdk/cerebras: SDK converts reasoning parts to
+    // - @ai-sdk/openai-compatible: SDK converts reasoning parts to
     //   reasoning_content field in the API request body -- leave them intact
-    // - @ai-sdk/google-vertex, @openrouter/ai-sdk-provider: do NOT
-    //   understand reasoning content parts and will error or silently drop them
+    // - @openrouter/ai-sdk-provider and unknown provider SDKs may not understand
+    //   reasoning parts and will error or silently drop them.
     const REASONING_AWARE_SDKS = new Set([
       "@ai-sdk/anthropic",
-      "@ai-sdk/google-vertex/anthropic",
       "@ai-sdk/openai-compatible",
-      "@ai-sdk/cerebras",
       "@ai-sdk/openai",
-      "@ai-sdk/azure",
-      "@ai-sdk/amazon-bedrock",
+      "@ai-sdk/google",
+      "@ai-sdk/xai",
     ])
 
     if (!REASONING_AWARE_SDKS.has(model.api.npm)) {
@@ -219,8 +216,7 @@ export namespace ProviderTransform {
   function applyCaching(msgs: ModelMessage[], model: Provider.Model): ModelMessage[] {
     const system = msgs.filter((msg) => msg.role === "system").slice(0, 2)
     const final = msgs.filter((msg) => msg.role !== "system").slice(-2)
-    const isAnthropicSdk =
-      model.api.npm === "@ai-sdk/anthropic" || model.api.npm === "@ai-sdk/google-vertex/anthropic"
+    const isAnthropicSdk = model.api.npm === "@ai-sdk/anthropic"
 
     const providerOptions: ProviderOptions = {
       anthropic: {
@@ -229,16 +225,13 @@ export namespace ProviderTransform {
       openrouter: {
         cacheControl: { type: "ephemeral" },
       },
-      bedrock: {
-        cachePoint: { type: "default" },
-      },
       openaiCompatible: {
         cache_control: { type: "ephemeral" },
       },
     }
 
     for (const msg of unique([...system, ...final])) {
-      const useMessageLevelOptions = isAnthropicSdk || model.providerID.includes("bedrock")
+      const useMessageLevelOptions = isAnthropicSdk
       const shouldUseContentOptions = !useMessageLevelOptions && Array.isArray(msg.content) && msg.content.length > 0
 
       if (shouldUseContentOptions) {
@@ -397,8 +390,8 @@ export namespace ProviderTransform {
 
     const id = model.id.toLowerCase()
 
-    // GLM models only support variants when using Z.AI/ZhipuAI or Cerebras
-    if (id.includes("glm") && !model.providerID.includes("zai") && model.api.npm !== "@ai-sdk/cerebras") {
+    // GLM models only support variants when using Z.AI/ZhipuAI.
+    if (id.includes("glm") && !model.providerID.includes("zai")) {
       return {}
     }
 
@@ -422,17 +415,6 @@ export namespace ProviderTransform {
         if (!model.id.includes("gpt") && !model.id.includes("gemini-3")) return {}
         return Object.fromEntries(WIDELY_SUPPORTED_EFFORTS.map((effort) => [effort, { reasoning: { effort } }]))
 
-      case "@ai-sdk/gateway":
-        return Object.fromEntries(OPENAI_EFFORTS.map((effort) => [effort, { reasoningEffort: effort }]))
-
-      case "@ai-sdk/cerebras":
-        // Cerebras GLM: reasoning is on by default, no budget control via SDK
-        // Only GPT-OSS supports reasoningEffort on Cerebras
-        if (id.includes("glm")) return {}
-        return Object.fromEntries(WIDELY_SUPPORTED_EFFORTS.map((effort) => [effort, { reasoningEffort: effort }]))
-
-      case "@ai-sdk/togetherai":
-      case "@ai-sdk/deepinfra":
       case "@ai-sdk/openai-compatible":
         if (model.providerID.includes("zai")) {
           return {
@@ -500,21 +482,6 @@ export namespace ProviderTransform {
         if (!id.includes("grok-3-mini")) return {}
         return Object.fromEntries(XAI_CHAT_EFFORTS.map((effort) => [effort, { reasoningEffort: effort }]))
 
-      case "@ai-sdk/azure": {
-        if (id === "o1-mini") return {}
-        const azureEfforts = ["low", "medium", "high"]
-        return Object.fromEntries(
-          azureEfforts.map((effort) => [
-            effort,
-            {
-              reasoningEffort: effort,
-              reasoningSummary: "auto",
-              include: ["reasoning.encrypted_content"],
-            },
-          ]),
-        )
-      }
-
       case "@ai-sdk/openai":
         // https://v5.ai-sdk.dev/providers/ai-sdk-providers/openai
         if (id === "gpt-5-pro") return {}
@@ -565,7 +532,6 @@ export namespace ProviderTransform {
         )
 
       case "@ai-sdk/anthropic":
-      case "@ai-sdk/google-vertex/anthropic":
         // https://v5.ai-sdk.dev/providers/ai-sdk-providers/anthropic
         return {
           low: {
@@ -594,49 +560,7 @@ export namespace ProviderTransform {
           },
         }
 
-      case "@ai-sdk/amazon-bedrock":
-        // https://v5.ai-sdk.dev/providers/ai-sdk-providers/amazon-bedrock
-        if (model.api.id.includes("anthropic")) {
-          return {
-            low: {
-              reasoningConfig: {
-                type: "enabled",
-                budgetTokens: THINKING_BUDGETS.low,
-              },
-            },
-            medium: {
-              reasoningConfig: {
-                type: "enabled",
-                budgetTokens: THINKING_BUDGETS.medium,
-              },
-            },
-            high: {
-              reasoningConfig: {
-                type: "enabled",
-                budgetTokens: THINKING_BUDGETS.high,
-              },
-            },
-            max: {
-              reasoningConfig: {
-                type: "enabled",
-                budgetTokens: THINKING_BUDGETS.max,
-              },
-            },
-          }
-        }
-        return Object.fromEntries(
-          WIDELY_SUPPORTED_EFFORTS.map((effort) => [
-            effort,
-            {
-              reasoningConfig: {
-                type: "enabled",
-                maxReasoningEffort: effort,
-              },
-            },
-          ]),
-        )
-
-      case "@ai-sdk/google-vertex":
+      case "@ai-sdk/google":
         // https://v5.ai-sdk.dev/providers/ai-sdk-providers/google-generative-ai
         if (id.includes("2.5")) {
           return {
@@ -690,35 +614,6 @@ export namespace ProviderTransform {
             },
           ]),
         )
-
-      case "@ai-sdk/mistral":
-        // https://v5.ai-sdk.dev/providers/ai-sdk-providers/mistral
-        return {}
-
-      case "@ai-sdk/cohere":
-        // https://v5.ai-sdk.dev/providers/ai-sdk-providers/cohere
-        return {}
-
-      case "@ai-sdk/groq": {
-        // https://ai-sdk.dev/providers/ai-sdk-providers/groq
-        // qwen/qwen3-32b supports `none` and `default`.
-        if (id.includes("qwen3-32b")) {
-          return {
-            none: { reasoningEffort: "none" },
-            default: { reasoningEffort: "default" },
-          }
-        }
-        // openai/gpt-oss-* supports low|medium|high.
-        if (id.includes("gpt-oss")) {
-          return Object.fromEntries(WIDELY_SUPPORTED_EFFORTS.map((effort) => [effort, { reasoningEffort: effort }]))
-        }
-        // Other Groq reasoning models expose reasoning but do not document effort controls.
-        return {}
-      }
-
-      case "@ai-sdk/perplexity":
-        // https://v5.ai-sdk.dev/providers/ai-sdk-providers/perplexity
-        return {}
     }
     return {}
   }
@@ -745,11 +640,6 @@ export namespace ProviderTransform {
       }
     }
 
-    // Enable thinking mode for Baseten models - use chat_template_args
-    if (input.model.providerID === "baseten") {
-      result["chat_template_args"] = { enable_thinking: true }
-    }
-
     // Enable thinking mode for Z.AI/ZhipuAI models
     // Use .includes() to match provider IDs like "zai-coding-plan"
     if (
@@ -766,7 +656,7 @@ export namespace ProviderTransform {
       result["promptCacheKey"] = cacheKey
     }
 
-    if (input.model.api.npm === "@ai-sdk/google-vertex") {
+    if (input.model.api.npm === "@ai-sdk/google") {
       result["thinkingConfig"] = {
         includeThoughts: true,
       }
@@ -789,8 +679,7 @@ export namespace ProviderTransform {
       if (
         input.model.api.id.includes("gpt-5.") &&
         !input.model.api.id.includes("codex") &&
-        !input.model.api.id.includes("-chat") &&
-        input.model.providerID !== "azure"
+        !input.model.api.id.includes("-chat")
       ) {
         result["textVerbosity"] = "low"
       }
@@ -805,9 +694,6 @@ export namespace ProviderTransform {
       }
     }
 
-    if (input.model.providerID === "venice") {
-      result["promptCacheKey"] = cacheKey
-    }
     return result
   }
 
@@ -889,6 +775,18 @@ export namespace ProviderTransform {
     ]),
 
     // ═══════════════════════════════════════════════════════════════════════
+    // OPENROUTER (explicitly retained router)
+    // ═══════════════════════════════════════════════════════════════════════
+    "@openrouter/ai-sdk-provider": new Set([
+      "usage",
+      "reasoning",
+      "reasoningEffort",
+      "provider",
+      "transforms",
+      "route",
+    ]),
+
+    // ═══════════════════════════════════════════════════════════════════════
     // OPENAI (GPT-4, o1, o3-mini models)
     // ═══════════════════════════════════════════════════════════════════════
     "@ai-sdk/openai": new Set([
@@ -928,27 +826,6 @@ export namespace ProviderTransform {
     ]),
 
     // ═══════════════════════════════════════════════════════════════════════
-    // OPENROUTER (Multi-provider gateway)
-    // ═══════════════════════════════════════════════════════════════════════
-    "@openrouter/ai-sdk-provider": new Set([
-      // Usage tracking
-      "usage", // Include token usage in response
-
-      // Reasoning (passed to underlying provider)
-      "reasoning", // Enable reasoning mode
-      "reasoningEffort", // Passed to underlying model if supported
-
-      // Provider routing
-      "provider", // { order: string[], allow_fallbacks: boolean }
-
-      // Transforms
-      "transforms", // ["middle-out"] for prompt compression
-
-      // Model routing
-      "route", // "fallback" for automatic fallback routing
-    ]),
-
-    // ═══════════════════════════════════════════════════════════════════════
     // Z.AI / ZHIPUAI (GLM models via OpenAI-compatible API)
     // Uses @ai-sdk/openai-compatible but with specific param support
     // ═══════════════════════════════════════════════════════════════════════
@@ -956,21 +833,7 @@ export namespace ProviderTransform {
     // in the transform.ts options() function for zai/zhipuai providers
 
     // ═══════════════════════════════════════════════════════════════════════
-    // CEREBRAS (GLM, GPT-OSS, Qwen, Llama via Cerebras Wafer-Scale Engine)
-    // ═══════════════════════════════════════════════════════════════════════
-    "@ai-sdk/cerebras": new Set([
-      // Reasoning (GPT-OSS: "low" | "medium" | "high")
-      "reasoningEffort",
-
-      // User identification
-      "user",
-
-      // Structured output (constrained decoding)
-      "strictJsonSchema",
-    ]),
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // OPENAI-COMPATIBLE (Generic - Ollama, LM Studio, etc.)
+    // OPENAI-COMPATIBLE (DeepSeek, Kimi, Z.AI, MiniMax coding plan)
     // ═══════════════════════════════════════════════════════════════════════
     "@ai-sdk/openai-compatible": new Set([
       // Thinking (DeepSeek R1, Qwen, etc.)
@@ -1110,7 +973,7 @@ export namespace ProviderTransform {
       }
     }
 
-    if (npm === "@ai-sdk/anthropic" || npm === "@ai-sdk/google-vertex/anthropic") {
+    if (npm === "@ai-sdk/anthropic") {
       const thinking = options?.["thinking"]
       const budgetTokens = typeof thinking?.["budgetTokens"] === "number" ? thinking["budgetTokens"] : 0
       const enabled = thinking?.["type"] === "enabled"
@@ -1133,24 +996,6 @@ export namespace ProviderTransform {
   }
 
   export function schema(model: Provider.Model, schema: JSONSchema.BaseSchema | JSONSchema7): JSONSchema7 {
-    /*
-    if (["openai", "azure"].includes(providerID)) {
-      if (schema.type === "object" && schema.properties) {
-        for (const [key, value] of Object.entries(schema.properties)) {
-          if (schema.required?.includes(key)) continue
-          schema.properties[key] = {
-            anyOf: [
-              value as JSONSchema.JSONSchema,
-              {
-                type: "null",
-              },
-            ],
-          }
-        }
-      }
-    }
-    */
-
     // Convert integer enums to string enums for Gemini-family APIs.
     if (model.api.id.includes("gemini")) {
       const sanitizeGemini = (obj: any): any => {

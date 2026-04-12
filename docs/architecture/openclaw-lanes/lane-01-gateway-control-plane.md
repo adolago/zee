@@ -13,7 +13,7 @@ This lane covers gateway/auth/event-surface deltas between OpenClaw and Zee and 
 | `openclaw#9518` (auth for canvas host/A2UI assets) | `adapt` | Zee does not ship identical canvas host surface but must enforce equivalent route auth posture. | Auth and gateway route hardening is present in current server route + scoped auth model. |
 | `openclaw#9858` (credential redaction in config responses) | `port` | Direct security parity requirement for control plane API responses. | Zee config redaction path is present and retained as required behavior. |
 | `openclaw#9806` (skill/plugin safety scanner) | `adapt` | Scanner exists in different package topology and plugin model in Zee. | Keep scanner/security checks in Zee-specific security lane; do not mirror path layout 1:1. |
-| `openclaw#10072` (web token-usage dashboard) | `adapt` | Product-surface/UI divergence; preserve operational data exposure via Zee routes. | Zee web/control-ui path exposes health/gateway/usage primitives through API. |
+| `openclaw#10072` (web dashboard) | `drop` | Zee no longer exposes request metering dashboards or usage APIs. | Keep health and gateway primitives only. |
 | `openclaw#10000` (session history payload capping) | `port` | Safety/correctness requirement independent of product branding. | Maintain bounded payload behavior in session/API responses and regression tests. |
 | `openclaw#10776` (cron/store hardening) | `adapt` | Cross-lane coupling with background jobs and persistence details. | Track implementation in cron/reliability lane; keep lane-01 assumptions explicit. |
 | `openclaw#9436` (hook token URL param cleanup) | `port` | Request/auth surface hygiene applies directly. | Track as auth/hook hygiene parity in gateway route/hook plumbing. |

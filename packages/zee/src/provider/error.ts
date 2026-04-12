@@ -6,17 +6,15 @@ export namespace ProviderError {
   // Context overflow detection patterns across multiple providers
   const OVERFLOW_PATTERNS = [
     /prompt is too long/i, // Anthropic
-    /input is too long for requested model/i, // Amazon Bedrock
+    /input is too long for requested model/i,
     /exceeds the context window/i, // OpenAI (Completions + Responses API message text)
     /input token count.*exceeds the maximum/i, // Google (Gemini)
     /maximum prompt length is \d+/i, // xAI (Grok)
-    /reduce the length of the messages/i, // Groq
+    /reduce the length of the messages/i,
     /maximum context length is \d+ tokens/i, // OpenRouter, DeepSeek
-    /exceeds the limit of \d+/i, // GitHub Copilot
-    /exceeds the available context size/i, // llama.cpp server
-    /greater than the context length/i, // LM Studio
+    /exceeds the limit of \d+/i,
     /context window exceeds limit/i, // MiniMax
-    /exceeded model token limit/i, // Kimi For Coding, Moonshot
+    /exceeded model token limit/i, // Kimi For Coding
     /context[_ ]length[_ ]exceeded/i, // Generic fallback
   ]
 
@@ -28,14 +26,10 @@ export namespace ProviderError {
 
   function isOverflow(message: string) {
     if (OVERFLOW_PATTERNS.some((p) => p.test(message))) return true
-    // Cerebras/Mistral: often returns "400 (no body)" / "413 (no body)"
     return /^4(00|13)\s*(status code)?\s*\(no body\)/i.test(message)
   }
 
   function error(providerID: string, error: APICallError) {
-    if (providerID.includes("github-copilot") && error.statusCode === 403) {
-      return "Please reauthenticate with the copilot provider."
-    }
     return error.message
   }
 

@@ -59,8 +59,6 @@ export function initDb() {
       status TEXT NOT NULL,
       billing_customer_id TEXT,
       billing_portal_url TEXT,
-      usage_cap_requests INTEGER,
-      usage_cap_tokens INTEGER,
       created_at INTEGER NOT NULL,
       FOREIGN KEY(org_id) REFERENCES orgs(id) ON DELETE CASCADE
     );
@@ -109,26 +107,6 @@ export function initDb() {
       state TEXT PRIMARY KEY,
       provider_id TEXT NOT NULL,
       workspace_id TEXT NOT NULL,
-      created_at INTEGER NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS usage_events (
-      id TEXT PRIMARY KEY,
-      workspace_id TEXT NOT NULL,
-      provider_id TEXT,
-      model TEXT,
-      tokens INTEGER,
-      requests INTEGER,
-      metadata TEXT,
-      created_at INTEGER NOT NULL,
-      FOREIGN KEY(workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS telemetry_events (
-      id TEXT PRIMARY KEY,
-      workspace_id TEXT,
-      kind TEXT NOT NULL,
-      payload TEXT,
       created_at INTEGER NOT NULL
     );
 

@@ -1,6 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
-import { FluxRecorder } from "@/flux"
 import { resolveConfigDir, resolveStateDir } from "@/global/dirs"
 import { collectV3ReleaseReport, type V3ReleaseReport } from "@/runtime/v3-release"
 import type { RuntimeContractSurface } from "./opencode-contract"
@@ -49,17 +48,14 @@ export interface V3RolloutReport {
   restartCommand: string
   managedEnv: Record<string, string>
   runtimeParityReady: boolean
-  telemetry: {
-    kind: "release.v3.rollout"
-    metrics: {
-      historyCount: number
-      stage: V3RolloutStage
-      forcedLegacyCount: number
-      allowLegacyFallback: boolean
-      releaseReady: boolean
-      releaseFailureCount: number
-      restartRequired: boolean
-    }
+  metrics: {
+    historyCount: number
+    stage: V3RolloutStage
+    forcedLegacyCount: number
+    allowLegacyFallback: boolean
+    releaseReady: boolean
+    releaseFailureCount: number
+    restartRequired: boolean
   }
 }
 
@@ -234,46 +230,21 @@ function buildRolloutReport(input: {
     generatedAt: input.now.toISOString(),
     state: input.state,
     releaseReady: input.releaseReport.readyForRelease,
-    releaseFailureCount: input.releaseReport.telemetry.metrics.failureCount,
+    releaseFailureCount: input.releaseReport.metrics.failureCount,
     nextRecommendedStage: input.releaseReport.readyForRelease ? nextStage(input.state.currentStage) : null,
     restartCommand: "systemctl --user restart zee",
     managedEnv: input.managedEnv,
     runtimeParityReady: input.releaseReport.runtimeRollout.parity.releaseReady,
-    telemetry: {
-      kind: "release.v3.rollout",
-      metrics: {
-        historyCount: input.state.history.length,
-        stage: input.state.currentStage,
-        forcedLegacyCount: input.state.stageSpec.forcedLegacySurfaces.length,
-        allowLegacyFallback: input.state.stageSpec.allowLegacyFallback,
-        releaseReady: input.releaseReport.readyForRelease,
-        releaseFailureCount: input.releaseReport.telemetry.metrics.failureCount,
-        restartRequired: input.state.restartRequired,
-      },
+    metrics: {
+      historyCount: input.state.history.length,
+      stage: input.state.currentStage,
+      forcedLegacyCount: input.state.stageSpec.forcedLegacySurfaces.length,
+      allowLegacyFallback: input.state.stageSpec.allowLegacyFallback,
+      releaseReady: input.releaseReport.readyForRelease,
+      releaseFailureCount: input.releaseReport.metrics.failureCount,
+      restartRequired: input.state.restartRequired,
     },
   }
-}
-
-function emitV3RolloutTelemetry(method: "status" | "apply" | "rollback", report: V3RolloutReport): void {
-  FluxRecorder.record({
-    traceID: crypto.randomUUID(),
-    direction: "internal",
-    domain: "runtime",
-    kind: report.telemetry.kind,
-    status: report.releaseReady || report.state.currentStage === "paused" ? "ok" : "error",
-    method: method.toUpperCase(),
-    path: report.state.currentStage,
-    route: "v3.rollout",
-    metadata: {
-      stage: report.state.currentStage,
-      historyCount: report.telemetry.metrics.historyCount,
-      forcedLegacyCount: report.telemetry.metrics.forcedLegacyCount,
-      allowLegacyFallback: report.telemetry.metrics.allowLegacyFallback,
-      releaseReady: report.releaseReady,
-      releaseFailureCount: report.releaseFailureCount,
-      restartRequired: report.state.restartRequired,
-    },
-  })
 }
 
 export function summarizeV3RolloutReport(report: V3RolloutReport): string {
@@ -284,7 +255,6 @@ export function summarizeV3RolloutReport(report: V3RolloutReport): string {
     `- env: ZEE_RUNTIME_OPENCODE_SURFACES=${report.managedEnv.ZEE_RUNTIME_OPENCODE_SURFACES}`,
     `- env: ZEE_RUNTIME_OPENCODE_FORCE_LEGACY_SURFACES=${report.managedEnv.ZEE_RUNTIME_OPENCODE_FORCE_LEGACY_SURFACES || "none"}`,
     `- env: ZEE_RUNTIME_OPENCODE_ALLOW_LEGACY_FALLBACK=${report.managedEnv.ZEE_RUNTIME_OPENCODE_ALLOW_LEGACY_FALLBACK}`,
-    `- telemetry: ${report.telemetry.kind}`,
   ]
 
   for (const criterion of report.state.stageSpec.exitCriteria) {
@@ -294,7 +264,7 @@ export function summarizeV3RolloutReport(report: V3RolloutReport): string {
   return lines.join("\n")
 }
 
-export async function getV3RolloutReport(options: { emitTelemetry?: boolean; now?: Date } = {}): Promise<V3RolloutReport> {
+export async function getV3RolloutReport(options: { now?: Date } = {}): Promise<V3RolloutReport> {
   const now = options.now ?? new Date()
   const envFile = resolveRolloutEnvFile()
   const state = readRolloutState(now, envFile)
@@ -306,10 +276,6 @@ export async function getV3RolloutReport(options: { emitTelemetry?: boolean; now
     releaseReport,
     managedEnv,
   })
-
-  if (options.emitTelemetry) {
-    emitV3RolloutTelemetry("status", report)
-  }
 
   return report
 }
@@ -363,7 +329,7 @@ export async function applyV3RolloutStage(input: {
     releaseReport,
     managedEnv,
   })
-  emitV3RolloutTelemetry(action, report)
+  void action
   return report
 }
 

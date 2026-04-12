@@ -4,7 +4,6 @@ import {
   CONTROL_UI_BREAK_GLASS_ACK,
   auditControlUiSecurity,
   auditControlUiSecurityDeep,
-  emitSecurityAuditTelemetry,
 } from "@/security"
 import { cmd } from "./cmd"
 
@@ -37,12 +36,6 @@ const SecurityAuditCommand = cmd({
   handler: async (args: SecurityAuditArgs) => {
     const config = await Config.get()
     const report = args.deep ? await auditControlUiSecurityDeep(config) : auditControlUiSecurity(config)
-    emitSecurityAuditTelemetry({
-      source: "security.audit",
-      deep: Boolean(args.deep),
-      strict: Boolean(args.strict),
-      report,
-    })
 
     if (args.json) {
       console.log(JSON.stringify(report, null, 2))

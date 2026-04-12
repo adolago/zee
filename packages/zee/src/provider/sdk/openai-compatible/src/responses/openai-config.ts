@@ -10,9 +10,7 @@ export type OpenAIConfig = {
    * File ID prefixes used to identify file IDs in Responses API.
    * When undefined, all file data is treated as base64 content.
    *
-   * Examples:
-   * - OpenAI: ['file-'] for IDs like 'file-abc123'
-   * - Azure OpenAI: ['assistant-'] for IDs like 'assistant-abc123'
+   * Example: OpenAI uses ['file-'] for IDs like 'file-abc123'.
    */
   fileIdPrefixes?: readonly string[]
 }

@@ -49,7 +49,7 @@ cd packages/zee && bun run --conditions=browser ./src/index.ts compare --format 
 | **Architecture** |  |  |  |  |  |
 | Client/server split | Separates a client UI from a server runtime for the agent. | Yes | Yes | Yes | Partial |
 | Gateway WS control plane | A WebSocket control plane for channels/tools/events and remote clients. | Yes | No | Yes | No |
-| Multi-persona routing | First-class persona/domain routing inside the engine. | Yes | No | Partial | Partial |
+| Single Zee assistant | A single primary assistant routes across coding, life admin, investing, learning, and messaging tools. | Yes | No | Partial | Partial |
 | Session system | Persistent sessions with message history and tooling context. | Yes | Yes | Yes | Partial |
 | **Config & State** |  |  |  |  |  |
 | Global config file | Has a primary global config file path for defaults and policies. | Yes | Yes | Yes | Partial |
@@ -84,7 +84,7 @@ cd packages/zee && bun run --conditions=browser ./src/index.ts compare --format 
 | WhatsApp | WhatsApp channel integration for inbound/outbound messaging. | Yes | No | Yes | No |
 | **Providers & Models** |  |  |  |  |  |
 | Embeddings | Embeddings support for memory/search. | Yes | Unknown | Yes | Unknown |
-| Local models | Local model backends (e.g., Ollama) as a supported provider. | Yes | Yes | Yes | Partial |
+| Local models | Local LLM backends as a supported provider. | No | Yes | Yes | Partial |
 | Multi-provider LLM support | Supports multiple LLM providers (OpenAI/Anthropic/Google/etc). | Yes | Yes | Yes | Yes |
 | OAuth subscriptions | OAuth-based auth flows for subscription products (e.g., Claude Pro/Max, ChatGPT). | Partial | Partial | Yes | No |
 | **Security & Ops** |  |  |  |  |  |
@@ -133,7 +133,7 @@ Focuses on life admin + investing + learning as a single engine with domain tool
 
 - Zee: Yes | evidence: doc:README.md
 - OpenCode: No | OpenCode is primarily an AI coding agent. | evidence: note:sst/opencode README (dev)
-- OpenClaw: Partial | Personal assistant focus; not positioned as a multi-domain engine with investing/learning personas. | evidence: note:openclaw/openclaw README (main)
+- OpenClaw: Partial | Personal assistant focus; not positioned as a Zee/OpenBB multi-domain engine. | evidence: note:openclaw/openclaw README (main)
 - Pi-mono: No | Pi-mono is a tools monorepo (agent runtime, LLM API, CLIs). | evidence: note:badlogic/pi-mono README (main)
 
 ### Surfaces
@@ -215,13 +215,13 @@ A WebSocket control plane for channels/tools/events and remote clients.
 - Zee: Yes | WebSocket gateway control plane (Swabble) for channels/tools/events, with CLI helpers and REST bridging. | evidence: repo_path:packages/zee/Swabble/src/gateway/server.ts, repo_path:packages/zee/src/gateway/embedded-gateway.ts, repo_path:packages/zee/src/server/route/gateway.ts, repo_path:packages/zee/src/cli/cmd/gateway, doc:docs/architecture/gateway-control-plane.md
 - OpenClaw: Yes | evidence: note:openclaw/openclaw README (main)
 
-#### Multi-persona routing
+#### Single Zee Assistant
 
-First-class persona/domain routing inside the engine.
+A single primary assistant routes across coding, life admin, investing, learning, and messaging tools.
 
-- Zee: Yes | evidence: doc:docs/architecture/agent-personas.md
-- OpenClaw: Partial | Supports multi-agent routing for channels/workspaces; differs from Zee personas. | evidence: note:openclaw/openclaw README (main)
-- Pi-mono: Partial | Provides primitives to build multi-agent systems; not a product-level persona router.
+- Zee: Yes | evidence: repo_path:src/agent/assistants.ts
+- OpenClaw: Partial | Supports multi-agent routing for channels/workspaces; differs from Zee's single assistant surface. | evidence: note:openclaw/openclaw README (main)
+- Pi-mono: Partial | Provides primitives to build multi-agent systems; not a product-level single assistant.
 
 #### Session system
 
@@ -352,7 +352,7 @@ Scans skill/plugin code for risky patterns as a supply-chain guardrail.
 
 Skill packaging using SKILL.md files (with metadata and progressive disclosure).
 
-- Zee: Yes | Persona-scoped skills under .agents/skills. | evidence: doc:AGENTS.md
+- Zee: Yes | Zee/domain skills under .agents/skills. | evidence: doc:AGENTS.md
 - OpenCode: No | OpenCode uses agent modes and extensions; does not ship the same SKILL.md catalog model.
 - OpenClaw: Yes | Skills live under skills/ and user state. | evidence: doc:docs/architecture/upstream-differences.md
 
@@ -452,9 +452,9 @@ Embeddings support for memory/search.
 
 #### Local models
 
-Local model backends (e.g., Ollama) as a supported provider.
+Local LLM backends as a supported provider.
 
-- Zee: Yes | Includes an Ollama provider in the provider stack. | evidence: doc:docs/architecture/openclaw-delta-map.md
+- Zee: No | Zee keeps local execution for embeddings and memory, not LLM provider routing.
 - OpenCode: Yes | Common in OpenCode deployments; verify exact provider set in upstream.
 - OpenClaw: Yes | Supports local and remote models; configuration differs.
 - Pi-mono: Partial | pi-ai supports multiple deployment targets; local backend coverage depends on package configuration.

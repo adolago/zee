@@ -30,13 +30,6 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { createOpenaiCompatible as createPatchedOpenAI } from "./sdk/openai-compatible/src"
 import { createXai } from "@ai-sdk/xai"
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
-import { createMistral } from "@ai-sdk/mistral"
-import { createGroq } from "@ai-sdk/groq"
-import { createDeepInfra } from "@ai-sdk/deepinfra"
-import { createCohere } from "@ai-sdk/cohere"
-import { createTogetherAI } from "@ai-sdk/togetherai"
-import { createPerplexity } from "@ai-sdk/perplexity"
-import { createAzure } from "@ai-sdk/azure"
 import { ProviderTransform } from "./transform"
 import { dedup, hasDedupParser } from "./dedup"
 import { loadRosettaDefaultModel, resolveDefaultModel } from "./model-selection"
@@ -44,31 +37,16 @@ import { loadRosettaDefaultModel, resolveDefaultModel } from "./model-selection"
 export namespace Provider {
   const log = Log.create({ service: "provider" })
 
-  const RUNTIME_DISABLED_PROVIDER_IDS = new Set(["gemini-cli"])
-  const RUNTIME_DISABLED_MODEL_NPMS = new Set<string>()
   const CORE_PROVIDER_IDS = new Set([
     "anthropic",
-    "azure",
-    "cohere",
-    "deepinfra",
     "deepseek",
     "google",
     "google-antigravity",
-    "groq",
     "kimi-for-coding",
-    "llamacpp",
-    "lmstudio",
-    "mistral",
     "minimax",
     "minimax-coding-plan",
-    "ollama",
-    "opencode",
     "openai",
     "openrouter",
-    "perplexity",
-    "tgi",
-    "togetherai",
-    "vllm",
     "xai",
     "zai-coding-plan",
   ])
@@ -91,6 +69,14 @@ export namespace Provider {
     return CORE_PROVIDER_IDS.has(providerID)
   }
 
+  function isGpt5OrLater(modelID: string): boolean {
+    const match = /^gpt-(\d+)/.exec(modelID)
+    if (!match) {
+      return false
+    }
+    return Number(match[1]) >= 5
+  }
+
   function clientHeaders(options?: { lower?: boolean }) {
     const referer = Env.get("ZEE_HTTP_REFERER")
     const title = Env.get("ZEE_CLIENT_TITLE") ?? "zee"
@@ -102,33 +88,17 @@ export namespace Provider {
     return headers
   }
 
-  function isGpt5OrLater(modelID: string): boolean {
-    const match = /^gpt-(\d+)/.exec(modelID)
-    if (!match) {
-      return false
-    }
-    return Number(match[1]) >= 5
-  }
-
-  function resolveProviderNpm(providerID: string, npm: string): string {
-    if (providerID === "ollama") return "@ai-sdk/ollama"
+  function resolveProviderNpm(npm: string): string {
     return npm
   }
 
   const BUNDLED_PROVIDERS: Record<string, (options: any) => ProviderSDK> = {
     "@ai-sdk/anthropic": createAnthropic,
-    "@ai-sdk/azure": createAzure,
-    "@ai-sdk/cohere": createCohere,
-    "@ai-sdk/deepinfra": createDeepInfra,
     "@ai-sdk/google": createGoogleGenerativeAI,
-    "@ai-sdk/groq": createGroq,
-    "@ai-sdk/mistral": createMistral,
     // Use custom OpenAI wrapper with GPT-5 stream completion fix
     // @ts-ignore - types from custom wrapper don't match SDK factory signature
     "@ai-sdk/openai": createPatchedOpenAI,
     "@ai-sdk/openai-compatible": createOpenAICompatible,
-    "@ai-sdk/perplexity": createPerplexity,
-    "@ai-sdk/togetherai": createTogetherAI,
     "@ai-sdk/xai": createXai,
     "@openrouter/ai-sdk-provider": createOpenRouter,
   }
@@ -169,19 +139,6 @@ export namespace Provider {
             ...clientHeaders(),
           },
         },
-      }
-    },
-    azure: async () => {
-      return {
-        autoload: false,
-        async getModel(sdk: any, modelID: string, options?: Record<string, any>) {
-          if (options?.["useCompletionUrls"]) {
-            return sdk.chat(modelID)
-          } else {
-            return sdk.responses(modelID)
-          }
-        },
-        options: {},
       }
     },
   }
@@ -395,7 +352,6 @@ export namespace Provider {
         id: model.id,
         url: provider.api ?? "",
         npm: resolveProviderNpm(
-          provider.id,
           iife(() => {
             // Fix: Kimi For Coding uses OpenAI-compatible API format, not Anthropic
             // The models-api.json incorrectly specifies @ai-sdk/anthropic
@@ -488,10 +444,6 @@ export namespace Provider {
       fromModelsDevProvider,
     )
 
-    for (const providerID of RUNTIME_DISABLED_PROVIDER_IDS) {
-      delete database[providerID]
-    }
-
     const blocked = new Set(config.disabled_providers ?? [])
     for (const providerID of blocked) {
       if (database[providerID]) {
@@ -513,8 +465,7 @@ export namespace Provider {
     await Auth.refreshAllExpiring()
 
     const configProviders = Object.entries(config.provider ?? {}).filter(
-      ([providerID]) =>
-        CORE_PROVIDER_IDS.has(providerID) && !blocked.has(providerID) && !RUNTIME_DISABLED_PROVIDER_IDS.has(providerID),
+      ([providerID]) => CORE_PROVIDER_IDS.has(providerID) && !blocked.has(providerID),
     )
 
     function mergeProvider(providerID: string, provider: Partial<Info>) {
@@ -559,7 +510,6 @@ export namespace Provider {
           api: {
             id: model.id ?? existingModel?.api.id ?? modelID,
             npm: resolveProviderNpm(
-              providerID,
               iife(() => {
                 // Fix: Kimi For Coding uses OpenAI-compatible API format, not Anthropic
                 if (providerID === "kimi-for-coding") return "@ai-sdk/openai-compatible"
@@ -661,7 +611,7 @@ export namespace Provider {
     for (const plugin of await Plugin.list()) {
       if (!plugin.auth) continue
       const providerID = plugin.auth.provider
-      if (blocked.has(providerID) || !CORE_PROVIDER_IDS.has(providerID) || RUNTIME_DISABLED_PROVIDER_IDS.has(providerID)) continue
+      if (blocked.has(providerID) || !CORE_PROVIDER_IDS.has(providerID)) continue
 
       let hasAuth = false
       const auth = await Auth.get(providerID)
@@ -705,170 +655,6 @@ export namespace Provider {
       mergeProvider(providerID, partial)
     }
 
-    // Auto-discover models from local inference providers (vLLM, Ollama, etc.)
-    const LOCAL_INFERENCE_PROVIDERS = new Set(["vllm", "ollama", "lmstudio", "llamacpp", "tgi"])
-
-    for (const [providerID, configProvider] of configProviders) {
-      if (!LOCAL_INFERENCE_PROVIDERS.has(providerID)) continue
-      if (!configProvider?.options?.baseURL) continue
-      if (blocked.has(providerID)) continue
-
-      try {
-        const key = providers[providerID]?.key
-        const headers =
-          key && key !== "local"
-            ? {
-                Authorization: `Bearer ${key}`,
-              }
-            : undefined
-        const configuredBaseURL = String(configProvider.options.baseURL).replace(/\/+$/, "")
-
-        if (providerID === "ollama") {
-          const baseURL = configuredBaseURL.replace(/\/v1\/?$/, "").replace(/\/api\/?$/, "")
-          const response = await fetch(`${baseURL}/api/tags`, {
-            headers,
-            signal: AbortSignal.timeout(3000),
-          })
-          if (!response.ok) continue
-          const data = (await response.json()) as {
-            models?: Array<{
-              name?: string
-              details?: { context_length?: number }
-            }>
-          }
-
-          // Ensure provider exists
-          if (!providers[providerID]) {
-            providers[providerID] = {
-              id: providerID,
-              name: providerID.charAt(0).toUpperCase() + providerID.slice(1),
-              models: {},
-              source: "config",
-              env: configProvider.env ?? [],
-              options: configProvider.options,
-            }
-          }
-
-          for (const apiModel of data.models ?? []) {
-            const modelID = (apiModel.name ?? "").trim()
-            if (!modelID) continue
-            if (providers[providerID].models[modelID]) continue // Don't overwrite existing
-
-            const contextLength =
-              typeof apiModel.details?.context_length === "number" && apiModel.details.context_length > 0
-                ? apiModel.details.context_length
-                : 8192
-
-            providers[providerID].models[modelID] = {
-              id: modelID,
-              name: modelID.split("/").pop() ?? modelID,
-              providerID,
-              api: {
-                id: modelID,
-                url: `${baseURL}/api`,
-                npm: "@ai-sdk/ollama",
-              },
-              status: "active",
-              headers: {},
-              cost: {
-                input: 0,
-                output: 0,
-                cache: { read: 0, write: 0 },
-              },
-              capabilities: {
-                temperature: true,
-                attachment: false,
-                reasoning: modelID.toLowerCase().includes("qwen3"),
-                toolcall: true,
-                streaming: true,
-                input: { text: true, audio: false, image: false, video: false, pdf: false },
-                output: { text: true, audio: false, image: false, video: false, pdf: false },
-                interleaved: false,
-              },
-              limit: {
-                context: contextLength,
-                output: Math.min(contextLength, 4096),
-              },
-              options: {},
-              release_date: "1970-01-01",
-            }
-          }
-
-          log.info("auto-discovered models from local provider", {
-            provider: providerID,
-            count: Object.keys(providers[providerID].models).length,
-          })
-          continue
-        }
-
-        const baseURL = configuredBaseURL.replace(/\/v1\/?$/, "")
-        const response = await fetch(`${baseURL}/v1/models`, {
-          headers,
-          signal: AbortSignal.timeout(3000),
-        })
-        if (!response.ok) continue
-        const data = (await response.json()) as { data?: Array<{ id: string; max_model_len?: number }> }
-
-        // Ensure provider exists
-        if (!providers[providerID]) {
-          providers[providerID] = {
-            id: providerID,
-            name: providerID.charAt(0).toUpperCase() + providerID.slice(1),
-            models: {},
-            source: "config",
-            env: configProvider.env ?? [],
-            options: configProvider.options,
-          }
-        }
-
-        for (const apiModel of data.data ?? []) {
-          const modelID = apiModel.id
-          if (providers[providerID].models[modelID]) continue // Don't overwrite existing
-
-          providers[providerID].models[modelID] = {
-            id: modelID,
-            name: modelID.split("/").pop() ?? modelID,
-            providerID,
-            api: {
-              id: modelID,
-              url: `${baseURL}/v1`,
-              npm: "@ai-sdk/openai-compatible",
-            },
-            status: "active",
-            headers: {},
-            cost: {
-              input: 0,
-              output: 0,
-              cache: { read: 0, write: 0 },
-            },
-            capabilities: {
-              temperature: true,
-              attachment: false,
-              reasoning: modelID.toLowerCase().includes("qwen3"),
-              toolcall: true,
-              streaming: true,
-              input: { text: true, audio: false, image: false, video: false, pdf: false },
-              output: { text: true, audio: false, image: false, video: false, pdf: false },
-              interleaved: false,
-            },
-            limit: {
-              context: apiModel.max_model_len ?? 8192,
-              output: Math.min(apiModel.max_model_len ?? 4096, 4096),
-            },
-            options: {},
-            release_date: "1970-01-01",
-          }
-        }
-
-        log.info("auto-discovered models from local provider", {
-          provider: providerID,
-          count: Object.keys(providers[providerID].models).length,
-        })
-      } catch (e) {
-        log.debug("failed to fetch models from local provider", { provider: providerID, error: e })
-      }
-    }
-
     for (const [providerID, provider] of Object.entries(providers)) {
       if (providerID === "xai") {
         injectXaiGrok420FallbackModels(provider)
@@ -883,15 +669,6 @@ export namespace Provider {
 
       for (const [modelID, model] of Object.entries(provider.models)) {
         model.api.id = model.api.id ?? model.id ?? modelID
-        if (RUNTIME_DISABLED_MODEL_NPMS.has(model.api.npm)) {
-          log.debug("model filtered", {
-            providerID,
-            modelID,
-            reason: `${model.api.npm} disabled for runtime`,
-          })
-          delete provider.models[modelID]
-          continue
-        }
         if (modelID === "gpt-5-chat-latest" || (providerID === "openrouter" && modelID === "openai/gpt-5-chat")) {
           log.debug("model filtered", { providerID, modelID, reason: "gpt-5-chat exclusion" })
           delete provider.models[modelID]
@@ -1003,10 +780,6 @@ export namespace Provider {
       const existing = s.sdk.get(key)
       if (existing) return existing
 
-      if (RUNTIME_DISABLED_MODEL_NPMS.has(model.api.npm)) {
-        throw new Error(`${model.api.npm} is disabled for Zee LLM runtime`)
-      }
-
       const customFetch = options["fetch"]
 
       options["fetch"] = async (input: any, init?: BunFetchRequestInit) => {
@@ -1030,13 +803,10 @@ export namespace Provider {
           opts.signal = combined
         }
 
-        // Strip openai itemId metadata following what codex does
-        // IDs are only re-attached for Azure with store=true
+        // Strip openai itemId metadata following what codex does.
         if (model.api.npm === "@ai-sdk/openai" && opts.body && opts.method === "POST") {
           const body = JSON.parse(opts.body as string)
-          const isAzure = model.providerID.includes("azure")
-          const keepIds = isAzure && body.store === true
-          if (!keepIds && Array.isArray(body.input)) {
+          if (Array.isArray(body.input)) {
             for (const item of body.input) {
               if ("id" in item) {
                 delete item.id

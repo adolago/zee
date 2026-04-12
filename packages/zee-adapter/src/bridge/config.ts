@@ -116,7 +116,7 @@ export class ConfigBridge {
         fallback: config.models?.fallback,
       },
       agent: {
-        name: this.mapAgentToPersona(config.agent?.default),
+        name: this.mapAgentToZee(config.agent?.default),
       },
       permission: config.agent?.permissions,
       instructions: config.instructions?.system?.split("\n"),
@@ -132,11 +132,11 @@ export class ConfigBridge {
     return modelId
   }
 
-  private resolveAgent(_personaName?: string): string {
-    return "build"
+  private resolveAgent(_agentName?: string): string {
+    return "zee"
   }
 
-  private mapAgentToPersona(_agent?: string): string {
+  private mapAgentToZee(_agent?: string): string {
     return "zee"
   }
 

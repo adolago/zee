@@ -35,7 +35,7 @@ const TOKEN_BUDGETS = {
   toolCatalog: 2000,    // Primary + secondary tools with examples
   mcpCatalog: 500,      // MCP servers and their tools
   runtimeState: 300,    // Enabled services
-  knowledge: 1200,      // Persona knowledge files
+  knowledge: 1200,      // Agent knowledge files
 }
 
 /**

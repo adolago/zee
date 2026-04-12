@@ -64,8 +64,6 @@ const PROVIDER_RECOGNIZED = new Set([
   "setCacheKey",
   "whitelist",
   "allowlist",
-  "blacklist",
-  "denylist",
   "models",
   "options",
   "oauth",
@@ -273,12 +271,6 @@ function mapProviderLists(providerID: string, providerConfig: Record<string, unk
   if (whitelist) {
     setEdit(plan, ["provider", providerID, "whitelist"], whitelist)
     addMapped(plan, `provider.${providerID}.whitelist`)
-  }
-
-  const blacklist = toStringArray(providerConfig.blacklist) ?? toStringArray(providerConfig.denylist)
-  if (blacklist) {
-    setEdit(plan, ["provider", providerID, "blacklist"], blacklist)
-    addMapped(plan, `provider.${providerID}.blacklist`)
   }
 }
 

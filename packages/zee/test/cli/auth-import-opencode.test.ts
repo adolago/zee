@@ -45,7 +45,6 @@ describe("buildOpencodeImportPlan", () => {
           setCacheKey: true,
           enterpriseUrl: "https://enterprise.example",
           whitelist: ["provider/model-a"],
-          blacklist: ["provider/model-b"],
           models: {
             "provider/model-a": {
               name: "Model A",

@@ -35,7 +35,7 @@ export async function getRuntimeState(agentName: string): Promise<RuntimeState> 
       state.enabledServices.push({
         name: "CodexBar",
         status: codexbar.enabled ? "enabled" : "disabled",
-        details: codexbar.enabled ? "API usage tracking and cost monitoring" : undefined,
+        details: codexbar.enabled ? "local API status bar" : undefined,
       })
     } catch {
       // Config not available

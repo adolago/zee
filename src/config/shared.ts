@@ -93,8 +93,7 @@ export type ModelApi =
   | "anthropic-messages"
   | "openai-chat"
   | "openai-responses"
-  | "google-genai"
-  | "bedrock-converse";
+  | "google-genai";
 
 /** Model input modalities */
 export type ModelInputModality = "text" | "image" | "audio" | "video" | "file";

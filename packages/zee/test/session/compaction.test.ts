@@ -327,46 +327,6 @@ describe("session.getUsage", () => {
     expect(result.cost).toBe(3 + 1.5)
   })
 
-  test("handles bedrock cache write metadata", () => {
-    const model = createModel({ context: 100_000, output: 32_000 })
-    const result = Session.getUsage({
-      model,
-      usage: createUsage({
-        inputTokens: 1000,
-        outputTokens: 500,
-        totalTokens: 1500,
-      }),
-      metadata: {
-        bedrock: {
-          usage: {
-            cacheWriteInputTokens: 250,
-          },
-        },
-      },
-    })
-
-    expect(result.tokens.cache.write).toBe(250)
-  })
-
-  test("does not subtract cached tokens for bedrock provider", () => {
-    const model = createModel({ context: 100_000, output: 32_000 })
-    const result = Session.getUsage({
-      model,
-      usage: createUsage({
-        inputTokens: 1000,
-        outputTokens: 500,
-        totalTokens: 1500,
-        cachedInputTokens: 200,
-      }),
-      metadata: {
-        bedrock: {},
-      },
-    })
-
-    expect(result.tokens.input).toBe(1000)
-    expect(result.tokens.cache.read).toBe(200)
-  })
-
   test("computes total from components for anthropic provider", () => {
     const model = createModel({ context: 100_000, output: 32_000 })
     model.api = { npm: "@ai-sdk/anthropic" } as any

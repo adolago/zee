@@ -40,10 +40,10 @@ The command emits a structured playbook that reinforces the final checks:
 1. Reconfirm `zee v3 release --strict`.
 2. Reconfirm `zee v3 rollout status`.
 3. Restart Zee services if rollout changes are still pending.
-4. Monitor `release.v3.report`, `release.v3.rollout`, and `release.v3.launch` telemetry.
+4. Monitor `release.v3.report`, `release.v3.rollout`, and `release.v3.launch` diagnostics.
 5. Re-run `zee inspect runtime-rollout --no-json` during stabilization.
 
-## Telemetry
+## diagnostics
 
 This slice emits:
 

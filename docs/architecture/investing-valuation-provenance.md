@@ -60,7 +60,7 @@ The thesis ledger now consumes that handoff directly:
 - valuation packet creation keeps the base thesis record warm
 - `thesisKey`, `valuationCaseId`, and the valuation signal are copied into the persisted thesis ledger for later refreshes
 
-## Telemetry
+## diagnostics
 
 This slice emits:
 

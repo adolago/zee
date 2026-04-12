@@ -42,7 +42,7 @@ Entry points:
 
 Locked invariants:
 
-- Workspace/config discovery stays Zee-native (`.zee/`, XDG paths, persona routing)
+- Workspace/config discovery stays Zee-native (`.zee/`, XDG paths, Zee agent routing)
 - Session and message identity remain Zee-owned
 - Provider/model resolution remains Zee-owned
 - CLI/TUI output and event stream shape remain Zee-compatible
@@ -105,7 +105,7 @@ Adapter responsibilities:
 - Keep config snapshot/health inspection anchored in Zee-owned readers
 - Preserve Zee session handoff when gateway traffic enters the assistant runtime
 
-## Telemetry
+## diagnostics
 
 Inspecting the contract emits the bus event:
 
@@ -121,4 +121,4 @@ Emitted metrics:
 - `gatewayPresent`
 - `orchestrationPresent`
 
-This telemetry is intended to make the inventory slice observable before `#486` switches the primary execution path.
+This diagnostics is intended to make the inventory slice observable before `#486` switches the primary execution path.

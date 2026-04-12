@@ -33,8 +33,6 @@ import type {
 } from "./types";
 import {
   LOCAL_MEMORY_COLLECTION,
-  LOCAL_MEMORY_COLLECTION_PREVIEW_LEGACY,
-  LOCAL_MEMORY_COLLECTION_PERSONAS_LEGACY,
   CONTINUITY_MAX_KEY_FACTS,
   EMBEDDING_DIMENSIONS,
   EMBEDDING_MODEL,
@@ -407,19 +405,7 @@ export class Memory {
     };
 
     this.collection = activeCollection;
-    this.migrationSourceCollections = allowTestCollectionOverride
-      ? [activeCollection]
-      : Array.from(
-          new Set(
-            [
-              LOCAL_MEMORY_COLLECTION,
-              LOCAL_MEMORY_COLLECTION_PREVIEW_LEGACY,
-              LOCAL_MEMORY_COLLECTION_PERSONAS_LEGACY,
-              explicitCollection,
-              migrationHints.configuredCollection,
-            ].filter((value): value is string => Boolean(value && value.trim()))
-          )
-        );
+    this.migrationSourceCollections = [activeCollection];
     this.storage = new SqliteVectorStorage(storageConfig);
     this.namespace = config.namespace ?? "default";
     this.instanceId = generateInstanceId();

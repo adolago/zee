@@ -1,6 +1,5 @@
 import { BusEvent } from "@/bus/bus-event"
 import { Log } from "../util/log"
-import { FluxRecorder } from "@/flux"
 import { describeRoute, generateSpecs, resolver } from "hono-openapi"
 import { Hono } from "hono"
 import { cors } from "hono/cors"
@@ -65,14 +64,12 @@ import { AuthRoute } from "./route/auth"
 import { ToolRoute } from "./route/tool"
 import { ProcessRoute } from "./route/process"
 import { MemoryRoute } from "./route/memory"
-import { UsageRoute } from "../usage/route"
 import { GatewayRoute } from "./route/gateway"
 import { GatewayNodeRoute } from "./route/gateway-node"
 import { SttRoute } from "./route/stt"
 import { CronRoute } from "./route/cron"
 import { HeartbeatRoute } from "./route/heartbeat"
 import { RegistryRoute } from "./route/registry"
-import { FluxRoute } from "./route/flux"
 import { SkillsRoute } from "./route/skills"
 import { LlmRoute } from "./route/llm"
 import { OpenBBRoute } from "./route/openbb"
@@ -103,13 +100,6 @@ function parseBodyLimitBytes(value?: string): number | undefined {
   return Math.floor(amount * (multipliers[unit] ?? 1))
 }
 
-function statusFromCode(statusCode: number | undefined, threw: boolean): "ok" | "error" | "denied" {
-  if (typeof statusCode !== "number") return threw ? "error" : "ok"
-  if (statusCode >= 500) return "error"
-  if (statusCode >= 400) return "denied"
-  return "ok"
-}
-
 // @ts-ignore This global is needed to prevent ai-sdk from logging warnings to stdout
 globalThis.AI_SDK_LOG_WARNINGS = false
 
@@ -120,7 +110,6 @@ export namespace Server {
   let _isLoopbackBind = true
   let _authRateLimiter: AuthRateLimiter | undefined
   let _authRateLimiterConfigKey: string | undefined
-  let _fluxConfigLoaded = false
 
   /**
    * Reset in-memory server state. This is mainly used by tests to avoid cross-test leakage.
@@ -131,29 +120,7 @@ export namespace Server {
     _authRateLimiter?.dispose()
     _authRateLimiter = undefined
     _authRateLimiterConfigKey = undefined
-    _fluxConfigLoaded = false
     App.reset()
-  }
-
-  async function ensureFluxConfigLoaded() {
-    if (_fluxConfigLoaded) return
-    _fluxConfigLoaded = true
-    try {
-      const config = await getServerRuntimeConfig()
-      if (!config) return
-      const flux = config.flux
-      if (!flux) return
-      FluxRecorder.configure({
-        ...(typeof flux.enabled === "boolean" ? { enabled: flux.enabled } : {}),
-        ...(typeof flux.retentionHours === "number" ? { retentionMs: flux.retentionHours * 60 * 60 * 1000 } : {}),
-        ...(typeof flux.maxEvents === "number" ? { maxEvents: flux.maxEvents } : {}),
-        ...(typeof flux.maxEventsPerTrace === "number" ? { maxEventsPerTrace: flux.maxEventsPerTrace } : {}),
-        ...(flux.redaction ? { redaction: flux.redaction } : {}),
-        ...(typeof flux.logMirror === "boolean" ? { logMirror: flux.logMirror } : {}),
-      })
-    } catch (error) {
-      log.debug("failed to load flux config", { error: String(error) })
-    }
   }
 
   function resolveAuthRateLimiter(): AuthRateLimiter | undefined {
@@ -231,7 +198,6 @@ export namespace Server {
           })
         })
         .use(async (c, next) => {
-          await ensureFluxConfigLoaded()
           const skipLogging = c.req.path === "/log"
           const traceID = c.req.header("x-zee-trace-id")?.trim() || crypto.randomUUID()
           const requestID = c.req.header("x-zee-request-id")?.trim() || crypto.randomUUID()
@@ -244,34 +210,6 @@ export namespace Server {
 
           const method = c.req.method
           const path = c.req.path
-          const startedAt = Date.now()
-          const bytesIn = (() => {
-            const raw = c.req.header("content-length")
-            if (!raw) return undefined
-            const parsed = Number.parseInt(raw, 10)
-            return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined
-          })()
-
-          FluxRecorder.record({
-            traceID,
-            requestID,
-            sessionID: RequestMeta.getSessionID(c.req.raw),
-            direction: "inbound",
-            domain: "server",
-            kind: "api.inbound.request",
-            status: "ok",
-            method,
-            path,
-            route: path,
-            host: c.req.header("host") ?? undefined,
-            url: c.req.url,
-            bytesIn,
-            metadata: {
-              ip: RequestMeta.getIp(c.req.raw),
-              userAgent: c.req.header("user-agent") ?? "",
-              agentID,
-            },
-          })
 
           if (!skipLogging) {
             log.info("request", {
@@ -283,41 +221,11 @@ export namespace Server {
             method,
             path,
           })
-          let thrown = false
           try {
             await next()
           } catch (error) {
-            thrown = true
             throw error
           } finally {
-            const statusCode = c.res?.status
-            const bytesOut = (() => {
-              const raw = c.res?.headers?.get("content-length")
-              if (!raw) return undefined
-              const parsed = Number.parseInt(raw, 10)
-              return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined
-            })()
-            FluxRecorder.record({
-              traceID,
-              requestID,
-              sessionID: RequestMeta.getSessionID(c.req.raw),
-              direction: "inbound",
-              domain: "server",
-              kind: "api.inbound.response",
-              status: statusFromCode(statusCode, thrown),
-              method,
-              path,
-              route: path,
-              host: c.req.header("host") ?? undefined,
-              url: c.req.url,
-              statusCode,
-              latencyMs: Date.now() - startedAt,
-              bytesOut,
-              metadata: {
-                ip: RequestMeta.getIp(c.req.raw),
-                agentID: RequestMeta.getAgentID(c.req.raw),
-              },
-            })
             if (!skipLogging) {
               timer.stop()
             }
@@ -380,8 +288,6 @@ export namespace Server {
               origin,
               runtimeConfig,
             })
-            const traceID = RequestMeta.getTraceID(c.req.raw) ?? crypto.randomUUID()
-            const requestID = RequestMeta.getRequestID(c.req.raw)
 
             if (rateLimit && !rateLimit.allowed) {
               log.warn("auth rate limited", {
@@ -395,28 +301,6 @@ export namespace Server {
                 c.header("Retry-After", String(Math.ceil(rateLimit.retryAfterMs / 1000)))
               }
               return c.text("Too Many Requests", 429)
-            }
-
-            if (scopeResolution.controlPlane) {
-              FluxRecorder.record({
-                traceID,
-                requestID,
-                direction: "internal",
-                domain: "auth",
-                kind: "auth.policy.checked",
-                status: authDecision.authorized ? "ok" : "denied",
-                method,
-                path,
-                route: scopeResolution.matchedEntry?.path ?? path,
-                metadata: {
-                  authMode: authDecision.policy.mode,
-                  allowPasswordOnly: authDecision.policy.allowPasswordOnly,
-                  challenge: authDecision.challenge,
-                  scheme: authDecision.scheme,
-                  reason: authDecision.reason,
-                  trustedOrigin: Boolean(origin),
-                },
-              })
             }
 
             if (!authDecision.authorized) {
@@ -437,42 +321,6 @@ export namespace Server {
             authRateLimiter?.reset(ip)
 
             const granted = authConfig.scopes ?? [AuthScope.ADMIN]
-            if (scopeResolution.controlPlane) {
-              FluxRecorder.record({
-                traceID,
-                requestID,
-                direction: "internal",
-                domain: "auth",
-                kind: "auth.scope.checked",
-                status: hasScope(granted, required) ? "ok" : "denied",
-                method,
-                path,
-                route: scopeResolution.matchedEntry?.path ?? path,
-                metadata: {
-                  requiredScope: required,
-                  grantedScopes: granted,
-                  matchedPattern: scopeResolution.matchedEntry?.path,
-                  controlPlane: true,
-                  fallback: scopeResolution.fallback,
-                },
-              })
-            }
-            if (scopeResolution.controlPlane && scopeResolution.fallback) {
-              FluxRecorder.record({
-                traceID,
-                requestID,
-                direction: "internal",
-                domain: "auth",
-                kind: "auth.scope.fallback",
-                status: "error",
-                method,
-                path,
-                route: path,
-                metadata: {
-                  requiredScope: required,
-                },
-              })
-            }
             if (!hasScope(granted, required)) {
               log.warn("authz denied", {
                 status: 403,
@@ -593,7 +441,6 @@ export namespace Server {
         .route("/command", CommandRoute)
         .route("/", ModelRoute)
         .route("/", RegistryRoute)
-        .route("/", FluxRoute)
         .route("/", SkillsRoute)
         .route("/", LlmRoute)
         .route("/mcp", McpRoute)
@@ -606,7 +453,6 @@ export namespace Server {
         .route("/", ProcessRoute)
         .route("/", MemoryRoute)
         .route("/v1", MemoryRoute)
-        .route("/usage", UsageRoute)
         .route("/gateway", GatewayRoute)
         .route("/gateway", GatewayNodeRoute)
         .route("/stt", SttRoute)

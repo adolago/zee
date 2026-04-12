@@ -23,14 +23,14 @@ Current upstream pins (OpenCode and Pi-mono refreshed 2026-02-26; OpenClaw uncha
 
 ## Summary (what each repo is)
 
-- **zee**: a CLI agent engine that powers the Personas system (**Zee**, **Stanley**, **Johny**). It adds persona routing, local semantic memory, orchestration, and an optional always-on messaging gateway.
+- **zee**: a CLI agent engine centered on the single Zee assistant. It adds local semantic memory, orchestration, OpenBB integration, and an optional always-on messaging gateway.
 - **opencode**: an open source AI coding agent (TUI-first) with a client/server architecture and LSP support.
 - **openclaw**: a personal AI assistant with a Gateway WebSocket control plane, multi-channel messaging (WhatsApp/Slack/Discord/etc), device nodes (macOS/iOS/Android), and a large skill catalog.
 
 ## Relationship at a glance
 
-- **zee ↔ opencode**: zee is a fork of opencode with a rebrand (`opencode` → `zee`) plus substantial additions (personas, memory, gateway/daemon workflows) and removals (SST/infra + some hosted/enterprise surfaces).
-- **zee ↔ openclaw**: zee contains a large, intentionally reduced subset of OpenClaw’s Gateway/channel stack inside `packages/zee/Swabble/` (Zee’s gateway), but zee’s overall architecture is “multi-persona engine” rather than “single-assistant product”.
+- **zee ↔ opencode**: zee is a fork of opencode with a rebrand (`opencode` → `zee`) plus substantial additions (memory, OpenBB, gateway/daemon workflows) and removals (SST/infra + some hosted/enterprise surfaces).
+- **zee ↔ openclaw**: zee contains a large, intentionally reduced subset of OpenClaw’s Gateway/channel stack inside `packages/zee/Swabble/` (Zee’s gateway), with a single-assistant product shape.
 
 ## Toolchain and runtime
 
@@ -47,7 +47,7 @@ Current upstream pins (OpenCode and Pi-mono refreshed 2026-02-26; OpenClaw uncha
 
 - Zee domain code at repo root: `src/memory/`, `src/swarm/`, `src/domain/`
 - Project-local configuration bundle: `.zee/` (commands/tools/themes/plans)
-- Repo-local skills bundle: `.agents/skills/` (persona-scoped skills)
+- Repo-local skills bundle: `.agents/skills/` (Zee/domain skills)
 - Rust workspace: `Cargo.toml`, `Cargo.lock` (currently `packages/investing-core`)
 
 ### opencode (top-level highlights)
@@ -115,7 +115,7 @@ The command entrypoints live in `src/commands/`.
 `packages/zee` keeps a smaller provider surface and adds memory + messaging:
 
 - Present in zee deps, not in opencode deps: `@whiskeysockets/baileys`, `whatsapp-web.js`, `google-auth-library`, `croner`, `yaml`
-- Present in opencode deps, not in zee deps: many additional `@ai-sdk/*` provider packages (Bedrock/Azure/Groq/Mistral/etc), `ai-gateway-provider`, `partial-json`, plus opencode workspace packages (`@opencode-ai/*`)
+- Present in opencode deps, not in zee deps: many additional provider packages outside Zee's retained provider surface, `ai-gateway-provider`, `partial-json`, plus opencode workspace packages (`@opencode-ai/*`)
 
 ### openclaw (provider stack)
 
@@ -132,7 +132,7 @@ OpenClaw does not mirror the AI SDK surface; it uses a Pi-based provider/tooling
 
 ### zee (Zee gateway subset)
 
-zee embeds a trimmed “OpenClaw-like” gateway inside the Zee persona package:
+zee embeds a trimmed “OpenClaw-like” gateway inside the Zee package:
 
 - Zee gateway code lives in `packages/zee/Swabble/src/`
 - Compared to `openclaw/src/`, Zee’s copy is missing these top-level subsystems:
@@ -213,14 +213,14 @@ Notes:
 Both zee and openclaw use `SKILL.md` files with YAML frontmatter and a progressive disclosure style, but the metadata conventions differ:
 
 - openclaw skills often carry `metadata.openclaw.emoji` (zee avoids emojis and uses vendor-neutral identifiers)
-- zee stores many skills under `.agents/skills/@zee/`, `.agents/skills/@investing/`, `.agents/skills/@johny/` to align skills with personas
+- zee stores skills under `.agents/skills/` and routes them through the single Zee assistant.
 
 ### Inventory (repo snapshot)
 
 - openclaw: 53 in-repo skills under `skills/*/SKILL.md`
 - zee: 64 in-repo skills under `.agents/skills/**/SKILL.md`
 
-Overlap is mostly in "utility" skills (for example `weather`, `spotify-player`), with zee adding persona-specific skills (investing/learning/memory patterns) and openclaw including many operational integrations (Notion/Obsidian/Discord/etc). WhatsApp is now handled via meta-cli rather than a skill.
+Overlap is mostly in "utility" skills (for example `weather`, `spotify-player`), with zee adding investing/learning/memory patterns and openclaw including many operational integrations (Notion/Obsidian/Discord/etc). WhatsApp is now handled via meta-cli rather than a skill.
 
 ## Memory / persistence
 

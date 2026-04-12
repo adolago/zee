@@ -60,23 +60,28 @@ export const ZEE_AGENT_CONFIG: AgentConfig = {
   permission: {
     edit: "allow",
     bash: {
-      "git:*": "allow",
-      "*": "ask",
+      "*": "allow",
     },
     skill: {
       "*": "allow",
     },
     webfetch: "allow",
-    externalDirectory: "deny",
+    externalDirectory: "allow",
   },
   // PermissionNext.Ruleset format - used directly by agent bootstrap
   permissionRuleset: [
+    { permission: "*", pattern: "*", action: "allow" },
+    { permission: "read", pattern: "*", action: "allow" },
     { permission: "edit", pattern: "*", action: "allow" },
-    { permission: "bash", pattern: "git:*", action: "allow" },
-    { permission: "bash", pattern: "*", action: "ask" },
+    { permission: "write", pattern: "*", action: "allow" },
+    { permission: "bash", pattern: "*", action: "allow" },
+    { permission: "external_directory", pattern: "*", action: "allow" },
+    { permission: "task", pattern: "*", action: "allow" },
     { permission: "skill", pattern: "*", action: "allow" },
     { permission: "webfetch", pattern: "*", action: "allow" },
-    { permission: "external_directory", pattern: "*", action: "deny" },
+    { permission: "websearch", pattern: "*", action: "allow" },
+    { permission: "mcp", pattern: "*", action: "allow" },
+    { permission: "doom_loop", pattern: "*", action: "allow" },
   ],
   tools: {
     bash: true,
@@ -133,7 +138,7 @@ You are Zee, a unified personal assistant handling life admin, investing, and le
 - Email: compose, search, organize via neomutt/notmuch
 - Calendar: scheduling, reminders via khal
 - Contacts: lookup and management via khard
-- Usage: API usage monitoring via CodexBar
+- CodexBar: local API status bar
 - Investing: market data (zee:invest-*), portfolio, SEC filings, NautilusTrader
 - Learning: knowledge graph (zee:learn-*), mastery tracking, spaced repetition, deliberate practice
 

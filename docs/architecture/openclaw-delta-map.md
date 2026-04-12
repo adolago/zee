@@ -95,7 +95,7 @@ Upstream PR triage (OpenClaw):
 | Upstream PR | Category | Decision | Rationale | Zee follow-up |
 | --- | --- | --- | --- | --- |
 | openclaw/openclaw#10776 | reliability | port | Gateway-adjacent reliability hardening alongside cron/store changes; treat as a "grab bag" of fixes. | Done (already implemented) |
-| openclaw/openclaw#10072 | feature | adapt | Implemented operator-facing usage surfaces via CLI/ops report instead of a control UI dashboard. | Done (`zee usage`, `zee usage top`, `zee inspect ops`) |
+| openclaw/openclaw#10072 | feature | drop | Token usage dashboards are no longer a Zee surface. | Removed |
 | openclaw/openclaw#9436 | reliability | port | Low-risk correctness fix in hooks plumbing. | Done (already implemented) |
 | openclaw/openclaw#10000 | reliability | adapt | Same problem (context overflow) but Zee session history semantics diverge. | Done (limitHistoryBytes in history.ts, wired into attempt.ts and compact.ts) |
 | openclaw/openclaw#9518 | security | port | Auth-gating canvas/A2UI assets is a common exposure footgun. | Done (already implemented) |
@@ -179,7 +179,7 @@ Upstream PR triage (OpenClaw):
 
 Implementation focus (Zee):
 
-- `.agents/skills` (persona-scoped)
+- `.agents/skills` (shared and Zee-scoped)
 - `packages/zee/Swabble/skills`
 - `packages/zee/Swabble/src/agents/skills`
 - `packages/zee/Swabble/src/gateway/server-methods/skills.ts`
@@ -189,7 +189,7 @@ Upstream PR triage (OpenClaw):
 | Upstream PR | Category | Decision | Rationale | Zee follow-up |
 | --- | --- | --- | --- | --- |
 | openclaw/openclaw#9806 | security | adapt | Skill/plugin scanning improves supply-chain safety; integration differs. | Done (already implemented: skill-scanner.ts) |
-| openclaw/openclaw#9001 | feature | adapt | Per-channel responsePrefix may be useful; persona routing complicates. | Done (already implemented: response-prefix-template.ts, reply-prefix.ts) |
+| openclaw/openclaw#9001 | feature | adapt | Per-channel responsePrefix may be useful; Zee-only routing keeps the integration simple. | Done (already implemented: response-prefix-template.ts, reply-prefix.ts) |
 | openclaw/openclaw#8403 | feature | adapt | Transferable type-safety subset applies even without removed channels: typed status Probe/Audit generics in plugin contracts. | Done (`ChannelStatusAdapter<ResolvedAccount, Probe, Audit>`, `ChannelPlugin<ResolvedAccount, Probe, Audit>`, typed snapshot wiring in `channels/plugins/status.ts`) |
 | openclaw/openclaw#4502 | docs | defer | session-logs path fix likely already handled by Zee naming; verify. | Done (already implemented: session-logs skill points at `~/.zee/agents/main/sessions/`) |
 | openclaw/openclaw#7737 | docs | defer | Docs-only change; non-critical correctness. | Done (ported: tmux skill guidance to split send-keys text + Enter for TUIs) |
@@ -213,10 +213,10 @@ Upstream PR triage (OpenClaw):
 | openclaw/openclaw#9858 | security | port | Redact credentials from config.get-like gateway responses. | Done (already implemented in config/redact-snapshot.ts) |
 | openclaw/openclaw#9903 | security | port | Coerce bare-string exec-approval allowlist entries (hardening). | Done (already implemented in infra/exec-approvals.ts) |
 | openclaw/openclaw#10000 | reliability | adapt | Payload caps needed, but storage/session model differs. | Done (limitHistoryBytes in history.ts, wired into attempt.ts and compact.ts) |
-| openclaw/openclaw#9870 | reliability | adapt | Ollama streaming/config/env fixes may apply, but provider stack differs. | Done (already implemented: Ollama provider in provider stack with streaming) |
+| openclaw/openclaw#9870 | reliability | non-goal | Local LLM provider maintenance is outside Zee's retained provider surface. | None |
 | openclaw/openclaw#7078 | feature | port | Zee memory now uses local-only embeddings by default. | Done |
 | openclaw/openclaw#10146 | security | non-goal | Control UI asset/update hardening not actionable unless Zee ships those assets. | None |
-| openclaw/openclaw#10072 | feature | adapt | Implemented usage visibility via CLI and consolidated ops report (no control UI dependency). | Done (`zee usage`, `zee inspect ops`) |
+| openclaw/openclaw#10072 | feature | drop | Token usage dashboards are no longer a Zee surface. | Removed |
 | openclaw/openclaw#9806 | security | adapt | Skill scanner integration differs. | Done (already implemented: skill-scanner.ts) |
 
 ## Lane 07: Permissions, allowlists, DM policy, pairing and approvals
@@ -272,14 +272,13 @@ Implementation focus (Zee):
 
 - `src/memory` (local SQLite vector storage + SQLite FTS)
 - `packages/zee/Swabble/src/memory`
-- `packages/zee/Swabble/extensions/memory-core`
 - `packages/zee/Swabble/extensions/memory-lancedb`
 
 Upstream PR triage (OpenClaw):
 
 | Upstream PR | Category | Decision | Rationale | Zee follow-up |
 | --- | --- | --- | --- | --- |
-| openclaw/openclaw#10818 | performance | non-goal | Voyage embeddings are not needed for Zee memory because embeddings are local-only by default. | None |
+| openclaw/openclaw#10818 | performance | non-goal | Remote embedding providers are outside Zee's local-only memory path. | None |
 | openclaw/openclaw#5332 | performance | adapt | L2-normalize embedding vectors to fix semantic search quality. | Done (ported: sanitizeAndNormalizeEmbedding in `src/memory/embeddings.ts` + normalization tests in `src/memory/embeddings.test.ts`) |
 | openclaw/openclaw#2576 | reliability | non-goal | Zee does not need embedding provider "auto" selection for the default local memory path. | None |
 | openclaw/openclaw#1272 | security | adapt | Enforce plugin config schemas; Zee plugin system differs. | Done (already implemented: schema-validator.ts with AJV in loader.ts) |
@@ -330,7 +329,7 @@ Upstream PR triage (OpenClaw):
 | openclaw/openclaw#9806 | security | adapt | Skill/plugin safety scanning should exist; integration differs. | Done (already implemented: skill-scanner.ts) |
 | openclaw/openclaw#4001 | security | port | Harden SSH target handling; reduce injection/target spoofing risk. | Done (ported: SSH option injection prevention in ssh-tunnel.ts, ssh-config.ts, gateway-status) |
 | openclaw/openclaw#1757 | security | adapt | Tool group precedence is policy logic; map to Zee permission model. | Done (already implemented: toolsBySender/group tool policy precedence and tool group expansion in tool-policy layer) |
-| openclaw/openclaw#9001 | feature | adapt | Per-channel responsePrefix override may be useful; persona routing complicates. | Done (already implemented: response-prefix-template.ts) |
+| openclaw/openclaw#9001 | feature | adapt | Per-channel responsePrefix override may be useful; Zee-only routing keeps the integration simple. | Done (already implemented: response-prefix-template.ts) |
 | openclaw/openclaw#8403 | feature | adapt | Plugin SDK typing hardening is still relevant for Zee channel plugins even when removed-channel surfaces are out of scope. | Done (ported status Probe/Audit generics and tightened status issue collector typing in Telegram/Slack/Discord plugins) |
 | openclaw/openclaw#1708 | feature | non-goal | iMessage normalization out of scope. | None |
 | openclaw/openclaw#1630 | feature | non-goal | Line plugin out of scope. | None |

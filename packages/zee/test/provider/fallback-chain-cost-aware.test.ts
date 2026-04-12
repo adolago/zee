@@ -7,7 +7,7 @@ import { Env } from "../../src/env"
 const FALLBACK_RULES = [
   {
     condition: "rate_limit" as const,
-    fallbacks: ["anthropic/claude-opus-4-6", "groq/openai/gpt-oss-120b"],
+    fallbacks: ["anthropic/claude-opus-4-6", "xai/grok-4.20-experimental-beta-0304-reasoning"],
   },
 ]
 
@@ -44,9 +44,9 @@ describe("FallbackChain costAware", () => {
                   },
                 },
               },
-              groq: {
+              xai: {
                 models: {
-                  "openai/gpt-oss-120b": {
+                  "grok-4.20-experimental-beta-0304-reasoning": {
                     cost: {
                       input: 0.8,
                       output: 0.8,
@@ -65,7 +65,7 @@ describe("FallbackChain costAware", () => {
       init: async () => {
         Env.set("OPENAI_API_KEY", "test-openai-key")
         Env.set("ANTHROPIC_API_KEY", "test-anthropic-key")
-        Env.set("GROQ_API_KEY", "test-groq-key")
+        Env.set("XAI_API_KEY", "test-xai-key")
       },
       fn: async () => {
         const { FallbackChain } = await import("../../src/provider/fallback-chain")
@@ -82,7 +82,7 @@ describe("FallbackChain costAware", () => {
           },
         )
 
-        expect(result).toBe("groq/openai/gpt-oss-120b")
+        expect(result).toBe("xai/grok-4.20-experimental-beta-0304-reasoning")
       },
     })
   })

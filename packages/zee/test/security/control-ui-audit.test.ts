@@ -2,15 +2,12 @@ import { afterAll, beforeEach, describe, expect, test } from "bun:test"
 import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
-import { FluxRecorder } from "../../src/flux"
 import { resetNodeClientRegistry } from "../../src/gateway/node-client-registry"
-import { auditControlUiSecurityDeep, emitSecurityAuditTelemetry } from "../../src/security/control-ui-audit"
+import { auditControlUiSecurityDeep } from "../../src/security/control-ui-audit"
 
 const ORIGINAL_ENV = {
   ZEE_STATE_DIR: process.env.ZEE_STATE_DIR,
 }
-
-const ORIGINAL_FLUX_CONFIG = FluxRecorder.config()
 
 let isolatedStateDir = ""
 
@@ -24,11 +21,6 @@ async function writeNodeRegistryState(contents: unknown) {
 beforeEach(async () => {
   isolatedStateDir = await fs.mkdtemp(path.join(os.tmpdir(), "zee-control-ui-audit-"))
   process.env.ZEE_STATE_DIR = isolatedStateDir
-  FluxRecorder.configure({
-    ...ORIGINAL_FLUX_CONFIG,
-    enabled: true,
-    logMirror: false,
-  })
   resetNodeClientRegistry()
 })
 
@@ -37,7 +29,6 @@ afterAll(async () => {
     if (value === undefined) delete process.env[key]
     else process.env[key] = value
   }
-  FluxRecorder.configure(ORIGINAL_FLUX_CONFIG)
   resetNodeClientRegistry()
   if (isolatedStateDir) {
     await fs.rm(isolatedStateDir, { recursive: true, force: true }).catch(() => {})
@@ -189,92 +180,4 @@ describe("auditControlUiSecurityDeep", () => {
     expect(report.alerts.every((alert) => alert.runbook.length >= 3)).toBe(true)
   })
 
-  test("emits flux telemetry for audit summaries and findings", async () => {
-    await writeNodeRegistryState({
-      version: 1,
-      nodes: {
-        active_one: {
-          id: "active_one",
-          label: "Desk",
-          platform: "linux",
-          createdAt: 1,
-          updatedAt: 2,
-          status: "paired",
-          metadata: {},
-          toolAllowlist: [],
-          tokenHash: "dup-hash",
-        },
-        revoked_one: {
-          id: "revoked_one",
-          label: "Old Desk",
-          platform: "macos",
-          createdAt: 1,
-          updatedAt: 3,
-          status: "revoked",
-          metadata: {},
-          toolAllowlist: [],
-          tokenHash: "dup-hash",
-        },
-      },
-    })
-
-    const report = await auditControlUiSecurityDeep({
-      gateway: {
-        nodeClient: {
-          enabled: true,
-          securityMode: "allowlist",
-          toolAllowlist: ["zee_invest_research"],
-          maxPairedNodes: 5,
-        },
-      },
-    })
-
-    const beforeChecked = FluxRecorder.list({ kind: "security.audit.checked" }).total
-    const beforeFindings = FluxRecorder.list({ kind: "security.audit.finding" }).total
-    const beforeAlerts = FluxRecorder.list({ kind: "security.audit.alert" }).total
-
-    const { traceID } = emitSecurityAuditTelemetry({
-      source: "security.audit",
-      deep: true,
-      strict: true,
-      report,
-    })
-
-    expect(FluxRecorder.list({ kind: "security.audit.checked" }).total).toBe(beforeChecked + 1)
-    expect(FluxRecorder.list({ kind: "security.audit.finding" }).total).toBe(beforeFindings + report.findings.length)
-    expect(FluxRecorder.list({ kind: "security.audit.alert" }).total).toBe(beforeAlerts + report.alerts.length)
-
-    const events = FluxRecorder.trace(traceID)
-    expect(events).toHaveLength(report.findings.length + report.alerts.length + 1)
-    expect(events[0]).toMatchObject({
-      kind: "security.audit.checked",
-      domain: "security",
-      metadata: {
-        source: "security.audit",
-        deep: true,
-        strict: true,
-        totalPairedNodes: 2,
-      },
-    })
-    expect(events[1]).toMatchObject({
-      kind: "security.audit.finding",
-      domain: "security",
-      metadata: {
-        source: "security.audit",
-        deep: true,
-        code: report.findings[0]?.code,
-      },
-    })
-    if (report.alerts.length > 0) {
-      expect(events.at(-1)).toMatchObject({
-        kind: "security.audit.alert",
-        domain: "security",
-        metadata: {
-          source: "security.audit",
-          deep: true,
-          code: report.alerts.at(-1)?.code,
-        },
-      })
-    }
-  })
 })
