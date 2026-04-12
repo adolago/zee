@@ -243,9 +243,10 @@ async function resolveQdrantConfig(opts: {
   if (!url || !collection) {
     try {
       const config = await Config.get()
-      const memory = config.memory ?? {}
-      const qdrant = memory.qdrant ?? {}
-      url = url || qdrant.url || memory.qdrantUrl
+      const memory = config.memory
+      const qdrant = memory?.qdrant
+      url = url || qdrant?.url || memory?.qdrantUrl
+      collection = collection || qdrant?.collection || memory?.qdrantCollection
     } catch {
       // Ignore config errors and fall back to defaults.
     }

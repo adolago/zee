@@ -80,6 +80,8 @@ describe("memory local index degraded reads", () => {
 
     const stats = await memory.stats();
 
+    expect(memory.isAvailable()).toBe(false);
+    expect(memory.isOperational()).toBe(true);
     expect(stats.total).toBe(0);
     expect(stats.localIndex.enabled).toBe(true);
     expect(stats.localIndex.backend).toBe("sqlite-fts");

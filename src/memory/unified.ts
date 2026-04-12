@@ -605,6 +605,13 @@ export class Memory {
     return this.initialized && !this.initFailed;
   }
 
+  /** Check if memory can handle local read/write operations. */
+  isOperational(): boolean {
+    if (this.isAvailable()) return true;
+    const localIndex = this.getLocalIndexStatus();
+    return localIndex.available && localIndex.degradedRead === "keyword_only";
+  }
+
   /** Reset init state to allow retry */
   resetInit(): void {
     this.initialized = false;

@@ -312,6 +312,8 @@ export const MemoryRoute = new Hono()
               schema: resolver(
                 z.object({
                   available: z.boolean(),
+                  qdrantAvailable: z.boolean().optional(),
+                  degraded: z.boolean().optional(),
                   initialized: z.boolean(),
                   localIndex: z.object({
                     enabled: z.boolean(),
@@ -350,7 +352,14 @@ export const MemoryRoute = new Hono()
               degradedRead: "off",
             }
         return c.json({
-          available: memory.isAvailable(),
+          available:
+            typeof memory.isOperational === "function"
+              ? memory.isOperational()
+              : typeof memory.isAvailable === "function"
+                ? memory.isAvailable()
+                : false,
+          qdrantAvailable: memory.isAvailable(),
+          degraded: !memory.isAvailable() && localIndex.available && localIndex.degradedRead === "keyword_only",
           initialized: true,
           localIndex: {
             enabled: Boolean(localIndex.enabled),

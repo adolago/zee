@@ -322,7 +322,13 @@ export namespace SessionPrompt {
       const memoryModule = await import("../../../../src/memory/unified.js")
       const memory = memoryModule.getMemory()
       await withTimeout(memory.stats(), 5000)
-      if (typeof memory.isAvailable === "function" && !memory.isAvailable()) {
+      const operational =
+        typeof memory.isOperational === "function"
+          ? memory.isOperational()
+          : typeof memory.isAvailable === "function"
+            ? memory.isAvailable()
+            : true
+      if (!operational) {
         ok = false
         error = "Memory backend unavailable"
       }
@@ -344,7 +350,7 @@ export namespace SessionPrompt {
 
   async function ensureRequiredMemory(sessionID: string): Promise<void> {
     const cfg = await Config.get()
-    if (cfg.memory?.required === false) return
+    if (cfg.memory?.required !== true) return
 
     const status = await MCP.status()
     const mcpConfig = cfg.mcp ?? {}

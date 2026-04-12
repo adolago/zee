@@ -80,7 +80,13 @@ async function checkMemoryHealth(): Promise<{ status: "ok" | "fail"; error?: str
     const { getMemory } = await import("../../../../../src/memory/unified")
     const memory = getMemory()
     await withTimeout(memory.stats(), 5000)
-    if (typeof memory.isAvailable === "function" && !memory.isAvailable()) {
+    const operational =
+      typeof memory.isOperational === "function"
+        ? memory.isOperational()
+        : typeof memory.isAvailable === "function"
+          ? memory.isAvailable()
+          : true
+    if (!operational) {
       status = "fail"
       error = "Memory backend unavailable"
     }

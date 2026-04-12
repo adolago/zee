@@ -1365,7 +1365,7 @@ export namespace Config {
 
   export const Memory = z
     .object({
-      required: z.boolean().optional().describe("Require memory backend availability before prompting"),
+      required: z.boolean().optional().default(false).describe("Require memory availability before prompting"),
       backend: z.enum(["file", "redis", "qdrant"]).optional().describe("Memory backend"),
       storagePath: z.string().optional().describe("Storage path for file backend"),
       redisUrl: z.string().optional().describe("Redis connection URL"),
