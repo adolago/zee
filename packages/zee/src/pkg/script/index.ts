@@ -6,7 +6,7 @@ import { satisfies } from "semver"
 // src/pkg/script -> src/pkg -> src -> packages -> zee -> <repo root>
 const rootPkgPath = path.resolve(import.meta.dir, "../../../../../package.json")
 const rootPkg = await Bun.file(rootPkgPath).json()
-const expectedBunVersion = rootPkg.packageManager?.split("@")[1]
+const expectedBunVersionRange = rootPkg.engines?.bun
 
 // Read version from the Zee package.json as fallback (go up 3 levels to packages/zee)
 const zeePkgPath = path.resolve(import.meta.dir, "../../../package.json")
@@ -15,11 +15,10 @@ const zeePkg = await Bun.file(zeePkgPath)
   .catch(() => ({}))
 const packageJsonVersion = zeePkg.version as string | undefined
 
-if (!expectedBunVersion) {
-  throw new Error("packageManager field not found in root package.json")
+if (!expectedBunVersionRange) {
+  throw new Error("engines.bun field not found in root package.json")
 }
 
-const expectedBunVersionRange = `^${expectedBunVersion}`
 if (!satisfies(process.versions.bun, expectedBunVersionRange)) {
   throw new Error(`This script requires bun@${expectedBunVersionRange}, but you are using bun@${process.versions.bun}`)
 }

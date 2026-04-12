@@ -9,6 +9,17 @@ import { fileURLToPath } from "url"
 const __filename = fileURLToPath(import.meta.url)
 const base = "zee"
 
+function resolvePackageScope() {
+  try {
+    const pkgRaw = fs.readFileSync(path.join(path.dirname(__filename), "..", "package.json"), "utf8")
+    const pkg = JSON.parse(pkgRaw)
+    if (typeof pkg.name === "string" && pkg.name.startsWith("@")) {
+      return pkg.name.split("/")[0]
+    }
+  } catch {}
+  return null
+}
+
 function run(target) {
   const result = childProcess.spawnSync(target, process.argv.slice(2), {
     stdio: "inherit",
@@ -73,11 +84,13 @@ const zeeBase = "zee-" + platform + "-" + arch + libc
 const zeeBinary = platform === "windows" ? "zee.exe" : "zee"
 
 function findBinary(startDir) {
+  const packageScope = resolvePackageScope()
   // First check dist/ folder for development builds.
   const distCandidates = [
+    packageScope ? path.join(startDir, "..", "dist", packageScope, zeeBase, "bin", zeeBinary) : null,
     path.join(startDir, "..", "dist", "@zee", zeeBase, "bin", zeeBinary),
     path.join(startDir, "..", "dist", zeeBase, "bin", zeeBinary),
-  ]
+  ].filter(Boolean)
   for (const distCandidate of distCandidates) {
     if (fs.existsSync(distCandidate)) {
       return distCandidate

@@ -19,6 +19,7 @@ import { UI } from "../ui"
 import { syncBundledSkillsToMachine } from "../../skill/mirror"
 import {
   resolveConfigDir,
+  resolveDataDir,
   resolveInstallRoot,
   resolveLogsDir,
   resolvePolicyPath,
@@ -678,27 +679,49 @@ function windowsServiceBinPath(binaryPath: string, options: DaemonInstallOptions
   ].join(" ")
 }
 
-function windowsServiceEnv(options: DaemonInstallOptions): Record<string, string> {
+function scopedWindowsServiceEnv(
+  options: DaemonInstallOptions,
+  env: NodeJS.ProcessEnv = process.env,
+): NodeJS.ProcessEnv {
   const scope = options.scope ?? "machine"
-  const stateDir = resolveStateDir({ ...process.env, ZEE_WINDOWS_SCOPE: scope }, "win32")
-  const env: Record<string, string> = {
+  return { ...env, ZEE_WINDOWS_SCOPE: scope } as NodeJS.ProcessEnv
+}
+
+function windowsServiceDirs(options: DaemonInstallOptions, env: NodeJS.ProcessEnv = process.env) {
+  const scopedEnv = scopedWindowsServiceEnv(options, env)
+  const serviceEnv = resolveWindowsServiceEnvironment(options, env)
+
+  return {
+    stateDir: serviceEnv.ZEE_STATE_DIR ?? resolveStateDir(scopedEnv, "win32"),
+    dataDir: resolveDataDir(scopedEnv, "win32"),
+    configDir: serviceEnv.ZEE_CONFIG_DIR,
+    logDir: serviceEnv.ZEE_LOG_DIR,
+    workspaceDir: serviceEnv.ZEE_WORKSPACE_DIR,
+    policyPath: serviceEnv.ZEE_POLICY_FILE,
+  }
+}
+
+export function resolveWindowsServiceEnvironment(
+  options: DaemonInstallOptions = {},
+  env: NodeJS.ProcessEnv = process.env,
+): Record<string, string> {
+  const scope = options.scope ?? "machine"
+  const scopedEnv = scopedWindowsServiceEnv(options, env)
+  const serviceEnv: Record<string, string> = {
     NODE_ENV: "production",
     ZEE_HEADLESS: "1",
     ZEE_ENFORCE_ALWAYS_ON: "1",
     ZEE_WINDOWS_SCOPE: scope,
-    ZEE_STATE_DIR: stateDir,
-    ZEE_CONFIG_DIR: resolveConfigDir({ ...process.env, ZEE_WINDOWS_SCOPE: scope, ZEE_STATE_DIR: stateDir }, "win32"),
-    ZEE_LOG_DIR: resolveLogsDir({ ...process.env, ZEE_WINDOWS_SCOPE: scope, ZEE_STATE_DIR: stateDir }, "win32"),
-    ZEE_WORKSPACE_DIR: resolveWorkspaceDir(
-      { ...process.env, ZEE_WINDOWS_SCOPE: scope, ZEE_STATE_DIR: stateDir },
-      "win32",
-    ),
-    ZEE_POLICY_FILE: resolvePolicyPath({ ...process.env, ZEE_WINDOWS_SCOPE: scope }, "win32"),
+    ZEE_CONFIG_DIR: resolveConfigDir(scopedEnv, "win32"),
+    ZEE_LOG_DIR: resolveLogsDir(scopedEnv, "win32"),
+    ZEE_WORKSPACE_DIR: resolveWorkspaceDir(scopedEnv, "win32"),
+    ZEE_POLICY_FILE: resolvePolicyPath(scopedEnv, "win32"),
   }
 
-  if (options.port) env.ZEE_PORT = String(options.port)
-  if (options.hostname) env.ZEE_HOSTNAME = options.hostname
-  return env
+  if (env.ZEE_STATE_DIR?.trim()) serviceEnv.ZEE_STATE_DIR = resolveStateDir(scopedEnv, "win32")
+  if (options.port) serviceEnv.ZEE_PORT = String(options.port)
+  if (options.hostname) serviceEnv.ZEE_HOSTNAME = options.hostname
+  return serviceEnv
 }
 
 function setWindowsServiceEnvironment(env: Record<string, string>) {
@@ -719,15 +742,16 @@ function setWindowsServiceEnvironment(env: Record<string, string>) {
 }
 
 function ensureWindowsDirectories(options: DaemonInstallOptions) {
-  const env = windowsServiceEnv(options)
-  const dirs = [
-    env.ZEE_STATE_DIR,
-    env.ZEE_CONFIG_DIR,
-    env.ZEE_LOG_DIR,
-    env.ZEE_WORKSPACE_DIR,
-    path.dirname(env.ZEE_POLICY_FILE),
+  const serviceDirs = windowsServiceDirs(options)
+  const requiredDirs = [
+    serviceDirs.stateDir,
+    serviceDirs.dataDir,
+    serviceDirs.configDir,
+    serviceDirs.logDir,
+    serviceDirs.workspaceDir,
+    path.dirname(serviceDirs.policyPath),
   ]
-  for (const dir of Array.from(new Set(dirs))) {
+  for (const dir of Array.from(new Set(requiredDirs))) {
     fs.mkdirSync(dir, { recursive: true })
   }
 }
@@ -737,8 +761,8 @@ function grantWindowsServiceAcls(options: DaemonInstallOptions): string[] {
   const serviceAccount = options.serviceAccount ?? "virtual"
   if (serviceAccount !== "virtual") return hints
 
-  const env = windowsServiceEnv(options)
-  const writableDirs = [env.ZEE_STATE_DIR, env.ZEE_CONFIG_DIR, env.ZEE_LOG_DIR, env.ZEE_WORKSPACE_DIR]
+  const dirs = windowsServiceDirs(options)
+  const writableDirs = [dirs.stateDir, dirs.dataDir, dirs.configDir, dirs.logDir, dirs.workspaceDir]
   for (const dir of Array.from(new Set(writableDirs))) {
     const result = runWindowsCommand(
       "icacls.exe",
@@ -777,7 +801,7 @@ function registerWindowsEventSource(): string | undefined {
 }
 
 function writeWindowsDaemonEnvTemplate(options: DaemonInstallOptions) {
-  const env = windowsServiceEnv(options)
+  const env = resolveWindowsServiceEnvironment(options)
   const envPath = path.join(env.ZEE_CONFIG_DIR, "daemon.env")
   if (fs.existsSync(envPath)) return
   fs.writeFileSync(
@@ -905,7 +929,7 @@ async function installWindowsService(binaryPath: string, options: DaemonInstallO
       },
     )
     runSc(["failureflag", WINDOWS_SERVICE_NAME, "1"], { ignoreFailure: true })
-    setWindowsServiceEnvironment(windowsServiceEnv(options))
+    setWindowsServiceEnvironment(resolveWindowsServiceEnvironment(options))
 
     if (options.start ?? true) {
       const start = runSc(["start", WINDOWS_SERVICE_NAME], { ignoreFailure: true, timeout: 60_000 })
@@ -923,7 +947,7 @@ async function installWindowsService(binaryPath: string, options: DaemonInstallO
   }
 
   hints.push(`Service: ${WINDOWS_SERVICE_NAME}`)
-  hints.push(`Logs: ${windowsServiceEnv(options).ZEE_LOG_DIR}`)
+  hints.push(`Logs: ${resolveWindowsServiceEnvironment(options).ZEE_LOG_DIR}`)
   hints.push(`Status: zee daemon-service-status`)
   hints.push(`Stop: sc.exe stop ${WINDOWS_SERVICE_NAME}`)
   hints.push(`Restart: sc.exe stop ${WINDOWS_SERVICE_NAME} && sc.exe start ${WINDOWS_SERVICE_NAME}`)
@@ -943,8 +967,8 @@ async function uninstallWindowsService(options: { removeData?: boolean } = {}): 
 
   const hints = ["Windows service removed successfully"]
   if (options.removeData) {
-    const env = windowsServiceEnv({ scope: "machine" })
-    for (const dir of [env.ZEE_STATE_DIR, env.ZEE_CONFIG_DIR, env.ZEE_LOG_DIR, env.ZEE_WORKSPACE_DIR]) {
+    const dirs = windowsServiceDirs({ scope: "machine" })
+    for (const dir of [dirs.stateDir, dirs.dataDir, dirs.configDir, dirs.logDir, dirs.workspaceDir]) {
       try {
         fs.rmSync(dir, { recursive: true, force: true })
       } catch (error) {
@@ -969,10 +993,11 @@ function parseScValue(output: string, key: string): string | undefined {
   return match?.[1]?.trim()
 }
 
-function getWindowsUnitStatus(): UnitStatus {
-  const query = runSc(["queryex", WINDOWS_SERVICE_NAME], { ignoreFailure: true, timeout: 10_000 })
+export function parseWindowsServiceStatus(
+  query: { status: number | null; stdout: string },
+  qc?: { stdout: string },
+): UnitStatus {
   const installed = query.status === 0
-  const qc = installed ? runSc(["qc", WINDOWS_SERVICE_NAME], { ignoreFailure: true, timeout: 10_000 }) : undefined
   const state = parseScValue(query.stdout, "STATE")
   const pidRaw = parseScValue(query.stdout, "PID")
   const pid = pidRaw ? Number.parseInt(pidRaw, 10) : undefined
@@ -992,6 +1017,12 @@ function getWindowsUnitStatus(): UnitStatus {
     account,
     binaryPath,
   }
+}
+
+function getWindowsUnitStatus(): UnitStatus {
+  const query = runSc(["queryex", WINDOWS_SERVICE_NAME], { ignoreFailure: true, timeout: 10_000 })
+  const qc = query.status === 0 ? runSc(["qc", WINDOWS_SERVICE_NAME], { ignoreFailure: true, timeout: 10_000 }) : undefined
+  return parseWindowsServiceStatus(query, qc)
 }
 
 // =============================================================================
@@ -1062,7 +1093,7 @@ export async function uninstallDaemon(options: { removeData?: boolean } = {}): P
   return uninstallSystemdService()
 }
 
-type UnitStatus = {
+export type UnitStatus = {
   name: string
   path: string
   installed: boolean

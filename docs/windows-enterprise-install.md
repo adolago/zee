@@ -8,22 +8,25 @@ Zee supports a native Windows enterprise installation path built around a signed
 - Service name: `Zee`
 - Service account: `NT SERVICE\Zee`
 - Machine state: `C:\ProgramData\Zee\state`
+- Machine data: `C:\ProgramData\Zee\data`
 - Machine config: `C:\ProgramData\Zee\config`
 - Machine logs: `C:\ProgramData\Zee\logs`
 - Machine workspace: `C:\ProgramData\Zee\workspace`
 - Machine policy: `C:\ProgramData\Zee\policy.jsonc`
+- Machine OpenBB runtime: `C:\ProgramData\Zee\data\openbb`
 
 Per-user CLI runs outside the service use:
 
 - Config: `%AppData%\Zee`
 - State/data/cache/logs/workspace: `%LocalAppData%\Zee\...`
+- Managed OpenBB runtime: `%LocalAppData%\Zee\data\openbb`
 
 Explicit environment overrides still win: `ZEE_STATE_DIR`, `ZEE_CONFIG_DIR`, `ZEE_WORKSPACE_DIR`, and `ZEE_LOG_DIR`.
 
 ## Service Commands
 
 ```powershell
-zee daemon-install --non-interactive --force --binary "C:\Program Files\Zee\bin\zee.exe"
+zee daemon-install --non-interactive --force --binary "C:\Program Files\Zee\bin\zee.exe" --scope machine --service-account virtual --start
 zee daemon-service-status
 zee daemon-uninstall
 ```
@@ -56,10 +59,13 @@ Use Intune, GPO, SCCM, or winget with the MSI artifact. Keep updates admin-contr
 
 ## Policy
 
-Machine policy is loaded after user and project config, so it has highest precedence for enterprise-controlled settings:
+Machine policy is loaded after user and project config, so it has highest precedence for enterprise-controlled settings. Configure enterprise OpenBB access here; remote OpenBB Platform API is the recommended machine-wide default. Local managed OpenBB is still supported, but provision it explicitly under the service account and machine data root.
 
 ```jsonc
 {
+  "openbb": {
+    "apiUrl": "https://openbb.example.internal",
+  },
   "server": {
     "hostname": "127.0.0.1",
     "port": 3210,

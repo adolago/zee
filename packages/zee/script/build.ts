@@ -445,9 +445,25 @@ const targets = targetsFilter
 await $`rm -rf dist`
 
 const binaries: Record<string, string> = {}
-const shouldInstallBuildDeps = !skipInstall && process.env.CI === "true"
+const hostTargetRequiresExtraDeps = (target: BuildTarget) => {
+  if (target.os !== process.platform || target.arch !== process.arch) {
+    return true
+  }
+
+  if (process.platform === "linux") {
+    return target.abi !== undefined
+  }
+
+  return false
+}
+const shouldInstallBuildDeps =
+  !skipInstall && (process.env.CI === "true" || targets.some((target) => hostTargetRequiresExtraDeps(target)))
 if (shouldInstallBuildDeps) {
-  console.log("CI build: installing platform build dependencies")
+  console.log(
+    process.env.CI === "true"
+      ? "CI build: installing platform build dependencies"
+      : "Installing platform build dependencies for requested targets",
+  )
   await $`bun install --os="*" --cpu="*" @opentui/core@${pkg.dependencies["@opentui/core"]}`
   await $`bun install --os="*" --cpu="*" @parcel/watcher@${pkg.dependencies["@parcel/watcher"]}`
 } else {

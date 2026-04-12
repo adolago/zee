@@ -159,16 +159,25 @@ process.env["XDG_DATA_HOME"] = path.join(dir, "share")
 process.env["XDG_CACHE_HOME"] = path.join(dir, "cache")
 process.env["XDG_CONFIG_HOME"] = path.join(dir, "config")
 process.env["XDG_STATE_HOME"] = path.join(dir, "state")
+process.env["APPDATA"] = path.join(dir, "win", "AppData", "Roaming")
+process.env["LOCALAPPDATA"] = path.join(dir, "win", "AppData", "Local")
+process.env["ProgramData"] = path.join(dir, "win", "ProgramData")
+process.env["ProgramW6432"] = path.join(dir, "win", "Program Files")
 
 await Promise.all([
   fs.mkdir(path.join(dir, "share", "zee"), { recursive: true }),
   fs.mkdir(path.join(dir, "cache", "zee"), { recursive: true }),
   fs.mkdir(path.join(dir, "config", "zee"), { recursive: true }),
   fs.mkdir(path.join(dir, "state", "zee"), { recursive: true }),
+  fs.mkdir(path.join(dir, "win", "AppData", "Roaming", "Zee"), { recursive: true }),
+  fs.mkdir(path.join(dir, "win", "AppData", "Local", "Zee"), { recursive: true }),
+  fs.mkdir(path.join(dir, "win", "ProgramData", "Zee"), { recursive: true }),
 ])
 
 const managedConfigDir = path.join(dir, "managed-config")
 process.env["ZEE_TEST_MANAGED_CONFIG_DIR"] = managedConfigDir
+const managedPolicyPath = path.join(dir, "policy.jsonc")
+process.env["ZEE_TEST_POLICY_PATH"] = managedPolicyPath
 
 // Server auth breaks most unit tests (they don't send Authorization headers).
 process.env["ZEE_DISABLE_SERVER_AUTH"] = "true"
@@ -237,6 +246,7 @@ Log.init({
 afterEach(async () => {
   try {
     await fs.rm(managedConfigDir, { force: true, recursive: true }).catch(() => {})
+    await fs.rm(managedPolicyPath, { force: true }).catch(() => {})
 
     // 1. Dispose all Instance contexts and their associated State
     await Instance.disposeAll()

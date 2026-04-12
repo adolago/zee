@@ -341,10 +341,11 @@ export namespace Config {
   }
 
   function rel(item: string, patterns: string[]) {
+    const normalized = item.replace(/\\/g, "/")
     for (const pattern of patterns) {
-      const index = item.indexOf(pattern)
+      const index = normalized.indexOf(pattern)
       if (index === -1) continue
-      return item.slice(index + pattern.length)
+      return normalized.slice(index + pattern.length)
     }
   }
 
@@ -2239,9 +2240,14 @@ export namespace Config {
         for (let i = 0; i < data.plugin.length; i++) {
           const plugin = data.plugin[i]
           try {
-            data.plugin[i] = import.meta.resolve!(plugin, configFilepath)
+            const resolved = await Bun.resolve(plugin, path.dirname(configFilepath))
+            data.plugin[i] = pathToFileURL(resolved).href
           } catch (err) {
-            log.warn("failed to resolve plugin path", { plugin, error: err })
+            try {
+              data.plugin[i] = import.meta.resolve!(plugin, pathToFileURL(configFilepath).href)
+            } catch {
+              log.warn("failed to resolve plugin path", { plugin, error: err })
+            }
           }
         }
       }

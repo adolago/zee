@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+import path from "path"
+import { resolveDataDir } from "../src/global/dirs"
 import { OpenBB } from "../src/paths"
 
 const ORIGINAL_ZEE_OPENBB_API_URL = process.env.ZEE_OPENBB_API_URL
@@ -33,15 +35,20 @@ describe("OpenBB.preflight", () => {
   })
 
   test("resolves managed runtime paths under the Zee data directory by default", () => {
-    expect(OpenBB.installDir()).toContain("/zee/openbb")
-    expect(OpenBB.venvDir()).toContain("/zee/openbb/.venv")
-    expect(OpenBB.managedApiCommandPath()).toContain("openbb-api")
+    const installDir = path.join(resolveDataDir(), "openbb")
+    const apiCommand = process.platform === "win32" ? "openbb-api.exe" : "openbb-api"
+
+    expect(OpenBB.installDir()).toBe(installDir)
+    expect(OpenBB.venvDir()).toBe(path.join(installDir, ".venv"))
+    expect(OpenBB.managedApiCommandPath()).toBe(
+      path.join(installDir, ".venv", process.platform === "win32" ? "Scripts" : "bin", apiCommand),
+    )
   })
 
   test("honors ZEE_OPENBB_HOME for managed runtime files", () => {
     process.env.ZEE_OPENBB_HOME = "/tmp/zee-openbb"
 
     expect(OpenBB.installDir()).toBe("/tmp/zee-openbb")
-    expect(OpenBB.venvDir()).toBe("/tmp/zee-openbb/.venv")
+    expect(OpenBB.venvDir()).toBe(path.join("/tmp/zee-openbb", ".venv"))
   })
 })

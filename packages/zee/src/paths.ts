@@ -49,8 +49,12 @@ export function getZeeRoot(): string {
   return process.cwd()
 }
 
-function getXdgDataDir(): string {
-  return resolveDataDir()
+function pathImpl(platform: NodeJS.Platform = process.platform) {
+  return platform === "win32" ? path.win32 : path.posix
+}
+
+function getDataDir(env: NodeJS.ProcessEnv = process.env, platform: NodeJS.Platform = process.platform): string {
+  return resolveDataDir(env, platform)
 }
 
 /**
@@ -75,46 +79,48 @@ export const Domains = {
 }
 
 export const OpenBB = {
-  apiUrl(): string {
-    return process.env.ZEE_OPENBB_API_URL || "http://127.0.0.1:6900"
+  apiUrl(env: NodeJS.ProcessEnv = process.env): string {
+    return env.ZEE_OPENBB_API_URL?.trim() || "http://127.0.0.1:6900"
   },
 
-  apiUrlOverridden(): boolean {
-    return Boolean(process.env.ZEE_OPENBB_API_URL?.trim())
+  apiUrlOverridden(env: NodeJS.ProcessEnv = process.env): boolean {
+    return Boolean(env.ZEE_OPENBB_API_URL?.trim())
   },
 
-  apiCommand(): string {
-    return process.env.ZEE_OPENBB_API_CMD?.trim() || "openbb-api"
+  apiCommand(env: NodeJS.ProcessEnv = process.env): string {
+    return env.ZEE_OPENBB_API_CMD?.trim() || "openbb-api"
   },
 
-  installDir(): string {
-    return process.env.ZEE_OPENBB_HOME?.trim() || path.join(getXdgDataDir(), "openbb")
+  installDir(env: NodeJS.ProcessEnv = process.env, platform: NodeJS.Platform = process.platform): string {
+    return env.ZEE_OPENBB_HOME?.trim() || pathImpl(platform).join(getDataDir(env, platform), "openbb")
   },
 
-  venvDir(): string {
-    return path.join(this.installDir(), ".venv")
+  venvDir(env: NodeJS.ProcessEnv = process.env, platform: NodeJS.Platform = process.platform): string {
+    return pathImpl(platform).join(this.installDir(env, platform), ".venv")
   },
 
-  managedBinDir(): string {
-    return process.platform === "win32" ? path.join(this.venvDir(), "Scripts") : path.join(this.venvDir(), "bin")
+  managedBinDir(env: NodeJS.ProcessEnv = process.env, platform: NodeJS.Platform = process.platform): string {
+    return platform === "win32"
+      ? path.win32.join(this.venvDir(env, platform), "Scripts")
+      : path.posix.join(this.venvDir(env, platform), "bin")
   },
 
-  managedPythonPath(): string {
-    return process.platform === "win32"
-      ? path.join(this.managedBinDir(), "python.exe")
-      : path.join(this.managedBinDir(), "python")
+  managedPythonPath(env: NodeJS.ProcessEnv = process.env, platform: NodeJS.Platform = process.platform): string {
+    return platform === "win32"
+      ? path.win32.join(this.managedBinDir(env, platform), "python.exe")
+      : path.posix.join(this.managedBinDir(env, platform), "python")
   },
 
-  managedApiCommandPath(): string {
-    return process.platform === "win32"
-      ? path.join(this.managedBinDir(), "openbb-api.exe")
-      : path.join(this.managedBinDir(), "openbb-api")
+  managedApiCommandPath(env: NodeJS.ProcessEnv = process.env, platform: NodeJS.Platform = process.platform): string {
+    return platform === "win32"
+      ? path.win32.join(this.managedBinDir(env, platform), "openbb-api.exe")
+      : path.posix.join(this.managedBinDir(env, platform), "openbb-api")
   },
 
-  managedBuildCommandPath(): string {
-    return process.platform === "win32"
-      ? path.join(this.managedBinDir(), "openbb-build.exe")
-      : path.join(this.managedBinDir(), "openbb-build")
+  managedBuildCommandPath(env: NodeJS.ProcessEnv = process.env, platform: NodeJS.Platform = process.platform): string {
+    return platform === "win32"
+      ? path.win32.join(this.managedBinDir(env, platform), "openbb-build.exe")
+      : path.posix.join(this.managedBinDir(env, platform), "openbb-build")
   },
 
   workspaceOrigins(): string[] {

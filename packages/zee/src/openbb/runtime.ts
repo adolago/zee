@@ -1,5 +1,6 @@
 import { existsSync } from "fs"
 import fs from "fs/promises"
+import path from "path"
 import { OpenBB } from "../paths"
 import { Log } from "../util/log"
 
@@ -19,6 +20,11 @@ export interface OpenBBRuntimeConfigLike {
   installDir?: string
   startupTimeoutMs?: number
   healthTimeoutMs?: number
+}
+
+export interface OpenBBRuntimeResolveOptions {
+  env?: NodeJS.ProcessEnv
+  platform?: NodeJS.Platform
 }
 
 export interface OpenBBRuntimeResolution {
@@ -77,33 +83,43 @@ function trimOrUndefined(value: string | undefined): string | undefined {
   return trimmed ? trimmed : undefined
 }
 
-function resolveApiUrl(config?: OpenBBRuntimeConfigLike): string {
-  return trimOrUndefined(process.env.ZEE_OPENBB_API_URL) || trimOrUndefined(config?.apiUrl) || OpenBB.apiUrl()
+function pathImpl(platform: NodeJS.Platform = process.platform) {
+  return platform === "win32" ? path.win32 : path.posix
 }
 
-function resolveInstallDir(config?: OpenBBRuntimeConfigLike): string {
-  return trimOrUndefined(process.env.ZEE_OPENBB_HOME) || trimOrUndefined(config?.installDir) || OpenBB.installDir()
+function resolveApiUrl(config: OpenBBRuntimeConfigLike | undefined, env: NodeJS.ProcessEnv): string {
+  return trimOrUndefined(env.ZEE_OPENBB_API_URL) || trimOrUndefined(config?.apiUrl) || OpenBB.apiUrl(env)
 }
 
-function resolveCommandOverride(config?: OpenBBRuntimeConfigLike): string | undefined {
-  return trimOrUndefined(process.env.ZEE_OPENBB_API_CMD) || trimOrUndefined(config?.command)
+function resolveRemoteOverride(config: OpenBBRuntimeConfigLike | undefined, env: NodeJS.ProcessEnv): boolean {
+  return Boolean(trimOrUndefined(env.ZEE_OPENBB_API_URL) || trimOrUndefined(config?.apiUrl))
 }
 
-function resolveAutoStart(config?: OpenBBRuntimeConfigLike): boolean {
-  const envValue = parseBoolean(process.env.ZEE_OPENBB_AUTOSTART)
+function resolveInstallDir(
+  config: OpenBBRuntimeConfigLike | undefined,
+  env: NodeJS.ProcessEnv,
+  platform: NodeJS.Platform,
+): string {
+  return trimOrUndefined(env.ZEE_OPENBB_HOME) || trimOrUndefined(config?.installDir) || OpenBB.installDir(env, platform)
+}
+
+function resolveCommandOverride(config: OpenBBRuntimeConfigLike | undefined, env: NodeJS.ProcessEnv): string | undefined {
+  return trimOrUndefined(env.ZEE_OPENBB_API_CMD) || trimOrUndefined(config?.command)
+}
+
+function resolveAutoStart(config: OpenBBRuntimeConfigLike | undefined, env: NodeJS.ProcessEnv): boolean {
+  const envValue = parseBoolean(env.ZEE_OPENBB_AUTOSTART)
   if (envValue !== undefined) return envValue
   if (config?.autoStart !== undefined) return config.autoStart
   return true
 }
 
-function resolveHealthTimeoutMs(config?: OpenBBRuntimeConfigLike): number {
-  return parsePositiveInt(process.env.ZEE_OPENBB_HEALTH_TIMEOUT_MS) || config?.healthTimeoutMs || DEFAULT_HEALTH_TIMEOUT_MS
+function resolveHealthTimeoutMs(config: OpenBBRuntimeConfigLike | undefined, env: NodeJS.ProcessEnv): number {
+  return parsePositiveInt(env.ZEE_OPENBB_HEALTH_TIMEOUT_MS) || config?.healthTimeoutMs || DEFAULT_HEALTH_TIMEOUT_MS
 }
 
-function resolveStartupTimeoutMs(config?: OpenBBRuntimeConfigLike): number {
-  return (
-    parsePositiveInt(process.env.ZEE_OPENBB_STARTUP_TIMEOUT_MS) || config?.startupTimeoutMs || DEFAULT_STARTUP_TIMEOUT_MS
-  )
+function resolveStartupTimeoutMs(config: OpenBBRuntimeConfigLike | undefined, env: NodeJS.ProcessEnv): number {
+  return parsePositiveInt(env.ZEE_OPENBB_STARTUP_TIMEOUT_MS) || config?.startupTimeoutMs || DEFAULT_STARTUP_TIMEOUT_MS
 }
 
 function normalizePathname(pathname: string): string {
@@ -126,8 +142,12 @@ function commandExists(command: string[] | undefined): boolean {
   return Bun.which(binary) !== null
 }
 
-function resolveMode(commandOverride: string | undefined, managedApiCommandPath: string): OpenBBRuntimeMode {
-  if (OpenBB.apiUrlOverridden()) return "remote-url"
+function resolveMode(
+  remoteOverride: boolean,
+  commandOverride: string | undefined,
+  managedApiCommandPath: string,
+): OpenBBRuntimeMode {
+  if (remoteOverride) return "remote-url"
   if (commandOverride) return "path-command"
   if (existsSync(managedApiCommandPath)) return "managed-local"
   return "path-command"
@@ -135,7 +155,7 @@ function resolveMode(commandOverride: string | undefined, managedApiCommandPath:
 
 function buildAction(resolution: OpenBBRuntimeResolution): string {
   if (resolution.remoteOverride) {
-    return "Check the configured ZEE_OPENBB_API_URL target and its auth or network policy."
+    return "Check the configured OpenBB API URL target and its auth or network policy."
   }
   if (existsSync(resolution.managedApiCommandPath)) {
     return "Run `zee setup` again to refresh the managed OpenBB runtime, or inspect the local openbb-api logs."
@@ -143,36 +163,47 @@ function buildAction(resolution: OpenBBRuntimeResolution): string {
   return "Run `zee setup` to install the managed OpenBB runtime, or install `openbb-platform-api` and ensure `openbb-api` is in PATH."
 }
 
-export function resolveOpenBBRuntime(config?: OpenBBRuntimeConfigLike): OpenBBRuntimeResolution {
-  const apiUrl = resolveApiUrl(config)
-  const installDir = resolveInstallDir(config)
-  const venvDir = `${installDir}/.venv`
-  const managedPythonPath = process.platform === "win32" ? `${venvDir}/Scripts/python.exe` : `${venvDir}/bin/python`
+export function resolveOpenBBRuntime(
+  config?: OpenBBRuntimeConfigLike,
+  options: OpenBBRuntimeResolveOptions = {},
+): OpenBBRuntimeResolution {
+  const env = options.env ?? process.env
+  const platform = options.platform ?? process.platform
+  const pathApi = pathImpl(platform)
+  const apiUrl = resolveApiUrl(config, env)
+  const remoteOverride = resolveRemoteOverride(config, env)
+  const installDir = resolveInstallDir(config, env, platform)
+  const venvDir = pathApi.join(installDir, ".venv")
+  const managedBinDir = platform === "win32" ? path.win32.join(venvDir, "Scripts") : path.posix.join(venvDir, "bin")
+  const managedPythonPath =
+    platform === "win32" ? path.win32.join(managedBinDir, "python.exe") : path.posix.join(managedBinDir, "python")
   const managedApiCommandPath =
-    process.platform === "win32" ? `${venvDir}/Scripts/openbb-api.exe` : `${venvDir}/bin/openbb-api`
+    platform === "win32" ? path.win32.join(managedBinDir, "openbb-api.exe") : path.posix.join(managedBinDir, "openbb-api")
   const managedBuildCommandPath =
-    process.platform === "win32" ? `${venvDir}/Scripts/openbb-build.exe` : `${venvDir}/bin/openbb-build`
-  const commandOverride = resolveCommandOverride(config)
-  const mode = resolveMode(commandOverride, managedApiCommandPath)
+    platform === "win32"
+      ? path.win32.join(managedBinDir, "openbb-build.exe")
+      : path.posix.join(managedBinDir, "openbb-build")
+  const commandOverride = resolveCommandOverride(config, env)
+  const mode = resolveMode(remoteOverride, commandOverride, managedApiCommandPath)
 
   return {
     apiUrl,
-    autoStart: resolveAutoStart(config),
-    remoteOverride: OpenBB.apiUrlOverridden(),
+    autoStart: resolveAutoStart(config, env),
+    remoteOverride,
     installDir,
     venvDir,
     managedPythonPath,
     managedApiCommandPath,
     managedBuildCommandPath,
-    startupTimeoutMs: resolveStartupTimeoutMs(config),
-    healthTimeoutMs: resolveHealthTimeoutMs(config),
+    startupTimeoutMs: resolveStartupTimeoutMs(config, env),
+    healthTimeoutMs: resolveHealthTimeoutMs(config, env),
     mode,
     command:
       mode === "remote-url"
         ? undefined
         : mode === "managed-local"
           ? [managedApiCommandPath]
-          : [commandOverride || OpenBB.apiCommand()],
+          : [commandOverride || OpenBB.apiCommand(env)],
   }
 }
 

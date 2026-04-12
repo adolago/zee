@@ -3,6 +3,7 @@ import { Config } from "../../src/config/config"
 import { Instance } from "../../src/project/instance"
 import { Auth } from "../../src/auth"
 import { ModelsDev } from "../../src/provider/models"
+import { resolveConfigDir } from "../../src/global/dirs"
 import { tmpdir } from "../fixture/fixture"
 import path from "path"
 import fs from "fs/promises"
@@ -13,13 +14,18 @@ const managedConfigDir = (() => {
   if (!dir) throw new Error("Missing ZEE_TEST_MANAGED_CONFIG_DIR")
   return dir
 })()
-const xdgConfigHome = process.env["XDG_CONFIG_HOME"]!
-const userConfigDir = path.join(xdgConfigHome, "zee")
+const managedPolicyPath = (() => {
+  const file = process.env.ZEE_TEST_POLICY_PATH
+  if (!file) throw new Error("Missing ZEE_TEST_POLICY_PATH")
+  return file
+})()
+const userConfigDir = resolveConfigDir()
 const userConfigJson = path.join(userConfigDir, "zee.jsonc")
 const userConfigJsonc = path.join(userConfigDir, "zee.jsonc")
 
 afterEach(async () => {
   await fs.rm(managedConfigDir, { force: true, recursive: true }).catch(() => {})
+  await fs.rm(managedPolicyPath, { force: true }).catch(() => {})
   await fs.rm(userConfigJson, { force: true }).catch(() => {})
   await fs.rm(userConfigJsonc, { force: true }).catch(() => {})
   Config.global.reset()
@@ -30,6 +36,11 @@ afterEach(async () => {
 async function writeManagedSettings(settings: object, filename = "zee.jsonc") {
   await fs.mkdir(managedConfigDir, { recursive: true })
   await Bun.write(path.join(managedConfigDir, filename), JSON.stringify(settings))
+}
+
+async function writeManagedPolicy(policy: object) {
+  await fs.mkdir(path.dirname(managedPolicyPath), { recursive: true })
+  await Bun.write(managedPolicyPath, JSON.stringify(policy))
 }
 
 async function writeProjectConfig(dir: string, config: object, name = "zee.jsonc") {
@@ -271,6 +282,45 @@ test("managed settings override project settings", async () => {
       expect(config.autoupdate).toBe(false)
       expect(config.disabled_providers).toEqual(["managed/provider"])
       expect(config.theme).toBe("project-theme")
+    },
+  })
+})
+
+test("machine policy overrides user and project OpenBB config", async () => {
+  await writeUserSettings({
+    $schema: "zee",
+    openbb: {
+      apiUrl: "https://user-openbb.example.invalid",
+      autoStart: true,
+    },
+  })
+  await writeManagedPolicy({
+    $schema: "zee",
+    openbb: {
+      apiUrl: "https://openbb.example.internal",
+      autoStart: false,
+    },
+  })
+
+  await using tmp = await tmpdir({
+    init: async (dir) => {
+      await writeProjectConfig(dir, {
+        $schema: "zee",
+        openbb: {
+          apiUrl: "https://project-openbb.example.invalid",
+          command: "project-openbb-api",
+        },
+      })
+    },
+  })
+
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const config = await Config.get()
+      expect(config.openbb?.apiUrl).toBe("https://openbb.example.internal")
+      expect(config.openbb?.autoStart).toBe(false)
+      expect(config.openbb?.command).toBe("project-openbb-api")
     },
   })
 })
@@ -761,8 +811,7 @@ test("resolves scoped npm plugins in config", async () => {
       const config = await Config.get()
       const pluginEntries = config.plugin ?? []
 
-      const baseUrl = pathToFileURL(path.join(tmp.path, "zee.jsonc")).href
-      const expected = import.meta.resolve("@scope/plugin", baseUrl)
+      const expected = pathToFileURL(path.join(tmp.path, "node_modules", "@scope", "plugin", "index.js")).href
 
       expect(pluginEntries.includes(expected)).toBe(true)
 

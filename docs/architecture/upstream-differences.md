@@ -36,7 +36,7 @@ Current upstream pins (OpenCode and Pi-mono refreshed 2026-02-26; OpenClaw uncha
 
 | Dimension | zee | opencode | openclaw |
 | --- | --- | --- | --- |
-| Package manager | Bun (`bun.lock`, `packageManager: bun@1.3.5`) | Bun (`bun.lock`, `packageManager: bun@1.3.5`) | pnpm (`pnpm-lock.yaml`, `packageManager: pnpm@10.23.0`) |
+| Package manager | Bun (`bun.lock`, `engines.bun >=1.3.5`) | Bun (`bun.lock`, `packageManager: bun@1.3.5`) | pnpm (`pnpm-lock.yaml`, `packageManager: pnpm@10.23.0`) |
 | Primary runtime | Bun (dev/build) | Bun (dev/build) | Node 22+ (runtime); pnpm for builds; Bun optional for TS execution |
 | CLI framework | yargs (in `packages/zee`) | yargs (in `packages/opencode`) | commander (`src/commands`) |
 | Non-TS components | Rust workspace (`Cargo.toml`, `packages/investing-core`) | none in root | Swift/Kotlin apps (`apps/macos`, `apps/ios`, `apps/android`) |

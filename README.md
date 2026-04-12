@@ -44,12 +44,10 @@ cd zee
 # Install dependencies
 bun install
 
-# Build the project
+# Build the native local binary and link the local launcher
 cd packages/zee
 bun run build
-
-# Link the binary
-ln -sf ~/.local/src/zee/packages/zee/dist/@adolago/zee-linux-x64/bin/zee ~/.bun/bin/zee
+bun run verify:binary
 ```
 
 ### OpenBB setup
@@ -252,7 +250,7 @@ bun run typecheck
 cd packages/zee && bun test
 
 # Build + verify binary
-cd packages/zee && bun run build && ./script/verify-binary.sh
+cd packages/zee && bun run build && bun run verify:binary
 ```
 
 ## Wide events

@@ -142,20 +142,23 @@ cd zee
 bun install
 cd packages/zee
 bun run build
-cd ../..
-./script/verify-binary.sh
+bun run verify:binary
 ```
+
+On Windows PowerShell, `bun run build` writes a local `zee.cmd` launcher into `%USERPROFILE%\\.bun\\bin`.
+On Linux and macOS, it links the built binary into `~/.bun/bin/zee`.
 
 If verification fails:
 
 ```bash
-ln -sf ~/.local/src/zee/packages/zee/dist/@adolago/zee-linux-x64/bin/zee ~/.bun/bin/zee
+bun run build
+bun run verify:binary
 ```
 
 ## Troubleshooting
 
 `Binary mismatch`
-- Run `./script/verify-binary.sh` from repo root.
+- Run `bun run verify:binary` from `packages/zee`.
 
 `Daemon not running`
 - Run `systemctl --user status zee.service --no-pager`.

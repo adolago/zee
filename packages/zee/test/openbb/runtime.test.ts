@@ -1,5 +1,14 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
+import path from "path"
 import { probeOpenBBAvailability, resolveOpenBBRuntime } from "../../src/openbb/runtime"
+
+const windowsEnv = {
+  ZEE_TEST_HOME: "C:\\Users\\alice",
+  APPDATA: "C:\\Users\\alice\\AppData\\Roaming",
+  LOCALAPPDATA: "C:\\Users\\alice\\AppData\\Local",
+  ProgramData: "C:\\ProgramData",
+  ProgramW6432: "C:\\Program Files",
+} as NodeJS.ProcessEnv
 
 const originalEnv = {
   apiUrl: process.env.ZEE_OPENBB_API_URL,
@@ -46,6 +55,15 @@ describe("resolveOpenBBRuntime", () => {
     expect(runtime.command).toBeUndefined()
   })
 
+  test("treats config API URL as a remote override", () => {
+    const runtime = resolveOpenBBRuntime({ apiUrl: "https://openbb.example.internal" })
+
+    expect(runtime.apiUrl).toBe("https://openbb.example.internal")
+    expect(runtime.mode).toBe("remote-url")
+    expect(runtime.remoteOverride).toBe(true)
+    expect(runtime.command).toBeUndefined()
+  })
+
   test("uses command override when provided", () => {
     process.env.ZEE_OPENBB_API_CMD = "/usr/local/bin/openbb-api"
 
@@ -53,6 +71,47 @@ describe("resolveOpenBBRuntime", () => {
 
     expect(runtime.mode).toBe("path-command")
     expect(runtime.command).toEqual(["/usr/local/bin/openbb-api"])
+  })
+
+  test("defaults Windows user scope under LocalAppData", () => {
+    const runtime = resolveOpenBBRuntime(undefined, { env: windowsEnv, platform: "win32" })
+    const installDir = "C:\\Users\\alice\\AppData\\Local\\Zee\\data\\openbb"
+
+    expect(runtime.installDir).toBe(installDir)
+    expect(runtime.venvDir).toBe(path.win32.join(installDir, ".venv"))
+    expect(runtime.managedApiCommandPath).toBe(path.win32.join(installDir, ".venv", "Scripts", "openbb-api.exe"))
+  })
+
+  test("defaults Windows machine scope under ProgramData", () => {
+    const runtime = resolveOpenBBRuntime(undefined, {
+      env: { ...windowsEnv, ZEE_WINDOWS_SCOPE: "machine" },
+      platform: "win32",
+    })
+    const installDir = "C:\\ProgramData\\Zee\\data\\openbb"
+
+    expect(runtime.installDir).toBe(installDir)
+    expect(runtime.venvDir).toBe(path.win32.join(installDir, ".venv"))
+    expect(runtime.managedApiCommandPath).toBe(path.win32.join(installDir, ".venv", "Scripts", "openbb-api.exe"))
+  })
+
+  test("honors Windows ZEE_OPENBB_HOME override", () => {
+    const runtime = resolveOpenBBRuntime(undefined, {
+      env: { ...windowsEnv, ZEE_OPENBB_HOME: "D:\\ZeeOpenBB" },
+      platform: "win32",
+    })
+
+    expect(runtime.installDir).toBe("D:\\ZeeOpenBB")
+    expect(runtime.managedApiCommandPath).toBe("D:\\ZeeOpenBB\\.venv\\Scripts\\openbb-api.exe")
+  })
+
+  test("accepts forward-slash Windows ZEE_OPENBB_HOME override", () => {
+    const runtime = resolveOpenBBRuntime(undefined, {
+      env: { ...windowsEnv, ZEE_OPENBB_HOME: "C:/Zee/OpenBB" },
+      platform: "win32",
+    })
+
+    expect(runtime.installDir).toBe("C:/Zee/OpenBB")
+    expect(runtime.managedApiCommandPath).toBe("C:\\Zee\\OpenBB\\.venv\\Scripts\\openbb-api.exe")
   })
 })
 
@@ -74,7 +133,7 @@ describe("probeOpenBBAvailability", () => {
 
   test("returns a remediation action when the API is unreachable", async () => {
     const result = await probeOpenBBAvailability(
-      { apiUrl: "http://127.0.0.1:6900" },
+      undefined,
       {
         fetchImpl: async () => {
           throw new Error("connect ECONNREFUSED")
