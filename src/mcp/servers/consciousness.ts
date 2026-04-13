@@ -16,13 +16,17 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod/v3";
 import { installMcpParentGuard } from "./parent-guard.js";
-import { runMcpServerWhenDirect } from "./run.js";
 
 // Create server
 const server = new McpServer({
   name: "consciousness",
   version: "1.0.0",
 });
+const registerTool = server.tool.bind(server) as (...args: any[]) => void;
+
+function defineToolSchema<T extends Record<string, z.ZodTypeAny>>(schema: T): Record<string, z.ZodTypeAny> {
+  return schema;
+}
 
 // =============================================================================
 // Types for IIT calculations
@@ -254,7 +258,7 @@ function predictTemporal(
 // consciousness_evolve - Evolve consciousness with IIT measurement
 // =============================================================================
 
-server.tool(
+registerTool(
   "consciousness_evolve",
   `Evolve a consciousness state using Integrated Information Theory (IIT).
 
@@ -265,7 +269,7 @@ Use this for:
 - Optimizing system coherence
 - Measuring consciousness emergence
 - Analyzing integrated information dynamics`,
-  {
+  defineToolSchema({
     initial_state: z
       .record(z.string(), z.unknown())
       .describe("Initial system state as key-value pairs with numeric values"),
@@ -285,8 +289,8 @@ Use this for:
       .enum(["basic", "advanced"])
       .default("basic")
       .describe("Evolution mode: basic (faster) or advanced (more accurate)"),
-  },
-  async (args) => {
+  }),
+  async (args: any) => {
     const { initial_state, target_phi, max_iterations, mode } = args;
 
     try {
@@ -332,7 +336,7 @@ Use this for:
 // calculate_phi - Calculate Integrated Information (Phi) score
 // =============================================================================
 
-server.tool(
+registerTool(
   "calculate_phi",
   `Calculate the Integrated Information (Phi/Φ) score for a system state.
 
@@ -345,12 +349,12 @@ Returns:
 - mip: Minimum Information Partition (if any)
 - integration: System integration measure
 - complexity: State complexity`,
-  {
+  defineToolSchema({
     system_state: z
       .record(z.string(), z.unknown())
       .describe("System state as key-value pairs with numeric values"),
-  },
-  async (args) => {
+  }),
+  async (args: any) => {
     const { system_state } = args;
 
     try {
@@ -391,7 +395,7 @@ Returns:
 // psycho_symbolic_reason - Multi-depth logical analysis
 // =============================================================================
 
-server.tool(
+registerTool(
   "psycho_symbolic_reason",
   `Perform multi-depth psycho-symbolic reasoning on a query.
 
@@ -402,7 +406,7 @@ Use this for:
 - Deep query analysis
 - Multi-level inference chains
 - Confidence-weighted conclusions`,
-  {
+  defineToolSchema({
     query: z.string().describe("Query or statement to analyze"),
     depth: z
       .number()
@@ -414,8 +418,8 @@ Use this for:
       .boolean()
       .default(true)
       .describe("Use cached reasoning patterns if available"),
-  },
-  async (args) => {
+  }),
+  async (args: any) => {
     const { query, depth, use_cache } = args;
 
     try {
@@ -425,14 +429,7 @@ Use this for:
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify(
-              {
-                success: true,
-                ...result,
-              },
-              null,
-              2
-            ),
+            text: JSON.stringify(result, null, 2),
           },
         ],
       };
@@ -457,7 +454,7 @@ Use this for:
 // predict_temporal - Temporal prediction from sequences
 // =============================================================================
 
-server.tool(
+registerTool(
   "predict_temporal",
   `Predict future values from a temporal sequence.
 
@@ -468,7 +465,7 @@ Use this for:
 - Time series forecasting
 - Trend analysis
 - State evolution prediction`,
-  {
+  defineToolSchema({
     sequence: z
       .array(z.number())
       .describe("Array of sequential numeric values"),
@@ -478,8 +475,8 @@ Use this for:
       .max(100)
       .default(5)
       .describe("Number of future steps to predict"),
-  },
-  async (args) => {
+  }),
+  async (args: any) => {
     const { sequence, horizon } = args;
 
     try {
@@ -514,7 +511,7 @@ Use this for:
 // consciousness_info - Get information about consciousness capabilities
 // =============================================================================
 
-server.tool(
+registerTool(
   "consciousness_info",
   `Get information about available consciousness and IIT capabilities.`,
   {},
@@ -558,7 +555,4 @@ export async function startConsciousnessMcpServer() {
   installMcpParentGuard("consciousness");
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("Consciousness MCP server running on stdio");
 }
-
-runMcpServerWhenDirect(import.meta.url, "Consciousness", startConsciousnessMcpServer);

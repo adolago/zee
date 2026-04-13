@@ -1,10 +1,14 @@
 {
-  "$schema": "zee",
-  "agent": {
-    "zee": {
-      "model": "anthropic/claude-opus-4-6",
-      "options": {},
-      "permission": {}
-    }
-  }
+    "$schema":  "zee",
+    "agent":  {
+                  "zee":  {
+                              "options":  {
+
+                                          },
+                              "permission":  {
+
+                                             },
+                              "model":  "openai/gpt-5.4"
+                          }
+              }
 }

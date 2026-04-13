@@ -3,7 +3,7 @@ import { useTheme } from "../context/theme"
 import { useDialog, type DialogContext } from "./dialog"
 import { onMount, type JSX } from "solid-js"
 import { useKeyboard } from "@opentui/solid"
-import { isReturn } from "@/util/keybind"
+import { isReturn, RETURN_KEY_NAMES } from "@/util/keybind"
 
 export type DialogPromptProps = {
   title: string
@@ -51,12 +51,7 @@ export function DialogPrompt(props: DialogPromptProps) {
             props.onConfirm?.(textarea.plainText)
           }}
           height={3}
-          keyBindings={[
-            { name: "return", action: "submit" },
-            { name: "enter", action: "submit" },
-            { name: "linefeed", action: "submit" },
-            { name: "kpenter", action: "submit" },
-          ]}
+          keyBindings={RETURN_KEY_NAMES.map((name) => ({ name, action: "submit" as const }))}
           ref={(val: TextareaRenderable) => (textarea = val)}
           initialValue={props.value}
           placeholder={props.placeholder ?? "Enter text..."}

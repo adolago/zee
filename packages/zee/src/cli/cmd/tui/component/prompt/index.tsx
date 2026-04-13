@@ -45,6 +45,7 @@ import { computePromptHeaderBorderLayout } from "./header-border-layout"
 import { VimCommands } from "@tui/util/vim-commands"
 import { classifySteerSubmitError, decideBusySubmit } from "./busy-submit"
 import { nextSessionMode, resolveEffectiveSessionMode } from "../../util/session-mode"
+import { resolveHoldToRecordSupport, resolveKittyKeyboard } from "../../util/keyboard"
 import type { PromptInfo } from "./types"
 import {
   expandPromptTextParts,
@@ -53,6 +54,7 @@ import {
   logPromptPartSanitization,
   sanitizePromptPartsAgainstInput,
 } from "./parts"
+import { isEscape, resolveModifierSideKeyNames } from "@/util/keybind"
 
 export type PromptProps = {
   sessionID?: string
@@ -81,25 +83,7 @@ export type PromptRef = {
 
 type SubmitTrigger = "enter" | "tab"
 
-function resolveHoldKeyNames(bindings: Keybind.Info[] | undefined): Set<string> {
-  const names = new Set<string>()
-  for (const b of bindings ?? []) {
-    if (b.name !== "") continue
-    if (b.meta) {
-      names.add("leftalt")
-      names.add("rightalt")
-    }
-    if (b.ctrl) {
-      names.add("leftctrl")
-      names.add("rightctrl")
-    }
-    if (b.shift) {
-      names.add("leftshift")
-      names.add("rightshift")
-    }
-  }
-  return names
-}
+let warnedHoldToRecordCompatibility = false
 
 export function Prompt(props: PromptProps) {
   let input: TextareaRenderable
@@ -296,11 +280,31 @@ export function Prompt(props: PromptProps) {
     const state = dictationState()
     return state !== "idle" && state !== "listening"
   })
+  const kittyKeyboard = createMemo(() => resolveKittyKeyboard({ tui: sync.data.config.tui }))
+  const holdToRecordSupport = createMemo(() =>
+    resolveHoldToRecordSupport({
+      bindings: keybind.all.input_dictation_hold,
+      kittyKeyboard: kittyKeyboard(),
+    }),
+  )
+
+  createEffect(() => {
+    const warning = holdToRecordSupport().warning
+    if (!warning || warnedHoldToRecordCompatibility) return
+    warnedHoldToRecordCompatibility = true
+    toast.show({
+      message: warning,
+      variant: "warning",
+      duration: 6000,
+    })
+  })
 
   // Push-to-talk state
   let pttTimer: ReturnType<typeof setTimeout> | null = null
   let pttActive = false
-  const pttHoldKeyNames = createMemo(() => resolveHoldKeyNames(keybind.all.input_dictation_hold))
+  const pttHoldKeyNames = createMemo(() =>
+    holdToRecordSupport().enabled ? resolveModifierSideKeyNames(keybind.all.input_dictation_hold) : new Set<string>(),
+  )
 
   // Push-to-talk: hold modifier key to record, release to stop
   useKeyboard(
@@ -1978,7 +1982,7 @@ export function Prompt(props: PromptProps) {
               // Esc abort: when session is busy, Esc cancels the response
               // In insert mode, first Esc exits to normal mode (handled below),
               // second Esc in normal mode triggers abort
-              if (e.name === "escape" && !keybind.leader && vim.isNormal) {
+              if (isEscape(e.name) && !keybind.leader && vim.isNormal) {
                 if (status().type !== "idle" && props.sessionID) {
                   sdk.client.session.abort({ sessionID: props.sessionID })
                   e.preventDefault()
@@ -1989,7 +1993,7 @@ export function Prompt(props: PromptProps) {
               // Vim mode handling
               if (vim.enabled) {
                 // In insert mode, Escape switches to normal mode
-                if (vim.isInsert && e.name === "escape" && !keybind.leader) {
+                if (vim.isInsert && isEscape(e.name) && !keybind.leader) {
                   // Don't switch to vim normal if autocomplete is visible (let autocomplete handle escape)
                   if (!autocomplete.visible) {
                     vimEngine.reset()
@@ -2044,7 +2048,7 @@ export function Prompt(props: PromptProps) {
                   }
 
                   // Escape resets pending state in normal mode
-                  if (e.name === "escape") {
+                  if (isEscape(e.name)) {
                     vimEngine.reset()
                     setVimPending("")
                   }
@@ -2108,7 +2112,7 @@ export function Prompt(props: PromptProps) {
                 return
               }
               if (store.mode === "shell") {
-                if ((e.name === "backspace" && input.visualCursor.offset === 0) || e.name === "escape") {
+                if ((e.name === "backspace" && input.visualCursor.offset === 0) || isEscape(e.name)) {
                   setStore("mode", "normal")
                   e.preventDefault()
                   return

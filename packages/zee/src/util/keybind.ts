@@ -1,8 +1,49 @@
 import { isDeepEqual } from "remeda"
 import type { ParsedKey } from "@opentui/core"
 
+export const RETURN_KEY_NAMES = ["return", "enter", "linefeed", "kpenter"] as const
+
+const KEY_NAME_ALIASES: Record<string, string> = {
+  " ": "space",
+  enter: "return",
+  linefeed: "return",
+  kpenter: "return",
+}
+
+const MODIFIER_SIDE_KEY_NAMES = {
+  alt: ["leftalt", "rightalt"],
+  ctrl: ["leftctrl", "rightctrl"],
+  shift: ["leftshift", "rightshift"],
+  super: ["leftmeta", "rightmeta", "leftsuper", "rightsuper"],
+} as const
+
+export function normalizeKeyName(name: string | undefined) {
+  if (!name) return name
+  return KEY_NAME_ALIASES[name] ?? name
+}
+
 export function isReturn(name: string | undefined) {
-  return name === "return" || name === "enter" || name === "linefeed" || name === "kpenter"
+  return normalizeKeyName(name) === "return"
+}
+
+export function isEscape(name: string | undefined) {
+  return normalizeKeyName(name) === "escape"
+}
+
+export function isSpace(name: string | undefined) {
+  return normalizeKeyName(name) === "space"
+}
+
+export function resolveModifierSideKeyNames(bindings: Keybind.Info[] | undefined): Set<string> {
+  const names = new Set<string>()
+  for (const binding of bindings ?? []) {
+    if (binding.name !== "") continue
+    if (binding.meta) MODIFIER_SIDE_KEY_NAMES.alt.forEach((name) => names.add(name))
+    if (binding.ctrl) MODIFIER_SIDE_KEY_NAMES.ctrl.forEach((name) => names.add(name))
+    if (binding.shift) MODIFIER_SIDE_KEY_NAMES.shift.forEach((name) => names.add(name))
+    if (binding.super) MODIFIER_SIDE_KEY_NAMES.super.forEach((name) => names.add(name))
+  }
+  return names
 }
 
 export namespace Keybind {
@@ -54,17 +95,9 @@ export namespace Keybind {
    * Convert OpenTUI's ParsedKey to our Keybind.Info format.
    * This helper ensures all required fields are present and avoids manual object creation.
    */
-  // Kitty allKeysAsEscapes reports Space as codepoint 32 → " " via String.fromCodePoint.
-  // OpenTUI's kittyKeyMap doesn't include 32, so we normalize here.
-  const KEY_NAME_ALIASES: Record<string, string> = {
-    " ": "space",
-    enter: "return",
-    linefeed: "return",
-  }
-
   export function fromParsedKey(key: ParsedKey, leader = false): Info {
     return {
-      name: KEY_NAME_ALIASES[key.name] ?? key.name,
+      name: normalizeKeyName(key.name) ?? "",
       ctrl: key.ctrl,
       meta: key.meta,
       shift: key.shift,
@@ -134,7 +167,7 @@ export namespace Keybind {
             info.name = "escape"
             break
           default:
-            info.name = part
+            info.name = normalizeKeyName(part) ?? part
             break
         }
       }

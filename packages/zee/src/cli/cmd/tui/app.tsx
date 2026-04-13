@@ -53,11 +53,13 @@ import { Instance } from "@/project/instance"
 import { PromptRefProvider, usePromptRef } from "./context/prompt"
 import { openExternalUrl } from "@/util/open-external-url"
 import { Terminal } from "./util/terminal"
-import { resolveKittyKeyboardOptions } from "./util/keyboard"
+import { resolveKittyKeyboard } from "./util/keyboard"
 import { nextSessionMode, resolveEffectiveSessionMode } from "./util/session-mode"
 import { createHomeBenchmarkCommand } from "./routes/session/benchmark"
 
 import type { EventSource } from "./context/sdk"
+
+let warnedUnsupportedKittyKeyboard = false
 
 export function tui(input: {
   url: string
@@ -71,13 +73,13 @@ export function tui(input: {
   return new Promise<void>(async (resolve) => {
     const terminalBackground = await Terminal.backgroundColor(200)
     const mode = Terminal.modeFromBackground(terminalBackground)
-    const kittyKeyboardConfig = await Instance.provide({
+    const kittyKeyboard = await Instance.provide({
       directory: input.directory ?? process.cwd(),
       fn: async () => {
         const cfg = await Config.get()
-        return resolveKittyKeyboardOptions(cfg)
+        return resolveKittyKeyboard({ tui: cfg.tui })
       },
-    }).catch(() => resolveKittyKeyboardOptions(null))
+    }).catch(() => resolveKittyKeyboard(null))
     const onExit = async () => {
       await input.onExit?.()
       resolve()
@@ -118,7 +120,7 @@ export function tui(input: {
         targetFps: 60,
         gatherStats: false,
         exitOnCtrlC: false,
-        useKittyKeyboard: kittyKeyboardConfig,
+        useKittyKeyboard: kittyKeyboard.options,
         consoleOptions: {
           keyBindings: [{ name: "y", ctrl: true, action: "copy-selection" }],
           onCopySelection: (text) => {
@@ -174,6 +176,18 @@ function App() {
   const promptRef = usePromptRef()
   const vim = useVim()
   const [homeBenchmarkRunning, setHomeBenchmarkRunning] = createSignal(false)
+  const kittyKeyboard = createMemo(() => resolveKittyKeyboard({ tui: sync.data.config.tui }))
+
+  createEffect(() => {
+    const warning = kittyKeyboard().warning
+    if (!warning || warnedUnsupportedKittyKeyboard) return
+    warnedUnsupportedKittyKeyboard = true
+    toast.show({
+      message: warning,
+      variant: "warning",
+      duration: 6000,
+    })
+  })
 
   // Wire up console copy-to-clipboard via opentui's onCopySelection callback
   renderer.console.onCopySelection = async (text: string) => {

@@ -15,7 +15,6 @@ import { z } from "zod/v3";
 import { getMemory } from "../../memory/unified.js";
 import type { MemoryCategory } from "../../memory/types.js";
 import { installMcpParentGuard } from "./parent-guard.js";
-import { runMcpServerWhenDirect } from "./run.js";
 
 const MEMORY_CATEGORIES = [
   "conversation",
@@ -33,12 +32,17 @@ const server = new McpServer({
   name: "memory",
   version: "1.0.0",
 });
+const registerTool = server.tool.bind(server) as (...args: any[]) => void;
+
+function defineToolSchema<T extends Record<string, z.ZodTypeAny>>(schema: T): Record<string, z.ZodTypeAny> {
+  return schema;
+}
 
 // =============================================================================
 // memory_store - Store information in memory
 // =============================================================================
 
-server.tool(
+registerTool(
   "memory_store",
   `Store information in long-term memory for future reference.
 
@@ -49,14 +53,14 @@ Use this to remember:
 - Notes from conversations
 
 The memory is stored with semantic embeddings for later retrieval.`,
-  {
+  defineToolSchema({
     content: z.string().describe("Content to remember"),
     category: z.enum(MEMORY_CATEGORIES).default("note").describe("Memory category"),
     importance: z.number().min(0).max(1).default(0.5).describe("Importance score (0-1)"),
     tags: z.array(z.string()).optional().describe("Tags for categorization"),
     summary: z.string().optional().describe("Optional short summary"),
-  },
-  async (args) => {
+  }),
+  async (args: any) => {
     const { content, category, importance, tags, summary } = args;
 
     try {
@@ -102,20 +106,20 @@ The memory is stored with semantic embeddings for later retrieval.`,
 // memory_search - Search memories semantically
 // =============================================================================
 
-server.tool(
+registerTool(
   "memory_search",
   `Search memories using semantic similarity.
 
 The search uses vector embeddings to find relevant memories based on meaning,
 not just keyword matching. Results are ranked by similarity score.`,
-  {
+  defineToolSchema({
     query: z.string().describe("Search query"),
     category: z.enum(MEMORY_CATEGORIES).optional().describe("Filter by category"),
     limit: z.number().default(10).describe("Maximum results to return"),
     threshold: z.number().min(0).max(1).default(0.5).describe("Minimum similarity threshold (0-1)"),
     tags: z.array(z.string()).optional().describe("Filter by tags (any match)"),
-  },
-  async (args) => {
+  }),
+  async (args: any) => {
     const { query, category, limit, threshold, tags } = args;
 
     try {
@@ -167,16 +171,16 @@ not just keyword matching. Results are ranked by similarity score.`,
 // memory_list - List memories with filters
 // =============================================================================
 
-server.tool(
+registerTool(
   "memory_list",
   `List memories with optional filters.
 
 Returns memories sorted by creation date (newest first).`,
-  {
+  defineToolSchema({
     category: z.enum(MEMORY_CATEGORIES).optional().describe("Filter by category"),
     limit: z.number().default(20).describe("Maximum results to return"),
-  },
-  async (args) => {
+  }),
+  async (args: any) => {
     const { category, limit } = args;
 
     try {
@@ -224,13 +228,13 @@ Returns memories sorted by creation date (newest first).`,
 // memory_delete - Delete a memory
 // =============================================================================
 
-server.tool(
+registerTool(
   "memory_delete",
   `Delete a memory by its ID.`,
-  {
+  defineToolSchema({
     id: z.string().describe("Memory ID to delete"),
-  },
-  async (args) => {
+  }),
+  async (args: any) => {
     const { id } = args;
 
     try {
@@ -265,7 +269,7 @@ server.tool(
 // memory_stats - Get memory statistics
 // =============================================================================
 
-server.tool(
+registerTool(
   "memory_stats",
   `Get statistics about stored memories.`,
   {},
@@ -306,7 +310,4 @@ export async function startMemoryMcpServer() {
   installMcpParentGuard("memory");
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("Memory MCP server running on stdio");
 }
-
-runMcpServerWhenDirect(import.meta.url, "Memory", startMemoryMcpServer);

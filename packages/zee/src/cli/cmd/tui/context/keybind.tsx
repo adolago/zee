@@ -1,7 +1,7 @@
 import { createMemo } from "solid-js"
 import { useSync } from "@tui/context/sync"
 import { useVim } from "@tui/context/vim"
-import { Keybind } from "@/util/keybind"
+import { isEscape, Keybind } from "@/util/keybind"
 import { pipe, mapValues } from "remeda"
 import type { KeybindsConfig as SDKKeybindsConfig } from "@zee/sdk/v2"
 import type { ParsedKey, Renderable } from "@opentui/core"
@@ -129,7 +129,7 @@ export const { use: useKeybind, provider: KeybindProvider } = createSimpleContex
       // Other keys are handled by individual components which call leader(false) explicitly
       // Note: Escape is safe here because leader mode only activates in vim normal mode,
       // so there's no conflict with vim insert mode's Escape handling
-      if (store.leader && evt.name === "escape") {
+      if (store.leader && isEscape(evt.name)) {
         evt.stopPropagation()
         leader(false)
         return
@@ -137,7 +137,7 @@ export const { use: useKeybind, provider: KeybindProvider } = createSimpleContex
 
       // When vim normal mode is active and textarea is unfocused, refocus on Escape
       if (vim.enabled && vim.isNormal && !store.leader && !hasFocus) {
-        if (evt.name === "escape") {
+        if (isEscape(evt.name)) {
           vim.onEnterInsert() // Uses the focus callback to refocus textarea
           vim.enterNormal() // Stay in normal mode
           evt.stopPropagation()

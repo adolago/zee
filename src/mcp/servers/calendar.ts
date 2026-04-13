@@ -15,7 +15,6 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { registerCalendarTools } from "./calendar-tools.js";
 import { installMcpParentGuard } from "./parent-guard.js";
-import { runMcpServerWhenDirect } from "./run.js";
 
 // Create server
 const server = new McpServer({
@@ -33,7 +32,4 @@ export async function startCalendarMcpServer() {
   installMcpParentGuard("calendar");
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("Calendar MCP server running on stdio");
 }
-
-runMcpServerWhenDirect(import.meta.url, "Calendar", startCalendarMcpServer);

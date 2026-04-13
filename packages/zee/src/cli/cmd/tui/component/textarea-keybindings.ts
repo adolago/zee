@@ -1,7 +1,7 @@
 import { createMemo } from "solid-js"
 import type { KeyBinding } from "@opentui/core"
 import { useKeybind } from "../context/keybind"
-import { Keybind } from "@/util/keybind"
+import { Keybind, RETURN_KEY_NAMES } from "@/util/keybind"
 
 const TEXTAREA_ACTIONS = [
   "submit",
@@ -65,13 +65,8 @@ export function useTextareaKeybindings() {
     const keybinds = keybind.all
 
     return [
-      { name: "return", action: "submit" },
-      { name: "enter", action: "submit" },
-      { name: "linefeed", action: "submit" },
-      { name: "kpenter", action: "submit" },
-      { name: "return", meta: true, action: "newline" },
-      { name: "enter", meta: true, action: "newline" },
-      { name: "linefeed", meta: true, action: "newline" },
+      ...RETURN_KEY_NAMES.map((name) => ({ name, action: "submit" as const })),
+      ...RETURN_KEY_NAMES.map((name) => ({ name, meta: true, action: "newline" as const })),
       ...TEXTAREA_ACTIONS.flatMap((action) => mapTextareaKeybindings(keybinds, action)),
     ] satisfies KeyBinding[]
   })

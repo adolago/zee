@@ -1,6 +1,6 @@
 import { describe, test, expect } from "bun:test"
 import type { ParsedKey } from "@opentui/core"
-import { isReturn, Keybind } from "../src/util/keybind"
+import { isReturn, Keybind, resolveModifierSideKeyNames } from "../src/util/keybind"
 
 const createParsedKey = (name: string, overrides: Partial<ParsedKey> = {}): ParsedKey => ({
   name,
@@ -252,7 +252,7 @@ describe("Keybind.parse", () => {
     ])
   })
 
-  test("should parse kpenter as key name", () => {
+  test("should normalize kpenter to return", () => {
     const result = Keybind.parse("kpenter")
     expect(result).toEqual([
       {
@@ -261,7 +261,7 @@ describe("Keybind.parse", () => {
         shift: false,
         super: false,
         leader: false,
-        name: "kpenter",
+        name: "return",
       },
     ])
   })
@@ -501,6 +501,29 @@ describe("isReturn", () => {
   test("matches terminal enter aliases", () => {
     expect(isReturn("enter")).toBe(true)
     expect(isReturn("linefeed")).toBe(true)
+  })
+})
+
+describe("Keybind normalization helpers", () => {
+  test("normalizes parsed enter aliases and literal space", () => {
+    expect(Keybind.fromParsedKey(createParsedKey("kpenter"), false).name).toBe("return")
+    expect(Keybind.fromParsedKey(createParsedKey(" "), false).name).toBe("space")
+  })
+
+  test("expands modifier-only bindings to sided modifier keys", () => {
+    const names = [...resolveModifierSideKeyNames(Keybind.parse("alt,ctrl,shift,super"))].sort()
+    expect(names).toEqual([
+      "leftalt",
+      "leftctrl",
+      "leftmeta",
+      "leftshift",
+      "leftsuper",
+      "rightalt",
+      "rightctrl",
+      "rightmeta",
+      "rightshift",
+      "rightsuper",
+    ])
   })
 })
 
