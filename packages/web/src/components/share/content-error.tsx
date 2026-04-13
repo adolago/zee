@@ -1,24 +1,15 @@
 import style from "./content-error.module.css"
-import { type JSX, createSignal } from "solid-js"
-import { createOverflow } from "./common"
+import { type JSX } from "solid-js"
 
 interface Props extends JSX.HTMLAttributes<HTMLDivElement> {
   expand?: boolean
 }
 export function ContentError(props: Props) {
-  const [expanded, setExpanded] = createSignal(false)
-  const overflow = createOverflow()
-
   return (
-    <div class={style.root} data-expanded={expanded() || props.expand === true ? true : undefined}>
-      <div data-section="content" ref={overflow.ref}>
+    <div class={style.root} data-expanded={true}>
+      <div data-section="content">
         {props.children}
       </div>
-      {((!props.expand && overflow.status) || expanded()) && (
-        <button type="button" data-element-button-text onClick={() => setExpanded((e) => !e)}>
-          {expanded() ? "Show less" : "Show more"}
-        </button>
-      )}
     </div>
   )
 }

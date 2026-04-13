@@ -13,7 +13,6 @@ import { resolveConfigDir } from "../../global/dirs"
 
 /** Deprecated configuration options that should be migrated */
 const DEPRECATED_OPTIONS = [
-  { old: "model", new: "provider.model", since: "0.1.0" },
   { old: "theme", new: "ui.theme", since: "0.1.0" },
   { old: "maxTokens", new: "provider.maxTokens", since: "0.1.0" },
 ]

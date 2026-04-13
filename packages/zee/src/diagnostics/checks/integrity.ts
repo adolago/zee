@@ -4,16 +4,14 @@
  */
 
 import * as fs from "fs/promises"
-import * as os from "os"
 import * as path from "path"
-import { execSync } from "child_process"
 import net from "net"
 import type { CheckResult, CheckOptions } from "../types"
-import { Zee } from "../../paths"
-import { resolveStateDir } from "../../global/dirs"
+import { resolveConfigDir, resolveStateDir } from "../../global/dirs"
+import { readEmbeddedGatewayConfigSnapshot, resolveEmbeddedGatewayPort } from "../../gateway/embedded-gateway"
 
 const STALE_THRESHOLD_MS = 30 * 60 * 1000 // 30 minutes
-const ZEE_CONFIG_FILES = ["zee.jsonc"]
+const ZEE_CONFIG_FILES = ["zee.jsonc", "zee.json"]
 const GATEWAY_ENV_HINTS = ["ZEE_GATEWAY_TOKEN", "ZEE_GATEWAY_PASSWORD"]
 
 function getStateDir(): string {
@@ -22,7 +20,7 @@ function getStateDir(): string {
 
 function getGatewayPort(): number {
   const portRaw = Number.parseInt(process.env.ZEE_GATEWAY_PORT ?? "", 10)
-  return Number.isFinite(portRaw) ? portRaw : 18789
+  return Number.isFinite(portRaw) ? portRaw : resolveEmbeddedGatewayPort()
 }
 
 function getGatewayEnvHints(): string[] {
@@ -31,7 +29,7 @@ function getGatewayEnvHints(): string[] {
 
 async function findZeeConfig(): Promise<string | undefined> {
   for (const file of ZEE_CONFIG_FILES) {
-    const candidate = path.join(Zee.dataDir(), file)
+    const candidate = path.join(resolveConfigDir(), file)
     try {
       await fs.access(candidate)
       return candidate
@@ -42,31 +40,11 @@ async function findZeeConfig(): Promise<string | undefined> {
   return undefined
 }
 
-async function hasPnpm(): Promise<boolean> {
-  const envPath = process.env.PNPM_BIN?.trim()
-  if (envPath) {
-    try {
-      await fs.access(envPath)
-      return true
-    } catch {
-      // Fall through to PATH check
-    }
-  }
-
-  const localPnpm = path.join(os.homedir(), ".local", "bin", "pnpm")
-  try {
-    await fs.access(localPnpm)
-    return true
-  } catch {
-    // Ignore
-  }
-
-  try {
-    execSync("pnpm --version", { stdio: "ignore" })
-    return true
-  } catch {
-    return false
-  }
+type GatewayConfigContext = {
+  snapshot: Awaited<ReturnType<typeof readEmbeddedGatewayConfigSnapshot>> | null
+  configPath?: string
+  envHints: string[]
+  configured: boolean
 }
 
 async function isPortOpen(host: string, port: number): Promise<boolean> {
@@ -89,11 +67,42 @@ async function isPortOpen(host: string, port: number): Promise<boolean> {
   })
 }
 
+async function getGatewayConfigContext(): Promise<GatewayConfigContext> {
+  const envHints = getGatewayEnvHints()
+  const snapshot = await readEmbeddedGatewayConfigSnapshot().catch(() => null)
+  const fallbackConfigPath = await findZeeConfig()
+  const configPath = snapshot?.path ?? fallbackConfigPath
+  const configured = Boolean((snapshot?.exists ?? false) || fallbackConfigPath || envHints.length > 0)
+
+  return {
+    snapshot,
+    configPath,
+    envHints,
+    configured,
+  }
+}
+
+function formatGatewaySnapshotMessages(
+  snapshot: NonNullable<GatewayConfigContext["snapshot"]>,
+): { issues: string[]; warnings: string[] } {
+  const issues = snapshot.issues.map((issue) => {
+    const location = issue.path?.trim() ? issue.path : "<root>"
+    return `Config ${location}: ${issue.message}`
+  })
+  const warnings = [
+    ...snapshot.warnings.map((warning) => {
+      const location = warning.path?.trim() ? warning.path : "<root>"
+      return `Config ${location}: ${warning.message}`
+    }),
+    ...snapshot.legacyIssues.map((warning) => `Legacy config: ${warning.message}`),
+  ]
+
+  return { issues, warnings }
+}
+
 async function checkGatewayConfig(): Promise<CheckResult> {
   const start = Date.now()
-  const configPath = await findZeeConfig()
-  const envHints = getGatewayEnvHints()
-  const configured = Boolean(configPath || envHints.length > 0)
+  const { snapshot, configPath, envHints, configured } = await getGatewayConfigContext()
 
   if (!configured) {
     return {
@@ -109,17 +118,8 @@ async function checkGatewayConfig(): Promise<CheckResult> {
     }
   }
 
-  const issues: string[] = []
-  try {
-    await fs.access(Zee.repo())
-  } catch {
-    issues.push(`Zee repo missing at ${Zee.repo()}`)
-  }
-
-  const pnpmAvailable = await hasPnpm()
-  if (!pnpmAvailable) {
-    issues.push("pnpm not found (needed to run gateway)")
-  }
+  const issues = snapshot ? formatGatewaySnapshotMessages(snapshot).issues : []
+  const warnings = snapshot ? formatGatewaySnapshotMessages(snapshot).warnings : []
 
   if (issues.length > 0) {
     return {
@@ -127,12 +127,27 @@ async function checkGatewayConfig(): Promise<CheckResult> {
       name: "Gateway Configuration",
       category: "integrity",
       status: "warn",
-      message: "Gateway configured with missing prerequisites",
+      message: "Gateway configuration is invalid",
       details: issues.join("\n"),
       severity: "warning",
       durationMs: Date.now() - start,
       autoFixable: false,
-      metadata: { configPath, envHints },
+      metadata: { configPath, envHints, valid: false },
+    }
+  }
+
+  if (warnings.length > 0) {
+    return {
+      id: "integrity.gateway-config",
+      name: "Gateway Configuration",
+      category: "integrity",
+      status: "warn",
+      message: "Gateway configuration needs attention",
+      details: warnings.join("\n"),
+      severity: "warning",
+      durationMs: Date.now() - start,
+      autoFixable: false,
+      metadata: { configPath, envHints, valid: snapshot?.valid ?? true },
     }
   }
 
@@ -145,15 +160,13 @@ async function checkGatewayConfig(): Promise<CheckResult> {
     severity: "info",
     durationMs: Date.now() - start,
     autoFixable: false,
-    metadata: { configPath, envHints },
+    metadata: { configPath, envHints, valid: snapshot?.valid ?? true },
   }
 }
 
 async function checkGatewayPort(): Promise<CheckResult> {
   const start = Date.now()
-  const configPath = await findZeeConfig()
-  const envHints = getGatewayEnvHints()
-  const configured = Boolean(configPath || envHints.length > 0)
+  const { configPath, envHints, configured } = await getGatewayConfigContext()
 
   if (!configured) {
     return {
@@ -194,7 +207,7 @@ async function checkGatewayPort(): Promise<CheckResult> {
     severity: "warning",
     durationMs: Date.now() - start,
     autoFixable: false,
-    metadata: { port },
+    metadata: { port, configPath, envHints },
   }
 }
 

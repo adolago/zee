@@ -1,5 +1,6 @@
 import type { Argv } from "yargs"
 import { Config } from "../../config/config"
+import { bootstrap } from "../bootstrap"
 import {
   CONTROL_UI_BREAK_GLASS_ACK,
   auditControlUiSecurity,
@@ -34,8 +35,10 @@ const SecurityAuditCommand = cmd({
         describe: "include deep checks (paired node exposure/state)",
       }),
   handler: async (args: SecurityAuditArgs) => {
-    const config = await Config.get()
-    const report = args.deep ? await auditControlUiSecurityDeep(config) : auditControlUiSecurity(config)
+    const report = await bootstrap(process.cwd(), async () => {
+      const config = await Config.get()
+      return args.deep ? await auditControlUiSecurityDeep(config) : auditControlUiSecurity(config)
+    })
 
     if (args.json) {
       console.log(JSON.stringify(report, null, 2))

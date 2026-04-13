@@ -1843,7 +1843,6 @@ function Bash(props: ToolProps<typeof BashTool>) {
   const { theme } = useTheme()
   const sync = useSync()
   const output = createMemo(() => stripAnsi(props.metadata.output?.trim() ?? ""))
-  const [expanded, setExpanded] = createSignal(false)
   const hasOutput = createMemo(() => output().length > 0)
 
   const workdirDisplay = createMemo(() => {
@@ -1876,25 +1875,12 @@ function Bash(props: ToolProps<typeof BashTool>) {
   return (
     <Switch>
       <Match when={props.metadata.output !== undefined}>
-        {/* Compact bash: collapsed by default, click to expand */}
-        <box flexDirection="column" onMouseUp={() => hasOutput() && setExpanded((prev) => !prev)}>
+        <box flexDirection="column">
           <Show when={title()}>
-            <text fg={theme.textMuted}>
-              {title()}
-              <Show when={hasOutput() && !expanded()}>
-                <span style={{ fg: theme.textMuted }}> ... Click to expand</span>
-              </Show>
-            </text>
+            <text fg={theme.textMuted}>{title()}</text>
           </Show>
-          <Show when={!title() || expanded()}>
-            <text fg={theme.text}>
-              $ {props.input.command}
-              <Show when={!title() && hasOutput() && !expanded()}>
-                <span style={{ fg: theme.textMuted }}> ... Click to expand</span>
-              </Show>
-            </text>
-          </Show>
-          <Show when={expanded()}>
+          <text fg={theme.text}>$ {props.input.command}</text>
+          <Show when={hasOutput()}>
             <box
               paddingLeft={1}
               border={["left"]}
@@ -1903,7 +1889,6 @@ function Bash(props: ToolProps<typeof BashTool>) {
             >
               <text fg={theme.textMuted}>{output()}</text>
             </box>
-            <text fg={theme.textMuted}>Click to collapse</text>
           </Show>
         </box>
       </Match>

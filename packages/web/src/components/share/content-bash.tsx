@@ -1,6 +1,5 @@
 import style from "./content-bash.module.css"
-import { createResource, createSignal } from "solid-js"
-import { createOverflow } from "./common"
+import { createResource } from "solid-js"
 import { codeToHtml } from "shiki"
 
 interface Props {
@@ -37,31 +36,17 @@ export function ContentBash(props: Props) {
     },
   )
 
-  const [expanded, setExpanded] = createSignal(false)
-  const overflow = createOverflow()
-
   return (
-    <div class={style.root} data-expanded={expanded() || props.expand === true ? true : undefined}>
+    <div class={style.root} data-expanded={true}>
       <div data-slot="body">
         <div data-slot="header">
           <span>{props.description}</span>
         </div>
         <div data-slot="content">
           <div innerHTML={commandHtml()} />
-          <div data-slot="output" ref={overflow.ref} innerHTML={outputHtml()} />
+          <div data-slot="output" innerHTML={outputHtml()} />
         </div>
       </div>
-
-      {!props.expand && overflow.status && (
-        <button
-          type="button"
-          data-component="text-button"
-          data-slot="expand-button"
-          onClick={() => setExpanded((e) => !e)}
-        >
-          {expanded() ? "Show less" : "Show more"}
-        </button>
-      )}
     </div>
   )
 }

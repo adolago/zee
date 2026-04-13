@@ -12,6 +12,7 @@ import { useKV } from "../../context/kv"
 import { TodoItem } from "../../component/todo-item"
 import { useRoute } from "../../context/route"
 import { useLocal } from "../../context/local"
+import { createClickOnlyMouseHandlers } from "../../util/click-only-mouse"
 
 export function Sidebar(props: { sessionID: string; overlay?: boolean; hideTitle?: boolean }) {
   const sync = useSync()
@@ -199,7 +200,9 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean; hideTitle
               <box
                 flexDirection="row"
                 gap={1}
-                onMouseDown={() => mcpEntries().length > 2 && setExpanded("mcp", !expanded.mcp)}
+                {...createClickOnlyMouseHandlers({
+                  onRelease: () => mcpEntries().length > 2 && setExpanded("mcp", !expanded.mcp),
+                })}
               >
                 <Show when={mcpEntries().length > 2}>
                   <text fg={theme.text}>{expanded.mcp ? "▼" : "▶"}</text>
@@ -280,7 +283,9 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean; hideTitle
               <box
                 flexDirection="row"
                 gap={1}
-                onMouseDown={() => sync.data.lsp.length > 2 && setExpanded("lsp", !expanded.lsp)}
+                {...createClickOnlyMouseHandlers({
+                  onRelease: () => sync.data.lsp.length > 2 && setExpanded("lsp", !expanded.lsp),
+                })}
               >
                 <Show when={sync.data.lsp.length > 2}>
                   <text fg={theme.text}>{expanded.lsp ? "▼" : "▶"}</text>
@@ -320,7 +325,9 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean; hideTitle
                 <box
                   flexDirection="row"
                   gap={1}
-                  onMouseDown={() => todo().length > 2 && setExpanded("todo", !expanded.todo)}
+                  {...createClickOnlyMouseHandlers({
+                    onRelease: () => todo().length > 2 && setExpanded("todo", !expanded.todo),
+                  })}
                 >
                   <Show when={todo().length > 2}>
                     <text fg={theme.text}>{expanded.todo ? "▼" : "▶"}</text>
@@ -339,7 +346,9 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean; hideTitle
                 <box
                   flexDirection="row"
                   gap={1}
-                  onMouseDown={() => diff().length > 2 && setExpanded("diff", !expanded.diff)}
+                  {...createClickOnlyMouseHandlers({
+                    onRelease: () => diff().length > 2 && setExpanded("diff", !expanded.diff),
+                  })}
                 >
                   <Show when={diff().length > 2}>
                     <text fg={theme.text}>{expanded.diff ? "▼" : "▶"}</text>
@@ -387,7 +396,9 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean; hideTitle
                   <box
                     flexDirection="row"
                     gap={0}
-                    onMouseDown={() => navigate({ type: "session", sessionID: parentSession()!.id })}
+                    {...createClickOnlyMouseHandlers({
+                      onRelease: () => navigate({ type: "session", sessionID: parentSession()!.id }),
+                    })}
                   >
                     <text fg={theme.textMuted}>┊</text>
                     <text fg={theme.accent}>{Locale.truncateMiddle(parentSession()!.title ?? "Parent", 32)}</text>
@@ -401,7 +412,9 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean; hideTitle
                     <box
                       flexDirection="row"
                       gap={0}
-                      onMouseDown={() => navigate({ type: "session", sessionID: sibling.id })}
+                      {...createClickOnlyMouseHandlers({
+                        onRelease: () => navigate({ type: "session", sessionID: sibling.id }),
+                      })}
                     >
                       <text fg={theme.textMuted}>├─○ </text>
                       <text fg={theme.textMuted}>{Locale.truncateMiddle(sibling.title ?? "Branch", 30)}</text>
@@ -420,7 +433,9 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean; hideTitle
                     <box
                       flexDirection="row"
                       gap={0}
-                      onMouseDown={() => navigate({ type: "session", sessionID: child.id })}
+                      {...createClickOnlyMouseHandlers({
+                        onRelease: () => navigate({ type: "session", sessionID: child.id }),
+                      })}
                     >
                       <text fg={theme.textMuted}>{idx() === childSessions().length - 1 ? "└─○ " : "├─○ "}</text>
                       <text fg={theme.accent}>{Locale.truncateMiddle(child.title ?? "Child", 30)}</text>
@@ -451,7 +466,12 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean; hideTitle
                   <text fg={theme.text}>
                     <b>Getting started</b>
                   </text>
-                  <text fg={theme.textMuted} onMouseDown={() => kv.set("dismissed_getting_started", true)}>
+                  <text
+                    fg={theme.textMuted}
+                    {...createClickOnlyMouseHandlers({
+                      onRelease: () => kv.set("dismissed_getting_started", true),
+                    })}
+                  >
                     ✕
                   </text>
                 </box>

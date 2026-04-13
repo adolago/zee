@@ -7,6 +7,7 @@ import type { Session } from "@zee/sdk/v2"
 import { useKeybind } from "../../context/keybind"
 import { Locale } from "@/util/locale"
 import { Header as HeaderStyles } from "@tui/ui/header-footer"
+import { createClickOnlyMouseHandlers } from "../../util/click-only-mouse"
 
 export function Header() {
   const route = useRouteData("session")
@@ -47,9 +48,9 @@ export function Header() {
                     <>
                       <text
                         fg={theme.accent}
-                        onMouseDown={() =>
-                          navigate({ type: "session", sessionID: ancestor.id })
-                        }
+                        {...createClickOnlyMouseHandlers({
+                          onRelease: () => navigate({ type: "session", sessionID: ancestor.id }),
+                        })}
                       >
                         {Locale.truncateMiddle(ancestor.title ?? "Session", 20)}
                       </text>
