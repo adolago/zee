@@ -1,3 +1,4 @@
+import { EventEmitter } from "node:events"
 import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
 
 const prepareLocalMemoryMock = mock(async () => ({
@@ -25,7 +26,7 @@ mock.module("../../../../src/mcp/servers/memory.js", () => ({
   startMemoryMcpServer: startMemoryMcpServerMock,
 }))
 
-const { McpServerCommand, startBuiltinMcpServer } = await import("../../src/cli/cmd/mcp-server")
+const { McpServerCommand, runBuiltinMcpServer, startBuiltinMcpServer } = await import("../../src/cli/cmd/mcp-server")
 
 afterEach(() => {
   prepareLocalMemoryMock.mockReset()
@@ -88,5 +89,51 @@ describe("zee mcp-server", () => {
 
     await expect(startBuiltinMcpServer("memory")).rejects.toThrow("sqlite unavailable")
     expect(startMemoryMcpServerMock).not.toHaveBeenCalled()
+  })
+
+  test("keeps the built-in MCP process alive until stdin closes", async () => {
+    const stdin = new EventEmitter()
+    const processObject = new EventEmitter()
+    let settled = false
+
+    const runPromise = runBuiltinMcpServer("calendar", {
+      stdin: stdin as any,
+      processObject: processObject as any,
+    }).then(() => {
+      settled = true
+    })
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(startCalendarMcpServerMock).toHaveBeenCalledTimes(1)
+    expect(settled).toBe(false)
+
+    stdin.emit("close")
+    await runPromise
+
+    expect(settled).toBe(true)
+  })
+
+  test("allows signal-driven shutdown for the built-in MCP process", async () => {
+    const stdin = new EventEmitter()
+    const processObject = new EventEmitter()
+    let settled = false
+
+    const runPromise = runBuiltinMcpServer("consciousness", {
+      stdin: stdin as any,
+      processObject: processObject as any,
+    }).then(() => {
+      settled = true
+    })
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(startConsciousnessMcpServerMock).toHaveBeenCalledTimes(1)
+    expect(settled).toBe(false)
+
+    processObject.emit("SIGTERM")
+    await runPromise
+
+    expect(settled).toBe(true)
   })
 })

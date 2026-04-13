@@ -1,4 +1,4 @@
-import { test, expect, mock, beforeEach, afterAll } from "bun:test"
+import { test, expect, mock, beforeEach, afterEach, afterAll } from "bun:test"
 
 // Restore mock.module mocks after all tests to avoid polluting other test files
 afterAll(() => {
@@ -43,6 +43,49 @@ mock.module("@modelcontextprotocol/sdk/client/sse.js", () => ({
   },
 }))
 
+class MockClient {
+  _handlers = new Map<any, any>()
+
+  async connect(transport: { start?: () => Promise<void> }) {
+    await transport.start?.()
+  }
+
+  setNotificationHandler(schema: unknown, handler: unknown) {
+    this._handlers.set(schema, handler)
+  }
+
+  async listTools() {
+    return { tools: [] }
+  }
+
+  async listPrompts() {
+    return { prompts: [] }
+  }
+
+  async listResources() {
+    return { resources: [] }
+  }
+
+  async close() {}
+}
+
+mock.module("@modelcontextprotocol/sdk/client/index.js", () => ({
+  Client: MockClient,
+}))
+
+mock.module("@modelcontextprotocol/sdk/client/stdio.js", () => ({
+  StdioClientTransport: class MockStdioTransport {
+    stderr = null
+
+    async start() {}
+    async close() {}
+  },
+}))
+
+mock.module("@modelcontextprotocol/sdk/client/auth.js", () => ({
+  UnauthorizedError: class extends Error {},
+}))
+
 beforeEach(() => {
   transportCalls.length = 0
 })
@@ -51,6 +94,12 @@ beforeEach(() => {
 const { MCP } = await import("../../src/mcp/index")
 const { Instance } = await import("../../src/project/instance")
 const { tmpdir } = await import("../fixture/fixture")
+
+afterEach(async () => {
+  transportCalls.length = 0
+  MCP.clearToolCache()
+  await Instance.disposeAll()
+})
 
 test("headers are passed to transports when oauth is enabled (default)", async () => {
   await using tmp = await tmpdir({
