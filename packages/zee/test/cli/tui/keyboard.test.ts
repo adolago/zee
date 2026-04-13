@@ -26,6 +26,14 @@ test("enables Kitty keyboard protocol only when explicitly configured", () => {
   expect(buildKittyKeyboardFlags(resolved.options)).toBeGreaterThan(0)
 })
 
+test("treats Warp as a supported Kitty keyboard terminal when explicitly configured", () => {
+  const resolved = resolveKittyKeyboard({ tui: { kitty_keyboard: true } }, { TERM_PROGRAM: "WarpTerminal" })
+  expect(resolved.profile).toBe("warp")
+  expect(resolved.enabled).toBe(true)
+  expect(resolved.warning).toBeUndefined()
+  expect(buildKittyKeyboardFlags(resolved.options)).toBeGreaterThan(0)
+})
+
 test("detects terminal keyboard profiles from environment hints", () => {
   expect(detectTerminalKeyboardProfile({ TERM_PROGRAM: "kitty" })).toBe("kitty")
   expect(detectTerminalKeyboardProfile({ TERM_PROGRAM: "ghostty" })).toBe("ghostty")
@@ -73,4 +81,15 @@ test("disables hold-to-record on unsupported terminals even when Kitty keyboard 
 
   expect(hold.enabled).toBe(false)
   expect(hold.warning).toContain("WezTerm")
+})
+
+test("allows hold-to-record when Kitty keyboard is enabled in Warp", () => {
+  const kittyKeyboard = resolveKittyKeyboard({ tui: { kitty_keyboard: true } }, { TERM_PROGRAM: "WarpTerminal" })
+  const hold = resolveHoldToRecordSupport({
+    bindings: Keybind.parse("alt"),
+    kittyKeyboard,
+  })
+
+  expect(hold.enabled).toBe(true)
+  expect(hold.warning).toBeUndefined()
 })

@@ -87,6 +87,17 @@ describe("Runtime Checks", () => {
     })
   })
 
+  describe("checkOpenBBWorkspace", () => {
+    it("should include the OpenBB Workspace readiness check", async () => {
+      const results = await runRuntimeChecks({ full: false, fix: false, verbose: false, timeout: 5000 })
+      const workspaceCheck = results.find((r) => r.id === "runtime.openbb-workspace")
+
+      expect(workspaceCheck).toBeDefined()
+      expect(["pass", "warn"]).toContain(workspaceCheck!.status)
+      expect(workspaceCheck!.metadata).toHaveProperty("descriptorUrl")
+    })
+  })
+
   describe("checkBinaryMatch (extended)", () => {
     it("should only run in full mode", async () => {
       const normalResults = await runRuntimeChecks({ full: false, fix: false, verbose: false, timeout: 5000 })

@@ -1,5 +1,4 @@
 import { render, useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
-import { Clipboard } from "@tui/util/clipboard"
 import { TextAttributes, RGBA } from "@opentui/core"
 import { RouteProvider, useRoute } from "@tui/context/route"
 import {
@@ -52,8 +51,10 @@ import { Config } from "@/config/config"
 import { Instance } from "@/project/instance"
 import { PromptRefProvider, usePromptRef } from "./context/prompt"
 import { openExternalUrl } from "@/util/open-external-url"
+import { Clipboard } from "@tui/util/clipboard"
 import { Terminal } from "./util/terminal"
 import { resolveKittyKeyboard } from "./util/keyboard"
+import { buildTuiRenderOptions } from "./util/render-options"
 import { nextSessionMode, resolveEffectiveSessionMode } from "./util/session-mode"
 import { createHomeBenchmarkCommand } from "./routes/session/benchmark"
 
@@ -116,20 +117,7 @@ export function tui(input: {
           </ErrorBoundary>
         )
       },
-      {
-        targetFps: 60,
-        gatherStats: false,
-        exitOnCtrlC: false,
-        useKittyKeyboard: kittyKeyboard.options,
-        consoleOptions: {
-          keyBindings: [{ name: "y", ctrl: true, action: "copy-selection" }],
-          onCopySelection: (text) => {
-            Clipboard.copy(text).catch((error) => {
-              console.error(`Failed to copy console selection to clipboard: ${error}`)
-            })
-          },
-        },
-      },
+      buildTuiRenderOptions(kittyKeyboard),
     )
   })
 }

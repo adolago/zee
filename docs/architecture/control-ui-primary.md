@@ -9,10 +9,12 @@ Explicit HTTP operator scope assignments live in `docs/architecture/control-plan
 Primary entrypoints:
 
 ```bash
-zee daemon --hostname 127.0.0.1 --port 3210
+zee daemon --hostname 127.0.0.1 --port <configured-zee-port>
 GET /openbb/agents.json
 POST /openbb/query
 ```
+
+`<configured-zee-port>` is the effective Zee server port from config or CLI. `3210` is the default, but operators should point OpenBB Workspace at the actual resolved Zee server port for the machine.
 
 ## Core Operator Workflows
 
@@ -29,7 +31,7 @@ These workflows are covered by API-surface tests to keep the OpenBB path stable.
 ## Lifecycle Expectations
 
 - Start daemon: `zee daemon`
-- Configure OpenBB Workspace against `http://127.0.0.1:3210/openbb/agents.json`
+- Configure OpenBB Workspace against `http://127.0.0.1:<configured-zee-port>/openbb/agents.json`
 - Verify streaming query flow against `POST /openbb/query`
 
 ## Security Guidance (Proxied Deployment)

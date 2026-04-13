@@ -967,7 +967,7 @@ export namespace Config {
         .optional()
         .default("none")
         .describe(
-          "Hold to record and release to stop. Requires tui.kitty_keyboard=true plus a kitty, ghostty, or foot terminal. Set to a modifier to enable.",
+          "Hold to record and release to stop. Requires tui.kitty_keyboard=true plus a kitty, ghostty, foot, or Warp terminal. Set to a modifier to enable.",
         ),
       grammar_quickfix: z.string().optional().default("<leader>.").describe("Quick-fix grammar error at cursor"),
       grammar_menu: z.string().optional().default("<leader>shift+g").describe("Open grammar check menu"),
@@ -1131,7 +1131,9 @@ export namespace Config {
       .boolean()
       .optional()
       .default(false)
-      .describe("Enable Kitty keyboard protocol on supported terminals (kitty, ghostty, foot) for advanced key events."),
+      .describe(
+        "Enable Kitty keyboard protocol on supported terminals (kitty, ghostty, foot, Warp) for advanced key events.",
+      ),
   })
 
   /**

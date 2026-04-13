@@ -13,6 +13,7 @@ import os from "os"
 import { CONFIG_FILE_NAMES, CONFIG_DIR_NAMES, getGlobalConfigDir } from "@root/config/defaults"
 import { interpolate } from "@root/config/interpolation"
 import { probeOpenBBAvailability, resolveOpenBBRuntime, type OpenBBRuntimeMode } from "../openbb/runtime"
+import { probeOpenBBWorkspaceAvailability } from "../openbb/workspace"
 import { getLocalMemoryStatus } from "../../../../src/memory/local-runtime"
 import { Auth } from "../auth"
 import { Config } from "../config/config"
@@ -41,6 +42,17 @@ export interface SetupCheckResult {
     mode: OpenBBRuntimeMode
     error?: string
     action?: string
+    workspace: {
+      available: boolean
+      baseUrl: string
+      descriptorUrl: string
+      queryUrl: string
+      daemonReachable: boolean
+      descriptorReachable: boolean
+      statusCode?: number
+      error?: string
+      action?: string
+    }
   }
   mcp: {
     builtinsReady: boolean
@@ -83,6 +95,10 @@ export interface AgentProviderSetupStatus {
   providerId?: string
   source?: "auth" | "env" | "config"
   action?: string
+}
+
+async function resolveSetupConfig(): Promise<Config.Info | undefined> {
+  return (await Config.get().catch(async () => Config.global().catch(() => undefined))) as Config.Info | undefined
 }
 
 async function findProjectConfigDirs(startDir: string): Promise<string[]> {
@@ -254,9 +270,11 @@ export async function runSetupCheck(): Promise<SetupCheckResult> {
   const errors: string[] = []
   const strict = process.env.ZEE_STRICT_SETUP === "1" || process.env.ZEE_REQUIRE_MEMORY === "1"
 
+  const config = await resolveSetupConfig()
   const memoryStatus = await getLocalMemoryStatus()
-  const openbbResolution = resolveOpenBBRuntime()
-  const openbbCheck = await probeOpenBBAvailability()
+  const openbbResolution = resolveOpenBBRuntime(config?.openbb)
+  const openbbCheck = await probeOpenBBAvailability(config?.openbb)
+  const openbbWorkspace = await probeOpenBBWorkspaceAvailability(config)
   const agentProvider = await checkAgentProviderReady()
   const missingEnvWarnings = await scanMissingEnvPlaceholders().catch(() => [])
   const mcpRuntime = getBuiltinMcpRuntimeStatus()
@@ -281,6 +299,12 @@ export async function runSetupCheck(): Promise<SetupCheckResult> {
     warnings.push(`OpenBB Platform API unavailable at ${openbbResolution.apiUrl}`)
     if (openbbCheck.error) warnings.push(`OpenBB detail: ${openbbCheck.error}`)
     if (openbbCheck.action) warnings.push(`OpenBB remediation: ${openbbCheck.action}`)
+  }
+
+  if (!openbbWorkspace.available && openbbWorkspace.daemonReachable) {
+    warnings.push(`OpenBB Workspace descriptor unavailable at ${openbbWorkspace.descriptorUrl}`)
+    if (openbbWorkspace.error) warnings.push(`OpenBB Workspace detail: ${openbbWorkspace.error}`)
+    if (openbbWorkspace.action) warnings.push(`OpenBB Workspace remediation: ${openbbWorkspace.action}`)
   }
 
   if (!agentProvider.available) {
@@ -321,6 +345,17 @@ export async function runSetupCheck(): Promise<SetupCheckResult> {
       mode: openbbResolution.mode,
       error: openbbCheck.error,
       action: openbbCheck.action,
+      workspace: {
+        available: openbbWorkspace.available,
+        baseUrl: openbbWorkspace.baseUrl,
+        descriptorUrl: openbbWorkspace.descriptorUrl,
+        queryUrl: openbbWorkspace.queryUrl,
+        daemonReachable: openbbWorkspace.daemonReachable,
+        descriptorReachable: openbbWorkspace.descriptorReachable,
+        statusCode: openbbWorkspace.statusCode,
+        error: openbbWorkspace.error,
+        action: openbbWorkspace.action,
+      },
     },
     mcp: {
       builtinsReady: mcpBuiltinsReady,
@@ -335,6 +370,7 @@ export async function runSetupCheck(): Promise<SetupCheckResult> {
     log.info("Setup check passed", {
       memoryPrepared: memoryStatus.prepared,
       openbbAvailable: openbbCheck.available,
+      openbbWorkspaceAvailable: openbbWorkspace.available,
       mcpBuiltinsReady,
       warnings: warnings.length,
     })
@@ -370,6 +406,20 @@ export function formatSetupCheckResult(result: SetupCheckResult): string {
     lines.push(`OpenBB:   DEGRADED (${result.openbb.apiUrl}, ${result.openbb.mode})`)
     if (result.openbb.error) {
       lines.push(`          ${result.openbb.error}`)
+    }
+  }
+
+  if (result.openbb.workspace.available) {
+    lines.push(`OpenBB WS: OK (${result.openbb.workspace.descriptorUrl})`)
+  } else if (!result.openbb.workspace.daemonReachable) {
+    lines.push(`OpenBB WS: WAITING (${result.openbb.workspace.descriptorUrl})`)
+    if (result.openbb.workspace.action) {
+      lines.push(`          ${result.openbb.workspace.action}`)
+    }
+  } else {
+    lines.push(`OpenBB WS: DEGRADED (${result.openbb.workspace.descriptorUrl})`)
+    if (result.openbb.workspace.error) {
+      lines.push(`          ${result.openbb.workspace.error}`)
     }
   }
 

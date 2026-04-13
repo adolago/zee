@@ -86,3 +86,5 @@ Machine policy is loaded after user and project config, so it has highest preced
 ```
 
 Keep non-loopback binds disabled unless enterprise policy also configures authentication.
+
+OpenBB Workspace should connect to the resolved Zee server port for the machine, not a hardcoded port. The example above uses `3210` only as the default.

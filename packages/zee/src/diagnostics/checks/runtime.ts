@@ -8,9 +8,10 @@ import * as fs from "fs/promises"
 import * as os from "os"
 import * as path from "path"
 import type { CheckResult, CheckOptions } from "../types"
+import { Config } from "../../config/config"
 import { resolveConfigDir, resolveLogsDir, resolveStateDir } from "../../global/dirs"
-import { OpenBB } from "../../paths"
-import { probeOpenBBAvailability } from "../../openbb/runtime"
+import { probeOpenBBAvailability, resolveOpenBBRuntime, type OpenBBAvailability } from "../../openbb/runtime"
+import { probeOpenBBWorkspaceAvailability } from "../../openbb/workspace"
 
 /** Minimum required Bun version */
 const FALLBACK_MIN_BUN_VERSION = "1.0.0"
@@ -40,6 +41,10 @@ function getStateDir(): string {
  */
 function getLogsDir(): string {
   return resolveLogsDir()
+}
+
+async function resolveRuntimeConfig(): Promise<Config.Info | undefined> {
+  return (await Config.get().catch(async () => Config.global().catch(() => undefined))) as Config.Info | undefined
 }
 
 /**
@@ -379,6 +384,9 @@ async function checkBinaryMatch(): Promise<CheckResult> {
  */
 export async function runRuntimeChecks(options: CheckOptions): Promise<CheckResult[]> {
   const results: CheckResult[] = []
+  const config = await resolveRuntimeConfig()
+  const openbbConfig = config?.openbb
+  const openbbProbe = await probeOpenBBAvailability(openbbConfig)
 
   // Core checks (always run)
   results.push(await checkBunVersion())
@@ -389,7 +397,8 @@ export async function runRuntimeChecks(options: CheckOptions): Promise<CheckResu
   results.push(await checkMemory())
 
   // OpenBB runtime
-  results.push(await checkOpenBBBackend())
+  results.push(await checkOpenBBBackend(openbbProbe, openbbConfig))
+  results.push(await checkOpenBBWorkspace(openbbProbe, config))
 
   // Extended checks (only in full mode)
   if (options.full) {
@@ -402,28 +411,32 @@ export async function runRuntimeChecks(options: CheckOptions): Promise<CheckResu
 /**
  * Check that the Investing runtime is properly configured
  */
-async function checkOpenBBBackend(): Promise<CheckResult> {
+async function checkOpenBBBackend(
+  probe: OpenBBAvailability,
+  openbbConfig?: Config.Info["openbb"],
+): Promise<CheckResult> {
   const start = Date.now()
-  const apiUrl = OpenBB.apiUrl()
-  const err = OpenBB.preflight()
+  const resolution = resolveOpenBBRuntime(openbbConfig)
+  const apiUrl = resolution.apiUrl
 
-  if (err) {
+  try {
+    new URL(apiUrl)
+  } catch {
     return {
       id: "runtime.openbb-backend",
       name: "OpenBB Backend",
       category: "runtime",
       status: "warn",
       message: "OpenBB backend is not configured",
-      details: err,
+      details: `Configured OpenBB API URL is invalid: ${apiUrl}`,
       severity: "warning",
       durationMs: Date.now() - start,
       autoFixable: false,
     }
   }
 
-  const probe = await probeOpenBBAvailability()
   if (!probe.available) {
-    if (!OpenBB.apiUrlOverridden()) {
+    if (!resolution.remoteOverride) {
       return {
         id: "runtime.openbb-backend",
         name: "OpenBB Backend",
@@ -462,5 +475,82 @@ async function checkOpenBBBackend(): Promise<CheckResult> {
     durationMs: Date.now() - start,
     autoFixable: false,
     metadata: { apiUrl, mode: probe.mode, healthUrl: probe.healthUrl, statusCode: probe.statusCode },
+  }
+}
+
+async function checkOpenBBWorkspace(
+  backendProbe: OpenBBAvailability,
+  config?: Config.Info,
+): Promise<CheckResult> {
+  const start = Date.now()
+  const openbbResolution = resolveOpenBBRuntime(config?.openbb)
+  const workspace = await probeOpenBBWorkspaceAvailability(config)
+
+  if (workspace.available) {
+    return {
+      id: "runtime.openbb-workspace",
+      name: "OpenBB Workspace",
+      category: "runtime",
+      status: "pass",
+      message: `OpenBB Workspace descriptor reachable at ${workspace.descriptorUrl}`,
+      severity: "info",
+      durationMs: Date.now() - start,
+      autoFixable: false,
+      metadata: {
+        baseUrl: workspace.baseUrl,
+        descriptorUrl: workspace.descriptorUrl,
+        queryUrl: workspace.queryUrl,
+        hostname: workspace.hostname,
+        port: workspace.port,
+        source: workspace.source,
+        statusCode: workspace.statusCode,
+      },
+    }
+  }
+
+  if (!workspace.daemonReachable && !backendProbe.available && !openbbResolution.remoteOverride) {
+    return {
+      id: "runtime.openbb-workspace",
+      name: "OpenBB Workspace",
+      category: "runtime",
+      status: "pass",
+      message: "OpenBB Workspace inactive until Zee daemon and OpenBB workflows are in use",
+      details: workspace.action,
+      severity: "info",
+      durationMs: Date.now() - start,
+      autoFixable: false,
+      metadata: {
+        baseUrl: workspace.baseUrl,
+        descriptorUrl: workspace.descriptorUrl,
+        queryUrl: workspace.queryUrl,
+        hostname: workspace.hostname,
+        port: workspace.port,
+        source: workspace.source,
+        daemonReachable: false,
+      },
+    }
+  }
+
+  return {
+    id: "runtime.openbb-workspace",
+    name: "OpenBB Workspace",
+    category: "runtime",
+    status: "warn",
+    message: `OpenBB Workspace descriptor unavailable at ${workspace.descriptorUrl}`,
+    details: workspace.error || workspace.action,
+    severity: "warning",
+    durationMs: Date.now() - start,
+    autoFixable: false,
+    metadata: {
+      baseUrl: workspace.baseUrl,
+      descriptorUrl: workspace.descriptorUrl,
+      queryUrl: workspace.queryUrl,
+      hostname: workspace.hostname,
+      port: workspace.port,
+      source: workspace.source,
+      daemonReachable: workspace.daemonReachable,
+      descriptorReachable: workspace.descriptorReachable,
+      statusCode: workspace.statusCode,
+    },
   }
 }

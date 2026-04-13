@@ -28,7 +28,8 @@ export const KITTY_KEYBOARD_ENABLED: KittyKeyboardOptions = {
   events: true,
 }
 
-const KITTY_KEYBOARD_SUPPORTED_PROFILES = new Set<TerminalKeyboardProfile>(["kitty", "ghostty", "foot"])
+const KITTY_KEYBOARD_SUPPORTED_PROFILES = new Set<TerminalKeyboardProfile>(["kitty", "ghostty", "foot", "warp"])
+const KITTY_KEYBOARD_SUPPORTED_LABEL = "kitty, ghostty, foot, and Warp"
 
 export function detectTerminalKeyboardProfile(env: NodeJS.ProcessEnv = process.env): TerminalKeyboardProfile {
   const termProgram = env.TERM_PROGRAM?.trim().toLowerCase() ?? ""
@@ -104,7 +105,7 @@ export function resolveKittyKeyboard(
     explicitlyEnabled,
     enabled: false,
     options: KITTY_KEYBOARD_DISABLED,
-    warning: `Ignoring tui.kitty_keyboard=true in ${describeTerminalKeyboardProfile(profile)}; supported terminals are kitty, ghostty, and foot.`,
+    warning: `Ignoring tui.kitty_keyboard=true in ${describeTerminalKeyboardProfile(profile)}; supported terminals are ${KITTY_KEYBOARD_SUPPORTED_LABEL}.`,
   }
 }
 
@@ -140,8 +141,7 @@ export function resolveHoldToRecordSupport(input: {
     return {
       profile: input.kittyKeyboard.profile,
       enabled: false,
-      warning:
-        "input_dictation_hold requires tui.kitty_keyboard=true on kitty, ghostty, or foot. Hold-to-record is disabled.",
+      warning: `input_dictation_hold requires tui.kitty_keyboard=true on ${KITTY_KEYBOARD_SUPPORTED_LABEL}. Hold-to-record is disabled.`,
     }
   }
 
@@ -149,7 +149,7 @@ export function resolveHoldToRecordSupport(input: {
     return {
       profile: input.kittyKeyboard.profile,
       enabled: false,
-      warning: `input_dictation_hold is disabled in ${describeTerminalKeyboardProfile(input.kittyKeyboard.profile)}; supported terminals are kitty, ghostty, and foot.`,
+      warning: `input_dictation_hold is disabled in ${describeTerminalKeyboardProfile(input.kittyKeyboard.profile)}; supported terminals are ${KITTY_KEYBOARD_SUPPORTED_LABEL}.`,
     }
   }
 
