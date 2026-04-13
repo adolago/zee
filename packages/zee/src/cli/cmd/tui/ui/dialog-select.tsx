@@ -11,6 +11,7 @@ import { useKeybind } from "@tui/context/keybind"
 import { isReturn, Keybind } from "@/util/keybind"
 import { Locale } from "@/util/locale"
 import { renderDialogSelectFooter } from "./dialog-select-footer"
+import { createClickOnlyMouseHandlers } from "../util/click-only-mouse"
 
 export interface DialogSelectProps<T> {
   title: string
@@ -55,7 +56,6 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
   const [store, setStore] = createStore({
     selected: 0,
     filter: "",
-    input: "keyboard" as "keyboard" | "mouse",
   })
 
   const leaderLabel = createMemo(() => {
@@ -100,14 +100,6 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
         scoreFn: (r) => r[0].score * 2 + r[1].score,
       })
       .map((x) => x.obj)
-  })
-
-  // When the filter changes due to how TUI works, the mousemove might still be triggered
-  // via a synthetic event as the layout moves underneath the cursor. This is a workaround to make sure the input mode remains keyboard
-  // that the mouseover event doesn't trigger when filtering.
-  createEffect(() => {
-    filtered()
-    setStore("input", "keyboard")
   })
 
   const grouped = createMemo(() => {
@@ -184,8 +176,6 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
   }
 
   useKeyboard((evt) => {
-    setStore("input", "keyboard")
-
     if (evt.name === "up" || (evt.ctrl && evt.name === "p")) move(-1)
     if (evt.name === "down" || (evt.ctrl && evt.name === "n")) move(1)
     if (evt.name === "pageup") move(-10)
@@ -301,24 +291,17 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
                       <box
                         id={JSON.stringify(option.value)}
                         flexDirection="row"
-                        onMouseMove={() => {
-                          setStore("input", "mouse")
-                        }}
-                        onMouseUp={() => {
-                          option.onSelect?.(dialog)
-                          props.onSelect?.(option)
-                        }}
-                        onMouseOver={() => {
-                          if (store.input !== "mouse") return
-                          const index = flat().findIndex((x) => isDeepEqual(x.value, option.value))
-                          if (index === -1) return
-                          moveTo(index)
-                        }}
-                        onMouseDown={() => {
-                          const index = flat().findIndex((x) => isDeepEqual(x.value, option.value))
-                          if (index === -1) return
-                          moveTo(index)
-                        }}
+                        {...createClickOnlyMouseHandlers({
+                          onPress: () => {
+                            const index = flat().findIndex((x) => isDeepEqual(x.value, option.value))
+                            if (index === -1) return
+                            moveTo(index)
+                          },
+                          onRelease: () => {
+                            option.onSelect?.(dialog)
+                            props.onSelect?.(option)
+                          },
+                        })}
                         backgroundColor={active() ? (option.bg ?? theme.primary) : RGBA.fromInts(0, 0, 0, 0)}
                         paddingLeft={0}
                         paddingRight={0}
@@ -370,7 +353,6 @@ function Option(props: {
   current?: boolean
   footer?: JSX.Element | string
   gutter?: JSX.Element
-  onMouseOver?: () => void
 }) {
   const { theme } = useTheme()
   const fg = selectedForeground(theme)
