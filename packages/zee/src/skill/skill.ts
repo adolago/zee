@@ -228,6 +228,15 @@ export namespace Skill {
     return value.trim().toLowerCase()
   }
 
+  function getBundledSkillConfigDir(): string {
+    return path.resolve(path.join(Global.Path.source, ".zee"))
+  }
+
+  function shouldSkipBundledSkillDir(dir: string, hasCanonicalSkillRoots: boolean): boolean {
+    if (!hasCanonicalSkillRoots) return false
+    return path.resolve(dir) === getBundledSkillConfigDir()
+  }
+
   const STOPWORDS = new Set([
     "the",
     "and",
@@ -649,6 +658,7 @@ export namespace Skill {
     if (await Filesystem.isDir(globalAgents)) {
       agentsDirs.push(globalAgents)
     }
+    const hasCanonicalSkillRoots = agentsDirs.length > 0
 
     for (const dir of agentsDirs) {
       const matches = await Array.fromAsync(
@@ -704,6 +714,9 @@ export namespace Skill {
 
     // Scan .zee/skill/ directories
     for (const dir of await Config.directories()) {
+      if (shouldSkipBundledSkillDir(dir, hasCanonicalSkillRoots)) {
+        continue
+      }
       for await (const match of ZEE_SKILL_GLOB.scan({
         cwd: dir,
         absolute: true,
@@ -770,7 +783,9 @@ export namespace Skill {
     }
 
     // Global ~/.agents/skills/
-    dirs.push(path.join(Global.Path.home, ".agents", "skills"))
+    const globalAgentsSkills = path.join(Global.Path.home, ".agents", "skills")
+    dirs.push(globalAgentsSkills)
+    const hasCanonicalSkillRoots = agentsDirs.length > 0 || (await Filesystem.isDir(path.join(Global.Path.home, ".agents")))
 
     // .claude/skills/ directories (project-level) - Anthropic standard
     const claudeDirs = await Array.fromAsync(
@@ -789,6 +804,9 @@ export namespace Skill {
 
     // .zee config directories
     for (const d of await Config.directories()) {
+      if (shouldSkipBundledSkillDir(d, hasCanonicalSkillRoots)) {
+        continue
+      }
       dirs.push(d)
     }
 

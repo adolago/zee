@@ -7,10 +7,21 @@ import { Log } from "@/util/log"
 
 const log = Log.create({ service: "skill-mirror" })
 
-const BUNDLED_MANIFEST_PATH = path.join(Global.Path.source, ".zee", "skill-manifest.json")
-const BUNDLED_SKILLS_DIR = path.join(Global.Path.source, ".zee", "skill")
-const MIRROR_DESTINATION = path.join(Global.Path.config, "skills")
-const MIRROR_STATE_PATH = path.join(Global.Path.config, "skill-mirror-state.json")
+function getBundledManifestPath(): string {
+  return path.join(Global.Path.source, ".zee", "skill-manifest.json")
+}
+
+function getBundledSkillsDir(): string {
+  return path.join(Global.Path.source, ".zee", "skill")
+}
+
+function getMirrorDestination(): string {
+  return path.join(Global.Path.config, "skills")
+}
+
+function getMirrorStatePath(): string {
+  return path.join(Global.Path.config, "skill-mirror-state.json")
+}
 
 function normalizeManifestContext(value?: string): "zee" | undefined {
   return value === "zee" ? "zee" : undefined
@@ -65,7 +76,7 @@ function normalizeRelativeSkillPath(value: string): string | undefined {
 
 function readMirrorState(): SkillMirrorState | undefined {
   try {
-    const raw = fs.readFileSync(MIRROR_STATE_PATH, "utf-8")
+    const raw = fs.readFileSync(getMirrorStatePath(), "utf-8")
     const parsed = SkillMirrorStateSchema.safeParse(JSON.parse(raw))
     if (!parsed.success) return undefined
     return parsed.data
@@ -75,15 +86,25 @@ function readMirrorState(): SkillMirrorState | undefined {
 }
 
 function writeMirrorState(state: SkillMirrorState): void {
-  fs.mkdirSync(path.dirname(MIRROR_STATE_PATH), { recursive: true })
-  fs.writeFileSync(MIRROR_STATE_PATH, JSON.stringify(state, null, 2) + "\n")
+  const mirrorStatePath = getMirrorStatePath()
+  fs.mkdirSync(path.dirname(mirrorStatePath), { recursive: true })
+  fs.writeFileSync(mirrorStatePath, JSON.stringify(state, null, 2) + "\n")
+}
+
+function deleteMirrorState(): void {
+  try {
+    fs.rmSync(getMirrorStatePath(), { force: true })
+  } catch {
+    // Ignore cleanup errors.
+  }
 }
 
 function isMirrorDrifted(manifest: SkillManifest): boolean {
+  const mirrorDestination = getMirrorDestination()
   for (const entry of manifest.skills) {
     const relativePath = normalizeRelativeSkillPath(entry.path)
     if (!relativePath) continue
-    const expectedSkillFile = path.join(MIRROR_DESTINATION, relativePath, "SKILL.md")
+    const expectedSkillFile = path.join(mirrorDestination, relativePath, "SKILL.md")
     if (!fs.existsSync(expectedSkillFile)) {
       return true
     }
@@ -91,30 +112,84 @@ function isMirrorDrifted(manifest: SkillManifest): boolean {
   return false
 }
 
+function findSourceCheckoutSkillRoot(startDir: string = process.cwd()): string | undefined {
+  let current = path.resolve(startDir)
+  for (;;) {
+    const candidate = path.join(current, ".agents", "skills", "@zee")
+    if (fs.existsSync(candidate)) return candidate
+    const parent = path.dirname(current)
+    if (parent === current) return undefined
+    current = parent
+  }
+}
+
+function removeEmptyParents(startPath: string, stopPath: string): void {
+  let current = path.resolve(startPath)
+  const root = path.resolve(stopPath)
+  while (current.startsWith(root) && current !== root) {
+    try {
+      if (fs.readdirSync(current).length > 0) return
+      fs.rmdirSync(current)
+    } catch {
+      return
+    }
+    current = path.dirname(current)
+  }
+}
+
+function pruneMirroredSkills(manifest: SkillManifest): number {
+  const mirrorDestination = getMirrorDestination()
+  let removed = 0
+  for (const entry of manifest.skills) {
+    const relativePath = normalizeRelativeSkillPath(entry.path)
+    if (!relativePath) continue
+    const destinationPath = path.join(mirrorDestination, relativePath)
+    if (!fs.existsSync(destinationPath)) continue
+    fs.rmSync(destinationPath, { recursive: true, force: true })
+    removeEmptyParents(path.dirname(destinationPath), mirrorDestination)
+    removed++
+  }
+
+  try {
+    if (fs.existsSync(mirrorDestination) && fs.readdirSync(mirrorDestination).length === 0) {
+      fs.rmdirSync(mirrorDestination)
+    }
+  } catch {
+    // Ignore cleanup errors.
+  }
+
+  deleteMirrorState()
+  return removed
+}
+
 export async function syncBundledSkillsToMachine(options?: {
   force?: boolean
   reason?: string
 }): Promise<SkillMirrorResult> {
-  if (!fs.existsSync(BUNDLED_MANIFEST_PATH) || !fs.existsSync(BUNDLED_SKILLS_DIR)) {
+  const bundledManifestPath = getBundledManifestPath()
+  const bundledSkillsDir = getBundledSkillsDir()
+  const mirrorDestination = getMirrorDestination()
+
+  if (!fs.existsSync(bundledManifestPath) || !fs.existsSync(bundledSkillsDir)) {
     return {
       status: "skipped",
       reason: "bundled-skill-manifest-missing",
       skillCount: 0,
-      source: BUNDLED_SKILLS_DIR,
-      destination: MIRROR_DESTINATION,
+      source: bundledSkillsDir,
+      destination: mirrorDestination,
     }
   }
 
   let manifestRaw = ""
   try {
-    manifestRaw = await Bun.file(BUNDLED_MANIFEST_PATH).text()
+    manifestRaw = await Bun.file(bundledManifestPath).text()
   } catch (error) {
     return {
       status: "failed",
       reason: `unable-to-read-manifest: ${error instanceof Error ? error.message : String(error)}`,
       skillCount: 0,
-      source: BUNDLED_SKILLS_DIR,
-      destination: MIRROR_DESTINATION,
+      source: bundledSkillsDir,
+      destination: mirrorDestination,
     }
   }
 
@@ -126,8 +201,8 @@ export async function syncBundledSkillsToMachine(options?: {
       status: "failed",
       reason: "invalid-manifest-json",
       skillCount: 0,
-      source: BUNDLED_SKILLS_DIR,
-      destination: MIRROR_DESTINATION,
+      source: bundledSkillsDir,
+      destination: mirrorDestination,
     }
   }
 
@@ -137,8 +212,8 @@ export async function syncBundledSkillsToMachine(options?: {
       status: "failed",
       reason: "invalid-manifest-schema",
       skillCount: 0,
-      source: BUNDLED_SKILLS_DIR,
-      destination: MIRROR_DESTINATION,
+      source: bundledSkillsDir,
+      destination: mirrorDestination,
     }
   }
 
@@ -146,6 +221,27 @@ export async function syncBundledSkillsToMachine(options?: {
   const manifestHash = computeManifestHash(manifestRaw)
   const state = readMirrorState()
   const drifted = isMirrorDrifted(manifest)
+  const sourceCheckoutSkills = findSourceCheckoutSkillRoot()
+
+  if (sourceCheckoutSkills) {
+    const removed = pruneMirroredSkills(manifest)
+    if (removed > 0) {
+      log.info("skipped bundled skill mirror because source checkout skills are available", {
+        sourceCheckoutSkills,
+        removed,
+        destination: mirrorDestination,
+      })
+    }
+
+    return {
+      status: "skipped",
+      reason: "source-checkout-skills-present",
+      skillCount: manifest.skills.length,
+      manifestHash,
+      source: bundledSkillsDir,
+      destination: mirrorDestination,
+    }
+  }
 
   if (!options?.force && state?.manifestHash === manifestHash && !drifted) {
     return {
@@ -153,21 +249,21 @@ export async function syncBundledSkillsToMachine(options?: {
       reason: "up-to-date",
       skillCount: manifest.skills.length,
       manifestHash,
-      source: BUNDLED_SKILLS_DIR,
-      destination: MIRROR_DESTINATION,
+      source: bundledSkillsDir,
+      destination: mirrorDestination,
     }
   }
 
   let copied = 0
   try {
-    fs.mkdirSync(MIRROR_DESTINATION, { recursive: true })
+    fs.mkdirSync(mirrorDestination, { recursive: true })
 
     for (const entry of manifest.skills) {
       const relativePath = normalizeRelativeSkillPath(entry.path)
       if (!relativePath) continue
 
-      const sourcePath = path.join(BUNDLED_SKILLS_DIR, relativePath)
-      const destinationPath = path.join(MIRROR_DESTINATION, relativePath)
+      const sourcePath = path.join(bundledSkillsDir, relativePath)
+      const destinationPath = path.join(mirrorDestination, relativePath)
       if (!fs.existsSync(sourcePath)) continue
 
       fs.cpSync(sourcePath, destinationPath, {
@@ -185,8 +281,8 @@ export async function syncBundledSkillsToMachine(options?: {
       version: 1,
       manifestHash,
       mirroredAt: new Date().toISOString(),
-      sourceRoot: BUNDLED_SKILLS_DIR,
-      destinationRoot: MIRROR_DESTINATION,
+      sourceRoot: bundledSkillsDir,
+      destinationRoot: mirrorDestination,
       skillCount: manifest.skills.length,
     })
 
@@ -194,7 +290,7 @@ export async function syncBundledSkillsToMachine(options?: {
       reason: options?.reason ?? "manual",
       copied,
       total: manifest.skills.length,
-      destination: MIRROR_DESTINATION,
+      destination: mirrorDestination,
     })
 
     return {
@@ -202,8 +298,8 @@ export async function syncBundledSkillsToMachine(options?: {
       reason: copied === 0 ? "no-valid-entries" : "mirrored",
       skillCount: manifest.skills.length,
       manifestHash,
-      source: BUNDLED_SKILLS_DIR,
-      destination: MIRROR_DESTINATION,
+      source: bundledSkillsDir,
+      destination: mirrorDestination,
     }
   } catch (error) {
     log.error("bundled skill mirror failed", {
@@ -215,8 +311,8 @@ export async function syncBundledSkillsToMachine(options?: {
       reason: error instanceof Error ? error.message : String(error),
       skillCount: manifest.skills.length,
       manifestHash,
-      source: BUNDLED_SKILLS_DIR,
-      destination: MIRROR_DESTINATION,
+      source: bundledSkillsDir,
+      destination: mirrorDestination,
     }
   }
 }
