@@ -15,6 +15,7 @@
 
 import { createInterface, type Interface as ReadlineInterface } from "node:readline"
 import { stdin, stdout, env } from "node:process"
+import { supportsColorOutput, supportsUnicodeOutput } from "@/cli/terminal-capabilities"
 
 import { BaseSurface, type Surface } from "./surface.js"
 import {
@@ -46,9 +47,10 @@ import {
  * Follows the no-color.org standard.
  */
 function shouldUseColors(): boolean {
-  if (env.NO_COLOR !== undefined) return false
-  if (env.FORCE_COLOR !== undefined) return true
-  return stdout.isTTY ?? false
+  return supportsColorOutput({
+    env,
+    isTTY: stdout.isTTY ?? false,
+  })
 }
 
 /**
@@ -56,8 +58,11 @@ function shouldUseColors(): boolean {
  * When NO_COLOR is set, defaults to ASCII for consistent plain-text output.
  */
 function shouldUseUnicode(): boolean {
-  if (env.NO_COLOR !== undefined) return false
-  return stdout.isTTY ?? false
+  return supportsUnicodeOutput({
+    env,
+    platform: process.platform,
+    isTTY: stdout.isTTY ?? false,
+  })
 }
 
 // =============================================================================

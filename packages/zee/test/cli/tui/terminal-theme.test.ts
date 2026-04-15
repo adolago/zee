@@ -155,4 +155,22 @@ describe("terminal palette snapshots", () => {
     expect(Terminal.samePaletteSnapshot(a, b)).toBe(true)
     expect(Terminal.samePaletteSnapshot(a, c)).toBe(false)
   })
+
+  test("disables OSC color queries on Windows Warp", () => {
+    expect(
+      Terminal.shouldUseOscColorQueries({
+        env: { TERM_PROGRAM: "WarpTerminal" },
+        platform: "win32",
+      }),
+    ).toBe(false)
+  })
+
+  test("keeps OSC color queries enabled on non-Windows terminals", () => {
+    expect(
+      Terminal.shouldUseOscColorQueries({
+        env: { TERM_PROGRAM: "ghostty" },
+        platform: "linux",
+      }),
+    ).toBe(true)
+  })
 })

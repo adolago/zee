@@ -90,6 +90,7 @@
 
 import { env } from "node:process"
 import { cliColors, assistantCliColors } from "@root/theme/rosetta"
+import { supportsColorOutput, supportsUnicodeOutput } from "@/cli/terminal-capabilities"
 
 // =============================================================================
 // NO_COLOR Detection
@@ -115,12 +116,10 @@ import { cliColors, assistantCliColors } from "@root/theme/rosetta"
  * ```
  */
 export function shouldUseColors(): boolean {
-  // NO_COLOR takes precedence - any value disables colors
-  if (env.NO_COLOR !== undefined) return false
-  // FORCE_COLOR explicitly enables colors
-  if (env.FORCE_COLOR !== undefined) return true
-  // Default to TTY detection
-  return process.stderr.isTTY ?? false
+  return supportsColorOutput({
+    env,
+    isTTY: process.stderr.isTTY ?? false,
+  })
 }
 
 /**
@@ -144,21 +143,10 @@ export function shouldUseColors(): boolean {
  * ```
  */
 export function shouldUseUnicode(): boolean {
-  // NO_COLOR often indicates desire for plain text - use ASCII
-  if (env.NO_COLOR !== undefined) return false
-  // Check for explicit Unicode disable
-  if (env.NO_UNICODE || env.ASCII_ONLY) return false
-  // Check for explicit Unicode force
-  if (env.FORCE_UNICODE) return true
-  // Check for UTF-8 locale
-  if (env.LANG?.includes("UTF-8") || env.LANG?.includes("utf8")) return true
-  // Check terminal capabilities
-  if (env.TERM?.includes("256color") || env.TERM?.includes("truecolor")) return true
-  // Default to ASCII on Windows unless in Windows Terminal or VS Code
-  if (process.platform === "win32") {
-    return env.WT_SESSION !== undefined || env.TERM_PROGRAM === "vscode"
-  }
-  return true
+  return supportsUnicodeOutput({
+    env,
+    platform: process.platform,
+  })
 }
 
 /** Cached color support flag */

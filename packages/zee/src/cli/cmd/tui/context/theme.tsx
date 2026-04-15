@@ -440,7 +440,7 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
           !rendererSnapshot.foreground ||
           !rendererSnapshot.isCompletePalette
 
-        if (needsOscFallback) {
+        if (needsOscFallback && Terminal.shouldUseOscColorQueries()) {
           try {
             const oscColors = await Terminal.colors()
             const oscSnapshot = Terminal.snapshotFromOscProbe(

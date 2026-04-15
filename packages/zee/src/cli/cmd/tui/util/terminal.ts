@@ -1,4 +1,5 @@
 import { RGBA } from "@opentui/core"
+import { resolveTerminalProbePolicy, type TerminalCapabilityOptions } from "@/cli/terminal-capabilities"
 
 export namespace Terminal {
   export type Colors = Awaited<ReturnType<typeof colors>>
@@ -221,8 +222,15 @@ export namespace Terminal {
     return luminance > 0.5 ? "light" : "dark"
   }
 
+  export function shouldUseOscColorQueries(
+    options: Omit<TerminalCapabilityOptions, "isTTY"> = {},
+  ): boolean {
+    return resolveTerminalProbePolicy(options).allowOscColorQueries
+  }
+
   export async function backgroundColor(timeoutMs = 1000): Promise<RGBA | null> {
     if (!process.stdin.isTTY) return null
+    if (!shouldUseOscColorQueries()) return null
 
     return new Promise((resolve) => {
       let background: RGBA | null = null
@@ -277,6 +285,7 @@ export namespace Terminal {
     colors: RGBA[]
   }> {
     if (!process.stdin.isTTY) return { background: null, foreground: null, colors: [] }
+    if (!shouldUseOscColorQueries()) return { background: null, foreground: null, colors: [] }
 
     return new Promise((resolve) => {
       let background: RGBA | null = null

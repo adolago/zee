@@ -1,5 +1,6 @@
 import type { KittyKeyboardOptions } from "@opentui/core"
 import type { Keybind } from "@/util/keybind"
+import { type TerminalProfile, describeTerminalProfile, detectTerminalProfile } from "@/cli/terminal-capabilities"
 
 export type TuiKeyboardConfigInput = {
   tui?: Record<string, unknown> & {
@@ -7,14 +8,7 @@ export type TuiKeyboardConfigInput = {
   }
 }
 
-export type TerminalKeyboardProfile =
-  | "kitty"
-  | "ghostty"
-  | "foot"
-  | "wezterm"
-  | "warp"
-  | "windows-terminal"
-  | "unknown"
+export type TerminalKeyboardProfile = TerminalProfile
 
 export const KITTY_KEYBOARD_DISABLED: KittyKeyboardOptions = {
   disambiguate: false,
@@ -32,35 +26,11 @@ const KITTY_KEYBOARD_SUPPORTED_PROFILES = new Set<TerminalKeyboardProfile>(["kit
 const KITTY_KEYBOARD_SUPPORTED_LABEL = "kitty, ghostty, foot, and Warp"
 
 export function detectTerminalKeyboardProfile(env: NodeJS.ProcessEnv = process.env): TerminalKeyboardProfile {
-  const termProgram = env.TERM_PROGRAM?.trim().toLowerCase() ?? ""
-  const term = env.TERM?.trim().toLowerCase() ?? ""
-
-  if (termProgram === "ghostty") return "ghostty"
-  if (termProgram === "kitty" || term === "xterm-kitty") return "kitty"
-  if (termProgram === "foot" || term.startsWith("foot")) return "foot"
-  if (termProgram === "wezterm") return "wezterm"
-  if (termProgram.includes("warp")) return "warp"
-  if (env.WT_SESSION?.trim()) return "windows-terminal"
-  return "unknown"
+  return detectTerminalProfile(env)
 }
 
 export function describeTerminalKeyboardProfile(profile: TerminalKeyboardProfile): string {
-  switch (profile) {
-    case "kitty":
-      return "Kitty"
-    case "ghostty":
-      return "Ghostty"
-    case "foot":
-      return "foot"
-    case "wezterm":
-      return "WezTerm"
-    case "warp":
-      return "Warp"
-    case "windows-terminal":
-      return "Windows Terminal"
-    default:
-      return "unknown terminal"
-  }
+  return describeTerminalProfile(profile)
 }
 
 export function supportsKittyKeyboardProfile(profile: TerminalKeyboardProfile): boolean {
