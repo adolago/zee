@@ -41,6 +41,8 @@ type InternalRuntime = {
 type DaemonHandle = {
   proc: Subprocess
   command: string[]
+  cwd: string
+  env: NodeJS.ProcessEnv
   port: number
   stdoutPath: string
   stderrPath: string
@@ -310,6 +312,8 @@ async function spawnDaemon(args: {
   const handle: DaemonHandle = {
     proc,
     command: args.command,
+    cwd: args.cwd,
+    env: args.env,
     port: args.port,
     stdoutPath,
     stderrPath,
@@ -320,14 +324,49 @@ async function spawnDaemon(args: {
   return handle
 }
 
+function buildDaemonStopCommand(handle: DaemonHandle): string[] | null {
+  if (handle.command.length === 0) return null
+
+  if (
+    handle.command[0] === "bun" &&
+    handle.command[1] === "run" &&
+    handle.command[2] === "src/index.ts" &&
+    handle.command.includes("daemon")
+  ) {
+    return ["bun", "run", "src/index.ts", "daemon-stop"]
+  }
+
+  if (handle.command.includes("daemon")) {
+    return [handle.command[0], "daemon-stop"]
+  }
+
+  return null
+}
+
 async function stopDaemon(handle: DaemonHandle): Promise<void> {
   if (!handle) return
 
   try {
-    try {
-      handle.proc.kill("SIGTERM")
-    } catch {
-      // noop
+    if (process.platform === "win32") {
+      const stopCommand = buildDaemonStopCommand(handle)
+      if (stopCommand) {
+        try {
+          await runCommand(stopCommand, {
+            cwd: handle.cwd,
+            env: handle.env,
+            timeoutMs: 20_000,
+            expectedExitCodes: [0, 1],
+          })
+        } catch {
+          // Fall back to direct process termination below.
+        }
+      }
+    } else {
+      try {
+        handle.proc.kill("SIGTERM")
+      } catch {
+        // noop
+      }
     }
 
     const exitedGracefully = await Promise.race([handle.proc.exited.then(() => true), sleep(10_000).then(() => false)])
@@ -372,9 +411,32 @@ async function waitForDaemonHealth(port: number, timeoutMs: number): Promise<any
   return await waitForHttpJson(url, timeoutMs, 500, 2_000)
 }
 
-async function waitForDaemonFullHealth(port: number, timeoutMs: number): Promise<any> {
+function gatewayHealthIsPending(health: any): boolean {
+  const gateway = health?.gateway
+  if (!gateway || typeof gateway !== "object") return false
+  return gateway.enabled !== true && !gateway.error
+}
+
+async function waitForDaemonFullHealth(
+  port: number,
+  timeoutMs: number,
+  options: { waitForGatewayEnabled?: boolean } = {},
+): Promise<any> {
   await waitForDaemonHealth(port, timeoutMs)
-  return await waitForHttpJson(`http://127.0.0.1:${port}/global/health`, timeoutMs, 500, 8_000)
+  const url = `http://127.0.0.1:${port}/global/health`
+  const deadline = Date.now() + timeoutMs
+  let lastHealth: any = null
+
+  while (Date.now() < deadline) {
+    const remainingMs = Math.max(1, deadline - Date.now())
+    lastHealth = await waitForHttpJson(url, remainingMs, 500, 8_000)
+    if (!options.waitForGatewayEnabled || !gatewayHealthIsPending(lastHealth)) {
+      return lastHealth
+    }
+    await sleep(500)
+  }
+
+  return lastHealth
 }
 
 function isGatewayRunning(health: any): boolean {
@@ -671,7 +733,7 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
         timeoutMs: 60_000,
       },
       async () => {
-        sourceHealth = await waitForHttpJson(`http://127.0.0.1:${sourcePort}/global/health`, 15_000, 500, 8_000)
+        sourceHealth = await waitForDaemonFullHealth(sourcePort, 15_000, { waitForGatewayEnabled: true })
         sourceGatewaySummary = describeGatewayHealth(sourceHealth)
         if (isGatewayRunning(sourceHealth)) {
           sourceChannels = await waitForHttpJson(`http://127.0.0.1:${sourcePort}/gateway/channels/status`, 20_000)
@@ -703,7 +765,7 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
         timeoutMs: 60_000,
       },
       async () => {
-        distHealth = await waitForHttpJson(`http://127.0.0.1:${distPort}/global/health`, 15_000, 500, 8_000)
+        distHealth = await waitForDaemonFullHealth(distPort, 15_000, { waitForGatewayEnabled: true })
         distGatewaySummary = describeGatewayHealth(distHealth)
         if (isGatewayRunning(distHealth)) {
           distChannels = await waitForHttpJson(`http://127.0.0.1:${distPort}/gateway/channels/status`, 20_000)
