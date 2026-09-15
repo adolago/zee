@@ -110,6 +110,11 @@ export namespace ProviderError {
     const topMessage = typeof (body as any)?.message === "string" ? (body as any).message : undefined
     const message = nestedMessage ?? topMessage ?? "Server error."
 
+    // Only transient server/capacity codes retry: the session retry loop
+    // has no attempt cap, so persistent errors must surface. Rate-limit and
+    // exhaustion shapes stay retryable to match SessionRetry.retryable().
+    const TRANSIENT_CODE_PATTERNS = [/rate_limit/, /too_many_requests/, /exhausted/, /unavailable/]
+
     switch (code) {
       case "context_length_exceeded":
         return {
@@ -133,13 +138,10 @@ export namespace ProviderError {
           responseBody,
         }
       default:
-        // Unknown codes (e.g. bad-request/model errors) default to
-        // non-retryable: the session retry loop has no attempt cap, so a
-        // persistent error must surface instead of retrying until abort.
         return {
           type: "api_error",
           message,
-          isRetryable: false,
+          isRetryable: typeof code === "string" && TRANSIENT_CODE_PATTERNS.some((pattern) => pattern.test(code)),
           responseBody,
         }
     }
