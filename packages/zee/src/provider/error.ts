@@ -90,7 +90,7 @@ export namespace ProviderError {
     | {
         type: "api_error"
         message: string
-        isRetryable: false
+        isRetryable: boolean
         responseBody: string
       }
 
@@ -101,7 +101,21 @@ export namespace ProviderError {
     const responseBody = JSON.stringify(body)
     if ((body as any).type !== "error") return
 
-    switch ((body as any)?.error?.code) {
+    // Two shapes reach here: provider API errors nested under `error`
+    // ({ type: "error", error: { code, message } }) and OpenAI Responses
+    // stream chunks with top-level fields ({ type: "error", code, message }).
+    const nested = (body as any)?.error
+    const code = typeof nested?.code === "string" ? nested.code : (body as any)?.code
+    const nestedMessage = typeof nested?.message === "string" ? nested.message : undefined
+    const topMessage = typeof (body as any)?.message === "string" ? (body as any).message : undefined
+    const message = nestedMessage ?? topMessage ?? "Server error."
+
+    // Only transient server/capacity codes retry: the session retry loop
+    // has no attempt cap, so persistent errors must surface. Rate-limit and
+    // exhaustion shapes stay retryable to match SessionRetry.retryable().
+    const TRANSIENT_CODE_PATTERNS = [/rate_limit/, /too_many_requests/, /exhausted/, /unavailable/]
+
+    switch (code) {
       case "context_length_exceeded":
         return {
           type: "context_overflow",
@@ -115,12 +129,19 @@ export namespace ProviderError {
           isRetryable: false,
           responseBody,
         }
-      case "invalid_prompt":
+      case "server_is_overloaded":
+      case "server_error":
         return {
           type: "api_error",
-          message:
-            typeof (body as any)?.error?.message === "string" ? (body as any)?.error?.message : "Invalid prompt.",
-          isRetryable: false,
+          message,
+          isRetryable: true,
+          responseBody,
+        }
+      default:
+        return {
+          type: "api_error",
+          message,
+          isRetryable: typeof code === "string" && TRANSIENT_CODE_PATTERNS.some((pattern) => pattern.test(code)),
           responseBody,
         }
     }

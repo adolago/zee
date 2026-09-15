@@ -173,7 +173,7 @@ export const ApplyPatchTool = Tool.define("apply_patch", {
       after: change.newContent,
       additions: change.additions,
       deletions: change.deletions,
-      movePath: change.movePath,
+      ...(change.movePath ? { movePath: change.movePath } : {}),
     }))
 
     // Check permissions if needed

@@ -24,8 +24,21 @@ export function isBuiltinMcpServerName(name: string): name is BuiltinMcpServerNa
   return (BUILTIN_MCP_SERVER_NAMES as readonly string[]).includes(name)
 }
 
+function runtimeBase(execPath: string): string {
+  // Split on both separators: inputs may be Windows paths (with drive
+  // letters and .exe suffixes) even when the host platform is not Windows.
+  const base = execPath.split(/[\\/]/).pop() ?? execPath
+  return base.replace(/\.(exe|cmd|bat|ps1)$/i, "").toLowerCase()
+}
+
+function isAbsoluteCrossPlatform(entry: string): boolean {
+  // path.isAbsolute is host-dependent; recognize Windows absolute paths too.
+  if (/^[A-Za-z]:[\\/]/.test(entry) || entry.startsWith("\\\\")) return true
+  return path.isAbsolute(entry)
+}
+
 function isSourceRuntime(execPath: string): boolean {
-  const base = path.basename(execPath).replace(/\.(exe|cmd|bat|ps1)$/i, "").toLowerCase()
+  const base = runtimeBase(execPath)
   return base === "bun" || base === "node" || base === "deno"
 }
 
@@ -34,7 +47,7 @@ function resolveSourceEntry(argv: string[]): string | undefined {
   if (!entry) return undefined
   const normalized = entry.replace(/\\/g, "/")
   if (!/(^|\/)packages\/zee\/src\/index\.(ts|js)$/.test(normalized)) return undefined
-  return path.isAbsolute(entry) ? entry : path.resolve(process.cwd(), entry)
+  return isAbsoluteCrossPlatform(entry) ? entry : path.resolve(process.cwd(), entry)
 }
 
 export function resolveBuiltinMcpServerCommand(
@@ -46,7 +59,7 @@ export function resolveBuiltinMcpServerCommand(
   const entry = isSourceRuntime(execPath) ? resolveSourceEntry(argv) : undefined
 
   if (entry) {
-    if (path.basename(execPath).replace(/\.(exe|cmd|bat|ps1)$/i, "").toLowerCase() === "bun") {
+    if (runtimeBase(execPath) === "bun") {
       return [execPath, "run", entry, "mcp-server", name]
     }
     return [execPath, entry, "mcp-server", name]

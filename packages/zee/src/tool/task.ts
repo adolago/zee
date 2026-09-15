@@ -276,7 +276,21 @@ export const TaskTool = Tool.define("task", async (ctx) => {
               title: part.state.status === "completed" ? part.state.title : undefined,
             },
           }))
-        const text = result.parts.findLast((x) => x.type === "text")?.text ?? ""
+        const parts = result.parts
+        const failedIndex = parts.findLastIndex((x) => x.type === "tool" && x.state.status === "error")
+        const failed = failedIndex >= 0 ? parts[failedIndex] : undefined
+        const text = parts.findLast((x) => x.type === "text")?.text ?? ""
+        // Only fail when nothing usable came after the failed tool call: a
+        // subagent may emit progress text before a tool fails, then recover
+        // with a real answer afterwards. Pre-error text is stale preamble,
+        // not recovery, so require a non-empty text part after the failure.
+        const recovered =
+          failedIndex >= 0
+            ? parts.slice(failedIndex + 1).some((x) => x.type === "text" && x.text.trim() !== "")
+            : true
+        if (failed?.type === "tool" && failed.state.status === "error" && !recovered) {
+          throw new Error(`Subagent failed (task_id: ${session.id}): ${failed.state.error}`)
+        }
 
         const output = [
           `session_id: ${session.id}`,

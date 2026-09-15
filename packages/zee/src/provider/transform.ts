@@ -340,7 +340,6 @@ export namespace ProviderTransform {
 
   export function temperature(model: Provider.Model) {
     const id = model.id.toLowerCase()
-    if (id.includes("qwen")) return 0.55
     if (id.includes("claude")) return undefined
     if (id.includes("gemini")) return 1.0
     if (id.includes("glm-4.6")) return 1.0
@@ -361,11 +360,16 @@ export namespace ProviderTransform {
     // Claude thinking models (extended thinking) require topP >= 0.95 OR unset
     // Return undefined to leave it unset and let Claude use its default
     if (id.includes("claude") && id.includes("thinking")) return undefined
-    if (id.includes("qwen")) return 1
     if (id.includes("minimax-m2")) {
       return 0.95
     }
     if (id.includes("kimi-k2.5") || id.includes("kimi-k2p5")) return 0.95
+    if (
+      ["deepseek-v4-flash-0731", "deepseek-v4-flash:0731"].some((name) => id.includes(name)) ||
+      (id.includes("deepseek-v4-flash") && (model.providerID === "deepseek" || model.providerID.startsWith("opencode")))
+    ) {
+      return 0.95
+    }
     if (id.includes("gemini")) return 0.95
     return undefined
   }
@@ -674,12 +678,13 @@ export namespace ProviderTransform {
         result["reasoningEffort"] = "medium"
       }
 
-      // Only set textVerbosity for non-chat gpt-5.x models
-      // Chat models (e.g. gpt-5.2-chat-latest) only support "medium" verbosity
+      // Generic OpenAI-compatible APIs do not necessarily support OpenAI's verbosity parameter.
+      // Only enable the default for integrations known to implement it.
       if (
         input.model.api.id.includes("gpt-5.") &&
         !input.model.api.id.includes("codex") &&
-        !input.model.api.id.includes("-chat")
+        !input.model.api.id.includes("-chat") &&
+        (input.model.api.npm === "@ai-sdk/openai" || input.model.api.npm === "@ai-sdk/amazon-bedrock/mantle")
       ) {
         result["textVerbosity"] = "low"
       }

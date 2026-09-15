@@ -733,7 +733,10 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
         timeoutMs: 60_000,
       },
       async () => {
-        sourceHealth = await waitForDaemonFullHealth(sourcePort, 15_000, { waitForGatewayEnabled: true })
+        // Windows runners cold-start `bun run src/index.ts` slowly (transpile
+        // + AV scanning); the default 15s budget flakes there. 60s still
+        // fails fast on a genuinely dead daemon.
+        sourceHealth = await waitForDaemonFullHealth(sourcePort, 60_000, { waitForGatewayEnabled: true })
         sourceGatewaySummary = describeGatewayHealth(sourceHealth)
         if (isGatewayRunning(sourceHealth)) {
           sourceChannels = await waitForHttpJson(`http://127.0.0.1:${sourcePort}/gateway/channels/status`, 20_000)
@@ -765,7 +768,7 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
         timeoutMs: 60_000,
       },
       async () => {
-        distHealth = await waitForDaemonFullHealth(distPort, 15_000, { waitForGatewayEnabled: true })
+        distHealth = await waitForDaemonFullHealth(distPort, 60_000, { waitForGatewayEnabled: true })
         distGatewaySummary = describeGatewayHealth(distHealth)
         if (isGatewayRunning(distHealth)) {
           distChannels = await waitForHttpJson(`http://127.0.0.1:${distPort}/gateway/channels/status`, 20_000)

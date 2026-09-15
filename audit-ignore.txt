@@ -1,5 +1,32 @@
 # bun audit ignore list
 #
-# One advisory ID per line (GHSA-... or CVE-...).
+# One advisory ID per line. The audit script matches these against the
+# advisory `id` field from `bun audit --json` (case-insensitive).
 # Keep this list as small as possible and include a short rationale in a comment above the entry.
 
+# extract-zip: no fixed version exists (2.0.1 is latest and still flagged).
+# Only reachable via @puppeteer/browsers (Playwright test tooling) extracting
+# browser archives it just downloaded. Not in the shipped binary.
+1139346
+1193685
+
+# astro 5.x: advisories fixed only in 7.2.8+, which requires a major migration
+# of the docs site (packages/web, not shipped in the binary and not built by CI).
+# Tracked separately from the engine dependency bumps.
+1139377
+1139378
+1193723
+
+# js-yaml: lockfile carries both 3.x (via gray-matter) and 4.x (via astro/cosmiconfig)
+# lines, so a single flat override cannot fix both without breaking an API line
+# (v4 removed safeLoad/safeDump used by gray-matter 4.0.3). Reachability is
+# bounded instead: ConfigMarkdown.parse (the single funnel for project
+# frontmatter, skills, commands, and agents) refuses frontmatter blocks over
+# 64KB before handing them to the parser, which keeps the quadratic-input
+# advisories below exploitable cost. Revisit if gray-matter supports js-yaml 4.
+1123911
+1123912
+1138114
+1138115
+1193726
+1193727

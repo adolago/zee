@@ -19,7 +19,28 @@ describe("session model picker visibility", () => {
     },
   }
 
-  test("hides removed Google chat providers even if sync data still contains them", () => {
+  test("hides blocklisted providers even if sync data still contains them", () => {
+    const visible = isSessionModelProviderVisible(
+      {
+        id: "gemini-cli",
+        models: {
+          "gemini-3.1-pro-preview-customtools": {
+            status: "active",
+          },
+        },
+      },
+      {
+        connectedProviderIDs: ["gemini-cli"],
+        authStatus: {
+          "gemini-cli": { valid: true, expiringSoon: false, expiresIn: null },
+        },
+      },
+    )
+
+    expect(visible).toBe(false)
+  })
+
+  test("shows connected Google providers with selectable models", () => {
     const visible = isSessionModelProviderVisible(
       {
         id: "google",
@@ -37,7 +58,7 @@ describe("session model picker visibility", () => {
       },
     )
 
-    expect(visible).toBe(false)
+    expect(visible).toBe(true)
   })
 
   test("hides configured Kimi when Zee auth is not connected", () => {

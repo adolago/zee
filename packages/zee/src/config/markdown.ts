@@ -81,8 +81,22 @@ export namespace ConfigMarkdown {
     return content.replace(frontmatter, () => processed)
   }
 
+  // Upper bound for the frontmatter block handed to the YAML parser.
+  // Project config is auto-discovered from cloned repositories, so an
+  // unbounded parse would expose known js-yaml worst-case inputs
+  // (quadratic merge-key/omap handling) to untrusted files.
+  const MAX_FRONTMATTER_BYTES = 64 * 1024
+
   export async function parse(filePath: string) {
     const template = await Bun.file(filePath).text()
+
+    const frontmatterMatch = template.match(/^---\r?\n([\s\S]*?)\r?\n---/)
+    if (frontmatterMatch && Buffer.byteLength(frontmatterMatch[1], "utf8") > MAX_FRONTMATTER_BYTES) {
+      throw new FrontmatterError({
+        path: filePath,
+        message: `${filePath}: frontmatter exceeds ${MAX_FRONTMATTER_BYTES} bytes, refusing to parse`,
+      })
+    }
 
     // Always sanitize: YAML silently truncates unquoted values containing
     // colon-space patterns instead of throwing, so the fallback path never
