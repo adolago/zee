@@ -277,10 +277,13 @@ export const TaskTool = Tool.define("task", async (ctx) => {
             },
           }))
         const failed = result.parts.findLast((x) => x.type === "tool" && x.state.status === "error")
-        if (failed?.type === "tool" && failed.state.status === "error") {
+        const text = result.parts.findLast((x) => x.type === "text")?.text ?? ""
+        // Only fail when the subagent left no usable answer: a tool call may
+        // fail mid-run (e.g. denied permission) with the subagent recovering
+        // afterwards, in which case the final text is the result to keep.
+        if (failed?.type === "tool" && failed.state.status === "error" && text.trim() === "") {
           throw new Error(`Subagent failed (task_id: ${session.id}): ${failed.state.error}`)
         }
-        const text = result.parts.findLast((x) => x.type === "text")?.text ?? ""
 
         const output = [
           `session_id: ${session.id}`,

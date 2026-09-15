@@ -101,7 +101,16 @@ export namespace ProviderError {
     const responseBody = JSON.stringify(body)
     if ((body as any).type !== "error") return
 
-    switch ((body as any)?.error?.code) {
+    // Two shapes reach here: provider API errors nested under `error`
+    // ({ type: "error", error: { code, message } }) and OpenAI Responses
+    // stream chunks with top-level fields ({ type: "error", code, message }).
+    const nested = (body as any)?.error
+    const code = typeof nested?.code === "string" ? nested.code : (body as any)?.code
+    const nestedMessage = typeof nested?.message === "string" ? nested.message : undefined
+    const topMessage = typeof (body as any)?.message === "string" ? (body as any).message : undefined
+    const message = nestedMessage ?? topMessage ?? "Server error."
+
+    switch (code) {
       case "context_length_exceeded":
         return {
           type: "context_overflow",
@@ -115,30 +124,24 @@ export namespace ProviderError {
           isRetryable: false,
           responseBody,
         }
-      case "invalid_prompt":
-        return {
-          type: "api_error",
-          message:
-            typeof (body as any)?.error?.message === "string" ? (body as any)?.error?.message : "Invalid prompt.",
-          isRetryable: false,
-          responseBody,
-        }
       case "server_is_overloaded":
       case "server_error":
         return {
           type: "api_error",
-          message:
-            typeof (body as any)?.error?.message === "string" ? (body as any)?.error?.message : "Server error.",
+          message,
           isRetryable: true,
           responseBody,
         }
-    }
-
-    return {
-      type: "api_error",
-      message: typeof (body as any)?.error?.message === "string" ? (body as any).error.message : "Server error.",
-      isRetryable: true,
-      responseBody,
+      default:
+        // Unknown codes (e.g. bad-request/model errors) default to
+        // non-retryable: the session retry loop has no attempt cap, so a
+        // persistent error must surface instead of retrying until abort.
+        return {
+          type: "api_error",
+          message,
+          isRetryable: false,
+          responseBody,
+        }
     }
   }
 

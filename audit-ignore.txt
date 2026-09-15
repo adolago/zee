@@ -19,8 +19,11 @@
 
 # js-yaml: lockfile carries both 3.x (via gray-matter) and 4.x (via astro/cosmiconfig)
 # lines, so a single flat override cannot fix both without breaking an API line
-# (v4 removed safeLoad/safeDump used by gray-matter 4.0.3). Findings are DoS via
-# malicious YAML input; this repo only parses local trusted config/frontmatter.
+# (v4 removed safeLoad/safeDump used by gray-matter 4.0.3). Reachability is
+# bounded instead: ConfigMarkdown.parse (the single funnel for project
+# frontmatter, skills, commands, and agents) refuses frontmatter blocks over
+# 64KB before handing them to the parser, which keeps the quadratic-input
+# advisories below exploitable cost. Revisit if gray-matter supports js-yaml 4.
 1123911
 1123912
 1138114
