@@ -13,7 +13,6 @@ import { Installation } from "../../installation"
 import path from "path"
 import { Global } from "../../global"
 import { modify, applyEdits } from "jsonc-parser"
-import { Bus } from "../../bus"
 
 function getAuthStatusIcon(status: MCP.AuthStatus): string {
   switch (status) {
@@ -253,18 +252,13 @@ export const McpAuthCommand = cmd({
         const spinner = prompts.spinner()
         spinner.start("Starting OAuth flow...")
 
-        // Subscribe to browser open failure events to show URL for manual opening
-        const unsubscribe = Bus.subscribe(MCP.BrowserOpenFailed, (evt) => {
-          if (evt.properties.mcpName === serverName) {
+        try {
+          const status = await MCP.authenticate(serverName, (url) => {
             spinner.stop("Could not open browser automatically")
             prompts.log.warn("Please open this URL in your browser to authenticate:")
-            prompts.log.info(evt.properties.url)
+            prompts.log.info(url)
             spinner.start("Waiting for authorization...")
-          }
-        })
-
-        try {
-          const status = await MCP.authenticate(serverName)
+          })
 
           if (status.status === "connected") {
             spinner.stop("Authentication successful!")
@@ -292,8 +286,6 @@ export const McpAuthCommand = cmd({
         } catch (error) {
           spinner.stop("Authentication failed", 1)
           prompts.log.error(error instanceof Error ? error.message : String(error))
-        } finally {
-          unsubscribe()
         }
 
         prompts.outro("Done")

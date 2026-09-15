@@ -137,7 +137,7 @@ export function ActivityHeader(props: { sessionID: string }) {
     if (phase === "tool_calling") {
       return {
         state: "running",
-        description: "Preparing tool call...",
+        description: "Preparing tool call…",
         toolSummary: lastCompletedTool()
           ? `Last: ${getToolSummary(lastCompletedTool()!)}`
           : undefined,
@@ -147,7 +147,7 @@ export function ActivityHeader(props: { sessionID: string }) {
 
     return {
       state: "thinking",
-      description: "Thinking...",
+      description: "Thinking…",
       toolSummary: lastCompletedTool()
         ? `Last: ${getToolSummary(lastCompletedTool()!)}`
         : undefined,

@@ -3,6 +3,13 @@ import { STATUS_CODES } from "http"
 import { iife } from "@/util/iife"
 
 export namespace ProviderError {
+  export class ResponseStreamError extends Error {
+    constructor(message: string) {
+      super(message)
+      this.name = "ResponseStreamError"
+    }
+  }
+
   // Context overflow detection patterns across multiple providers
   const OVERFLOW_PATTERNS = [
     /prompt is too long/i, // Anthropic

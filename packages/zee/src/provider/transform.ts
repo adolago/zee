@@ -338,10 +338,18 @@ export namespace ProviderTransform {
     return msgs
   }
 
+  const GEMINI_MODELS_WITH_SAMPLING_DEFAULTS = [
+    /gemini-2[.-]5(?:[.-]|$)/,
+    /gemini-3-(?:flash|pro)(?:[.-]|$)/,
+    /gemini-3[.-]1(?:[.-]|$)/,
+    /gemini-3[.-]5-flash(?!-lite)(?:[.-]|$)/,
+  ]
+
   export function temperature(model: Provider.Model) {
     const id = model.id.toLowerCase()
     if (id.includes("claude")) return undefined
-    if (id.includes("gemini")) return 1.0
+    if (id.includes("gemini"))
+      return GEMINI_MODELS_WITH_SAMPLING_DEFAULTS.some((pattern) => pattern.test(id)) ? 1.0 : undefined
     if (id.includes("glm-4.6")) return 1.0
     if (id.includes("glm-4.7")) return 1.0
     if (id.includes("minimax-m2")) return 1.0
@@ -370,7 +378,8 @@ export namespace ProviderTransform {
     ) {
       return 0.95
     }
-    if (id.includes("gemini")) return 0.95
+    if (id.includes("gemini"))
+      return GEMINI_MODELS_WITH_SAMPLING_DEFAULTS.some((pattern) => pattern.test(id)) ? 0.95 : undefined
     return undefined
   }
 
@@ -380,7 +389,8 @@ export namespace ProviderTransform {
       if (id.includes("m2.1")) return 40
       return 20
     }
-    if (id.includes("gemini")) return 64
+    if (id.includes("gemini"))
+      return GEMINI_MODELS_WITH_SAMPLING_DEFAULTS.some((pattern) => pattern.test(id)) ? 64 : undefined
     return undefined
   }
 

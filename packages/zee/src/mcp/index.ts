@@ -2497,9 +2497,11 @@ export namespace MCP {
 
   /**
    * Complete OAuth authentication after user authorizes in browser.
-   * Opens the browser and waits for callback.
+   * Opens the browser and waits for callback. The optional onAuthorization
+   * callback fires with the URL as soon as the callback listener is
+   * registered, so callers can display it without waiting for completion.
    */
-  export async function authenticate(mcpName: string): Promise<Status> {
+  export async function authenticate(mcpName: string, onAuthorization?: (url: string) => void): Promise<Status> {
     const { authorizationUrl } = await startAuth(mcpName)
 
     if (!authorizationUrl) {
@@ -2526,6 +2528,7 @@ export namespace MCP {
     // Register the callback BEFORE opening the browser to avoid race conditions
     // when the IdP has an active session and redirects immediately.
     const callbackPromise = McpOAuthCallback.waitForCallback(oauthState)
+    onAuthorization?.(safeUrl)
     const openResult = await openExternalUrl(safeUrl, { errorCheckDelayMs: 500 })
     if (!openResult.ok) {
       // Browser opening failed (e.g., in remote/headless sessions like SSH, devcontainers)
@@ -2563,7 +2566,16 @@ export namespace MCP {
     try {
       // Call finishAuth on the transport
       await transport.finishAuth(authorizationCode)
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error)
+      log.error("failed to finish oauth", { mcpName, error })
+      return {
+        status: "failed",
+        error: `OAuth completion failed: ${detail}`,
+      }
+    }
 
+    try {
       // Clear the code verifier after successful auth
       await McpAuth.clearCodeVerifier(mcpName)
 
@@ -2586,7 +2598,7 @@ export namespace MCP {
       const statusRecord = result.status as Record<string, Status>
       return statusRecord[mcpName] ?? { status: "failed", error: "Unknown error after auth" }
     } catch (error) {
-      log.error("failed to finish oauth", { mcpName, error })
+      log.error("failed to reconnect after oauth", { mcpName, error })
       return {
         status: "failed",
         error: error instanceof Error ? error.message : String(error),
@@ -2624,16 +2636,50 @@ export namespace MCP {
     return !!entry?.tokens
   }
 
+  export type ServerInstructions = {
+    name: string
+    instructions: string
+    /** Raw tool names reported by the server (before proxy ID mapping). */
+    tools: string[]
+  }
+
+  export function mcpToolId(clientName: string, toolName: string) {
+    const client = clientName.replace(/[^a-zA-Z0-9_-]/g, "_")
+    const tool = toolName.replace(/[^a-zA-Z0-9_-]/g, "_")
+    return `${client}_${tool}`
+  }
+
+  /**
+   * Instructions advertised by connected MCP servers, with their raw tool
+   * names. Read live from clients so no bookkeeping can go stale.
+   */
+  export async function instructions(): Promise<ServerInstructions[]> {
+    const s = await state()
+    const out: ServerInstructions[] = []
+    for (const name of Object.keys(s.clients).sort()) {
+      if (s.status[name]?.status !== "connected") continue
+      const text = s.clients[name].getInstructions?.()?.trim()
+      if (!text) continue
+      const cached = toolCache.get(name)
+      out.push({ name, instructions: text, tools: (cached?.tools ?? []).map((tool) => tool.name) })
+    }
+    return out
+  }
+
   export type AuthStatus = "authenticated" | "expired" | "not_authenticated"
 
   /**
-   * Get the authentication status for an MCP server.
+   * Get the authentication status for an MCP server, scoped to the
+   * configured server URL. Tokens stored for a different URL do not count.
    */
   export async function getAuthStatus(mcpName: string): Promise<AuthStatus> {
-    const hasTokens = await hasStoredTokens(mcpName)
-    if (!hasTokens) return "not_authenticated"
-    const expired = await McpAuth.isTokenExpired(mcpName)
-    return expired ? "expired" : "authenticated"
+    const cfg = await Config.get()
+    const mcpConfig = cfg.mcp?.[mcpName]
+    if (!mcpConfig || !isMcpConfigured(mcpConfig) || mcpConfig.type !== "remote") return "not_authenticated"
+    const entry = await McpAuth.getForUrl(mcpName, mcpConfig.url)
+    if (!entry?.tokens) return "not_authenticated"
+    if (entry.tokens.expiresAt && entry.tokens.expiresAt < Date.now() / 1000) return "expired"
+    return "authenticated"
   }
 
   /**

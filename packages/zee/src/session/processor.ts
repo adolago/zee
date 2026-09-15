@@ -9,6 +9,7 @@ import { Bus } from "@/bus"
 import { SessionRetry } from "./retry"
 import { SessionStatus } from "./status"
 import type { Provider } from "@/provider/provider"
+import { ProviderError } from "@/provider/error"
 import { LLM } from "./llm"
 import { Fallback } from "@/provider/fallback"
 import { Config } from "@/config/config"
@@ -609,6 +610,9 @@ export namespace SessionProcessor {
                       break
 
                     case "finish-step":
+                      if ((value as { rawFinishReason?: unknown }).rawFinishReason === "network_error") {
+                        throw new ProviderError.ResponseStreamError("Provider finish_reason: network_error")
+                      }
                       await finalizeTextPart(value.providerMetadata)
                       await finalizeReasoningPart(value.providerMetadata)
                       const danglingReasoning = Object.values(reasoningMap)
@@ -768,7 +772,7 @@ export namespace SessionProcessor {
               })
               const error = MessageV2.fromError(e, { providerID: input.model.providerID })
               const retry = SessionRetry.retryable(error)
-              if (retry !== undefined) {
+              if (retry !== undefined && attempt < SessionRetry.RETRY_MAX_RETRIES) {
                 attempt++
                 const delay = SessionRetry.delay(attempt, error.name === "APIError" ? error : undefined)
                 SessionStatus.set(input.sessionID, {

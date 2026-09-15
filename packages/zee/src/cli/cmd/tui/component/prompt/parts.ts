@@ -107,7 +107,7 @@ export function withPromptPartPlaceholderRange(part: PromptPart, start: number, 
 function placeholderPreview(value: string): string {
   const compact = value.replace(/\s+/g, " ").trim()
   if (compact.length <= 80) return compact
-  return compact.slice(0, 77) + "..."
+  return compact.slice(0, 77) + "…"
 }
 
 function rangeKey(start: number, end: number): string {

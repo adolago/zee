@@ -18,6 +18,7 @@ import { type AutocompleteRef, Autocomplete } from "./autocomplete"
 import { useCommandDialog } from "../dialog-command"
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { useAnimationTick } from "@tui/util/animation-tick"
+import { resolveCursorStyle } from "@tui/util/cursor"
 import { Editor } from "@tui/util/editor"
 import { useExit } from "../../context/exit"
 import { Clipboard } from "../../util/clipboard"
@@ -2245,6 +2246,7 @@ export function Prompt(props: PromptProps) {
             onMouseDown={(r: MouseEvent) => r.target?.focus()}
             focusedBackgroundColor={RGBA.fromInts(0, 0, 0, 0)}
             cursorColor={theme.primary}
+            cursorStyle={resolveCursorStyle(sync.data?.config?.tui?.cursor)}
             syntaxStyle={syntax()}
           />
         </box>

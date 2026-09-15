@@ -1,5 +1,6 @@
 import { Ripgrep } from "../file/ripgrep"
 import { Instance } from "../project/instance"
+import { MCP } from "../mcp"
 
 import PROMPT_ANTHROPIC from "./prompt/anthropic.txt"
 import PROMPT_ANTHROPIC_WITHOUT_TODO from "./prompt/qwen.txt"
@@ -35,6 +36,37 @@ export namespace SystemPrompt {
     if (model.api.id.includes("gemini-")) return [PROMPT_GEMINI]
     if (model.api.id.includes("claude")) return [PROMPT_ANTHROPIC]
     return [PROMPT_ANTHROPIC_WITHOUT_TODO]
+  }
+
+  /**
+   * MCP server instructions for servers that contribute at least one tool
+   * to this turn. toolIds are the resolved IDs from resolveTools(); both the
+   * bare and the server-prefixed ID forms count (proxy IDs vary by collision
+   * and async wrapping).
+   */
+  export async function mcp(toolIds: Iterable<string>) {
+    const ids = toolIds instanceof Set ? toolIds : new Set(toolIds)
+    const servers = await MCP.instructions()
+    const visible = servers.filter((item) =>
+      item.tools.some((tool) => {
+        const prefixed = MCP.mcpToolId(item.name, tool)
+        const sanitized = tool.replace(/[^a-zA-Z0-9_-]/g, "_")
+        // Proxy IDs vary: bare on no collision, prefixed otherwise, with
+        // numeric or _job_poll suffixes on top.
+        return ids.has(prefixed) || ids.has(sanitized) || [...ids].some((id) => id.startsWith(`${prefixed}_`))
+      }),
+    )
+    if (visible.length === 0) return undefined
+
+    return [
+      "<mcp_instructions>",
+      ...visible.flatMap((item) => [
+        `  <server name="${item.name}">`,
+        ...item.instructions.split("\n").map((line) => `    ${line}`),
+        "  </server>",
+      ]),
+      "</mcp_instructions>",
+    ].join("\n")
   }
 
   export async function environment(model: Provider.Model) {

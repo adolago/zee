@@ -8,6 +8,8 @@ import * as fuzzysort from "fuzzysort"
 import { isDeepEqual } from "remeda"
 import { useDialog, type DialogContext } from "@tui/ui/dialog"
 import { useKeybind } from "@tui/context/keybind"
+import { useSync } from "@tui/context/sync"
+import { resolveCursorStyle } from "@tui/util/cursor"
 import { isReturn, Keybind } from "@/util/keybind"
 import { Locale } from "@/util/locale"
 import { renderDialogSelectFooter } from "./dialog-select-footer"
@@ -52,6 +54,7 @@ export type DialogSelectRef<T> = {
 export function DialogSelect<T>(props: DialogSelectProps<T>) {
   const dialog = useDialog()
   const { theme } = useTheme()
+  const sync = useSync()
   const keybind = useKeybind()
   const [store, setStore] = createStore({
     selected: 0,
@@ -242,6 +245,7 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
             focusedBackgroundColor={theme.backgroundElement}
             placeholderColor={theme.textMuted}
             cursorColor={theme.primary}
+            cursorStyle={resolveCursorStyle(sync.data.config.tui?.cursor)}
             textColor={theme.text}
             focusedTextColor={theme.text}
             paddingLeft={0}

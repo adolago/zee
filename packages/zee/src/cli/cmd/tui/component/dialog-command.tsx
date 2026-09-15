@@ -156,5 +156,5 @@ export function CommandProvider(props: ParentProps) {
 function DialogCommand(props: { options: CommandOption[] }) {
   const dialog = useDialog()
   onMount(() => dialog.setSize("large"))
-  return <DialogSelect title="Commands" placeholder="Search commands..." options={props.options} />
+  return <DialogSelect title="Commands" placeholder="Search commands…" options={props.options} />
 }

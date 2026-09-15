@@ -1091,6 +1091,18 @@ export namespace Config {
       .enum(["auto", "stacked"])
       .optional()
       .describe("Control diff rendering style: 'auto' adapts to terminal width, 'stacked' always shows single column"),
+    cursor: z
+      .object({
+        style: z
+          .enum(["block", "underline", "line", "default"])
+          .optional()
+          .default("block")
+          .describe("Terminal cursor shape in TUI inputs"),
+        blinking: z.boolean().optional().default(true).describe("Whether the TUI input cursor blinks"),
+      })
+      .optional()
+      .default({ style: "block", blinking: true })
+      .describe("TUI input cursor style"),
     dictation: z
       .object({
         enabled: z
