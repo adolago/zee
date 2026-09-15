@@ -9,6 +9,8 @@ import { useSDK } from "../../context/sdk"
 import { SplitBorder } from "../../component/border"
 import { useTextareaKeybindings } from "../../component/textarea-keybindings"
 import { useDialog } from "../../ui/dialog"
+import { useSync } from "../../context/sync"
+import { resolveCursorStyle } from "../../util/cursor"
 import { isReturn } from "@/util/keybind"
 import { createClickOnlyMouseHandlers } from "../../util/click-only-mouse"
 
@@ -18,6 +20,7 @@ type QuestionRequest = Omit<SDKQuestionRequest, "questions"> & { questions: Ques
 
 export function QuestionPrompt(props: { request: QuestionRequest }) {
   const sdk = useSDK()
+  const sync = useSync()
   const { theme } = useTheme()
   const keybind = useKeybind()
   const bindings = useTextareaKeybindings()
@@ -383,6 +386,7 @@ export function QuestionPrompt(props: { request: QuestionRequest }) {
                         textColor={theme.text}
                         focusedTextColor={theme.text}
                         cursorColor={theme.primary}
+                        cursorStyle={resolveCursorStyle(sync.data.config.tui?.cursor)}
                         minHeight={1}
                         maxHeight={6}
                         keyBindings={bindings()}

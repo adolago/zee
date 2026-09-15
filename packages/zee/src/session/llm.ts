@@ -211,6 +211,7 @@ export namespace LLM {
   export type StreamInput = {
     user: MessageV2.User
     sessionID: string
+    parentSessionID?: string
     model: Provider.Model
     agent: Agent.Info
     system: string[]
@@ -477,6 +478,7 @@ export namespace LLM {
                 "User-Agent": `zee/${Installation.VERSION}`,
               }
             : undefined),
+        ...(input.parentSessionID ? { "x-parent-session-id": input.parentSessionID } : {}),
         ...input.model.headers,
         ...headers,
       },

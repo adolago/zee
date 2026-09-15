@@ -32,6 +32,7 @@ import {
 import { Prompt, type PromptRef } from "@tui/component/prompt"
 import type { AssistantMessage, Part, ToolPart, UserMessage, TextPart, ReasoningPart } from "@zee/sdk/v2"
 import { useLocal } from "@tui/context/local"
+import { resolveCursorStyle } from "@tui/util/cursor"
 import { Locale } from "@/util/locale"
 import type { Tool } from "@/tool/tool"
 import type { ReadTool } from "@/tool/read"
@@ -983,6 +984,7 @@ export function Session() {
             showDetails(),
             showAssistantMetadata(),
             false,
+            resolveCursorStyle(sync.data.config.tui?.cursor),
           )
 
           if (options === null) return
@@ -1523,8 +1525,16 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
     // OpenRouter sends encrypted reasoning data that appears as [REDACTED]
     return props.part.text.replace("[REDACTED]", "").trim()
   })
+  // Opaque blocks carry encrypted reasoning (metadata, no readable text).
+  // Show a plain non-interactive placeholder instead of hiding the turn.
+  const opaque = createMemo(() => !content() && Boolean(props.part.metadata))
   return (
-    <Show when={content() && ctx.showThinking()}>
+    <Show when={content() ? ctx.showThinking() : opaque()}>
+      {opaque() && !content() ? (
+        <box paddingLeft={1} flexDirection="column" border={["left"]} borderColor={theme.backgroundElement}>
+          <text fg={theme.textMuted}>Thought</text>
+        </box>
+      ) : (
       <box
         id={"text-" + props.part.id}
         paddingLeft={1}
@@ -1541,6 +1551,7 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
           width="100%"
         />
       </box>
+      )}
     </Show>
   )
 }

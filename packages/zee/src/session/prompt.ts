@@ -897,7 +897,7 @@ export namespace SessionPrompt {
       }
       // Check if we should exit the loop based on assistant's finish reason
       // Continue if: pending tool calls OR pending tasks (subtask/compaction)
-      // Exit if: no pending work, even if finish reason is "unknown"
+      // or an unknown finish reason (the turn may be incomplete)
       const needsToolFollowup = lastAssistantParts ? shouldContinueAfterTools(lastAssistantParts) : false
       const needsMalformedToolRecovery = lastAssistant?.finish === MALFORMED_TOOL_TEXT_FINISH
       if (needsToolFollowup && lastAssistant) {
@@ -907,7 +907,10 @@ export namespace SessionPrompt {
         })
       }
       const hasPendingToolCalls =
-        lastAssistant?.finish === "tool-calls" || needsToolFollowup || needsMalformedToolRecovery
+        lastAssistant?.finish === "tool-calls" ||
+        lastAssistant?.finish === "unknown" ||
+        needsToolFollowup ||
+        needsMalformedToolRecovery
       const hasPendingTasks = tasks.length > 0
 
       // Debug logging to diagnose tool followup issues
@@ -1346,15 +1349,24 @@ export namespace SessionPrompt {
           : undefined
       const executionMode = resolveMode(session, lastUser.options, lastUser.mode)
 
+      const mcpInstructions = await SystemPrompt.mcp(Object.keys(tools)).catch((error) => {
+        log.debug("failed to build MCP instructions context", {
+          error: error instanceof Error ? error.message : String(error),
+          sessionID,
+        })
+        return undefined
+      })
       const result = await processor.process({
         user: lastUser,
         agent,
         abort,
         sessionID,
+        parentSessionID: session.parentID,
         system: [
           ...(await SystemPrompt.environment(model)),
           ...(await InstructionPrompt.system()),
           ...sessionSystemContext,
+          ...(mcpInstructions ? [mcpInstructions] : []),
           ...(skillRecallContext ? [skillRecallContext] : []),
           buildExecutionModeReminder(executionMode),
         ],
@@ -1482,9 +1494,7 @@ export namespace SessionPrompt {
               metadata: val.metadata,
               status: "running",
               input: args,
-              time: {
-                start: Date.now(),
-              },
+              time: match.state.time,
             },
           })
         }

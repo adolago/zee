@@ -277,6 +277,10 @@ export const TaskTool = Tool.define("task", async (ctx) => {
             },
           }))
         const parts = result.parts
+        if (result.info.role === "assistant" && result.info.error) {
+          const message = result.info.error.data?.message ?? result.info.error.name
+          throw new Error(`Subagent failed (task_id: ${session.id}): ${message}`)
+        }
         const failedIndex = parts.findLastIndex((x) => x.type === "tool" && x.state.status === "error")
         const failed = failedIndex >= 0 ? parts[failedIndex] : undefined
         const text = parts.findLast((x) => x.type === "text")?.text ?? ""

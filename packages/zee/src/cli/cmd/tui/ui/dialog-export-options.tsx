@@ -1,4 +1,4 @@
-import { TextareaRenderable, TextAttributes } from "@opentui/core"
+import { TextareaRenderable, TextAttributes, type CursorStyleOptions } from "@opentui/core"
 import { useTheme } from "../context/theme"
 import { useDialog, type DialogContext } from "./dialog"
 import { createStore } from "solid-js/store"
@@ -12,6 +12,7 @@ export type DialogExportOptionsProps = {
   defaultToolDetails: boolean
   defaultAssistantMetadata: boolean
   defaultOpenWithoutSaving: boolean
+  cursorStyle?: CursorStyleOptions
   onConfirm?: (options: {
     filename: string
     thinking: boolean
@@ -107,6 +108,7 @@ export function DialogExportOptions(props: DialogExportOptionsProps) {
           textColor={theme.text}
           focusedTextColor={theme.text}
           cursorColor={theme.primary}
+          cursorStyle={props.cursorStyle}
         />
       </box>
       <box flexDirection="column">
@@ -182,6 +184,7 @@ DialogExportOptions.show = (
   defaultToolDetails: boolean,
   defaultAssistantMetadata: boolean,
   defaultOpenWithoutSaving: boolean,
+  cursorStyle?: CursorStyleOptions,
 ) => {
   return new Promise<{
     filename: string
@@ -198,6 +201,7 @@ DialogExportOptions.show = (
           defaultToolDetails={defaultToolDetails}
           defaultAssistantMetadata={defaultAssistantMetadata}
           defaultOpenWithoutSaving={defaultOpenWithoutSaving}
+          cursorStyle={cursorStyle}
           onConfirm={(options) => resolve(options)}
           onCancel={() => resolve(null)}
         />

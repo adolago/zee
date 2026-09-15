@@ -8,6 +8,7 @@ import type { PermissionRequest } from "@zee/sdk/v2"
 import { useSDK } from "../../context/sdk"
 import { SplitBorder } from "../../component/border"
 import { useDialog } from "../../ui/dialog"
+import { resolveCursorStyle } from "../../util/cursor"
 import { useSync } from "../../context/sync"
 import { useTextareaKeybindings } from "../../component/textarea-keybindings"
 import path from "path"
@@ -327,6 +328,7 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
 function RejectPrompt(props: { onConfirm: (message: string) => void; onCancel: () => void }) {
   let input: TextareaRenderable
   const { theme } = useTheme()
+  const sync = useSync()
   const keybind = useKeybind()
   const textareaKeybindings = useTextareaKeybindings()
   const dialog = useDialog()
@@ -380,6 +382,7 @@ function RejectPrompt(props: { onConfirm: (message: string) => void; onCancel: (
           textColor={theme.text}
           focusedTextColor={theme.text}
           cursorColor={theme.primary}
+          cursorStyle={resolveCursorStyle(sync.data.config.tui?.cursor)}
           keyBindings={textareaKeybindings()}
         />
         <box flexDirection="row" gap={2} flexShrink={0}>

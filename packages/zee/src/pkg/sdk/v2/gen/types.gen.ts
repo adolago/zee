@@ -996,6 +996,19 @@ export type Config = {
      */
     diff_style?: "auto" | "stacked"
     /**
+     * TUI input cursor style
+     */
+    cursor?: {
+      /**
+       * Terminal cursor shape in TUI inputs
+       */
+      style?: "block" | "underline" | "line" | "default"
+      /**
+       * Whether the TUI input cursor blinks
+       */
+      blinking?: boolean
+    }
+    /**
      * Dictation settings
      */
     dictation?: {
