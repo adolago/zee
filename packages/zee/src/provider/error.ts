@@ -90,7 +90,7 @@ export namespace ProviderError {
     | {
         type: "api_error"
         message: string
-        isRetryable: false
+        isRetryable: boolean
         responseBody: string
       }
 
@@ -123,6 +123,22 @@ export namespace ProviderError {
           isRetryable: false,
           responseBody,
         }
+      case "server_is_overloaded":
+      case "server_error":
+        return {
+          type: "api_error",
+          message:
+            typeof (body as any)?.error?.message === "string" ? (body as any)?.error?.message : "Server error.",
+          isRetryable: true,
+          responseBody,
+        }
+    }
+
+    return {
+      type: "api_error",
+      message: typeof (body as any)?.error?.message === "string" ? (body as any).error.message : "Server error.",
+      isRetryable: true,
+      responseBody,
     }
   }
 
