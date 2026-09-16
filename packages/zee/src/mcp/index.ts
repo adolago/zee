@@ -2564,7 +2564,15 @@ export namespace MCP {
       log.warn("failed to open browser, user must open URL manually", { mcpName, error: openResult.error })
       Bus.publish(BrowserOpenFailed, { mcpName, url: safeUrl })
       if (requestCode) {
-        const pasted = await requestCode()
+        let pasted: string | null
+        try {
+          pasted = await requestCode()
+        } catch (error) {
+          // User cancelled the paste prompt: abort the flow instead of
+          // hanging on the browser callback until its timeout.
+          McpOAuthCallback.cancelPendingState(oauthState)
+          throw error
+        }
         const code = pasted ? extractPastedAuthorizationCode(pasted, oauthState) : null
         if (code) {
           McpOAuthCallback.resolvePending(oauthState, code)

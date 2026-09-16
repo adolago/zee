@@ -159,6 +159,19 @@ export namespace McpOAuthCallback {
   }
 
   /**
+   * Cancel a pending authorization by its OAuth state (see waitForCallback).
+   * Returns false when there is no pending authorization for the state.
+   */
+  export function cancelPendingState(oauthState: string): boolean {
+    const pending = pendingAuths.get(oauthState)
+    if (!pending) return false
+    clearTimeout(pending.timeout)
+    pendingAuths.delete(oauthState)
+    pending.reject(new Error("Authorization cancelled"))
+    return true
+  }
+
+  /**
    * Settle a pending authorization with a manually pasted code (headless
    * flows where the browser cannot be opened). Returns false when there is
    * no pending authorization for the state.

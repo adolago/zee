@@ -261,12 +261,14 @@ export const McpAuthCommand = cmd({
             },
             async () => {
               // Headless/SSH: let the user paste the code instead of hanging.
+              // Cancellation aborts the command; empty input keeps waiting.
               spinner.stop("Browser unavailable")
               prompts.log.warn("Could not open a browser automatically.")
               const pasted = await prompts.text({
                 message: "Paste the authorization code or the full redirect URL (empty to keep waiting):",
               })
-              if (prompts.isCancel(pasted) || !pasted.toString().trim()) {
+              if (prompts.isCancel(pasted)) throw new UI.CancelledError()
+              if (!pasted.toString().trim()) {
                 spinner.start("Waiting for authorization...")
                 return null
               }
@@ -298,8 +300,12 @@ export const McpAuthCommand = cmd({
             spinner.stop("Unexpected status: " + status.status, 1)
           }
         } catch (error) {
-          spinner.stop("Authentication failed", 1)
-          prompts.log.error(error instanceof Error ? error.message : String(error))
+          if (UI.CancelledError.isInstance(error)) {
+            spinner.stop("Cancelled", 1)
+          } else {
+            spinner.stop("Authentication failed", 1)
+            prompts.log.error(error instanceof Error ? error.message : String(error))
+          }
         }
 
         prompts.outro("Done")

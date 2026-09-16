@@ -109,14 +109,28 @@ export namespace ModelEquivalence {
    * @returns The tier, or undefined if model isn't in any tier
    */
   export function getTier(model: string): Tier | undefined {
-    for (const [tier, models] of Object.entries(customTiers) as [Tier, string[]][]) {
-      for (const pattern of models) {
-        if (matchesPattern(model, pattern)) {
-          return tier
+    const tiers = Object.entries(customTiers) as [Tier, string[]][]
+    const match = (exactOnly: boolean) => {
+      for (const [tier, models] of tiers) {
+        for (const pattern of models) {
+          if (exactOnly ? isExactMatch(model, pattern) : matchesPattern(model, pattern)) {
+            return tier
+          }
         }
       }
+      return undefined
     }
+    // Exact tier entries win over prefix matches: otherwise a flagship entry
+    // like openai/gpt-5.4 also matches openai/gpt-5.4-mini and the standard
+    // mapping is unreachable.
+    return match(true) ?? match(false) ?? inferTier(model)
+  }
 
+  function isExactMatch(model: string, pattern: string): boolean {
+    return normalizeModelID(model) === normalizeModelID(pattern)
+  }
+
+  function inferTier(model: string): Tier | undefined {
     // Try to infer tier from model name patterns
     const lower = model.toLowerCase()
     if (
