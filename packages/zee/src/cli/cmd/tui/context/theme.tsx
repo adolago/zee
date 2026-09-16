@@ -396,8 +396,10 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
     })
 
     createEffect(() => {
-      void sync.data.config.theme
-      setStore("active", "selenized-dark")
+      const configured = sync.data.config.theme
+      if (configured && store.themes[configured]) {
+        setStore("active", configured)
+      }
     })
 
     const renderer = useRenderer()
@@ -465,11 +467,17 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
 
     async function init() {
       const customThemes = await getCustomThemes().catch(() => ({} as Record<string, ThemeJson>))
+      const merged = { ...DEFAULT_THEMES, ...customThemes }
       if (Object.keys(customThemes).length > 0) {
-        setStore("themes", { ...DEFAULT_THEMES, ...customThemes })
+        setStore("themes", merged)
       }
       void refreshTerminalTheme()
-      setStore("active", "selenized-dark")
+      // Restore persisted selection (config file wins over last-used), so a
+      // theme picked in the theme dialog survives TUI restarts.
+      const configured = sync.data.config.theme
+      const stored = kv.get("theme") as string | undefined
+      const initial = [configured, stored].find((id) => id && merged[id]) ?? "selenized-dark"
+      setStore("active", initial)
       setStore("ready", true)
     }
 

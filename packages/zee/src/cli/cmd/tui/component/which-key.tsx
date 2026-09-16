@@ -30,6 +30,8 @@ const KEYBIND_META: Record<string, { category: string; description: string }> = 
 
   // Model
   model_list: { category: "Model", description: "[m]odels" },
+  model_provider_list: { category: "Model", description: "[p]roviders" },
+  model_favorite_toggle: { category: "Model", description: "[f]avorite model" },
   variant_cycle: { category: "Model", description: "[v]ariants" },
 
   // Messages
@@ -47,6 +49,7 @@ const KEYBIND_META: Record<string, { category: string; description: string }> = 
   mode_cycle: { category: "UI", description: "mode [c]ycle" },
   status_view: { category: "UI", description: "[s]tatus" },
   sidebar_toggle: { category: "UI", description: "side[b]ar" },
+  theme_list: { category: "UI", description: "[t]hemes" },
 
   // App
   command_list: { category: "App", description: "[c]ommands" },

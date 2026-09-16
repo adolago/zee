@@ -22,6 +22,7 @@ import { SDKProvider, useSDK } from "@tui/context/sdk"
 import { SyncProvider, useSync } from "@tui/context/sync"
 import { LocalProvider, useLocal } from "@tui/context/local"
 import { DialogModel } from "@tui/component/dialog-model"
+import { DialogTheme } from "@tui/component/dialog-theme"
 import { DialogMcp } from "@tui/component/dialog-mcp"
 import { DialogStatus } from "@tui/component/dialog-status"
 import { DialogHelp } from "./ui/dialog-help"
@@ -508,6 +509,9 @@ function App() {
     {
       title: "Connect provider",
       value: "provider.connect",
+      slash: {
+        name: "connect",
+      },
       onSelect: () => {
         dialog.replace(() => <DialogProviderList />)
       },
@@ -572,6 +576,18 @@ function App() {
       },
       onSelect: () => {
         dialog.replace(() => <DialogHelp />)
+      },
+      category: "System",
+    },
+    {
+      title: "List themes",
+      value: "theme.list",
+      keybind: "theme_list",
+      slash: {
+        name: "themes",
+      },
+      onSelect: () => {
+        dialog.replace(() => <DialogTheme />)
       },
       category: "System",
     },

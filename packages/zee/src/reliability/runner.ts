@@ -443,6 +443,32 @@ function isGatewayRunning(health: any): boolean {
   return health?.gateway?.running === true
 }
 
+/**
+ * Re-poll dist health until its memory/gateway state matches the source
+ * snapshot (or timeout). The source daemon is already stopped by the time
+ * dist is compared, so a single-shot read races dist lag — most visible on
+ * slow Windows runners where gateway startup trails by seconds.
+ */
+async function waitForDistParity(distPort: number, sourceHealth: any, timeoutMs: number): Promise<any> {
+  const wantMemory = String(sourceHealth?.memory?.status ?? "unknown")
+  const wantGateway = isGatewayRunning(sourceHealth)
+  const deadline = Date.now() + timeoutMs
+  let last: any = null
+  while (Date.now() < deadline) {
+    const remaining = Math.max(1, deadline - Date.now())
+    try {
+      last = await waitForHttpJson(`http://127.0.0.1:${distPort}/global/health`, remaining, 500, 8_000)
+    } catch {
+      break
+    }
+    const memoryOk = String(last?.memory?.status ?? "unknown") === wantMemory
+    const gatewayOk = isGatewayRunning(last) === wantGateway
+    if (memoryOk && gatewayOk) break
+    await sleep(1_000)
+  }
+  return last
+}
+
 function describeGatewayHealth(health: any): string {
   const gateway = health?.gateway
   if (!gateway || typeof gateway !== "object") {
@@ -736,10 +762,13 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
         // Windows runners cold-start `bun run src/index.ts` slowly (transpile
         // + AV scanning); the default 15s budget flakes there. 60s still
         // fails fast on a genuinely dead daemon.
+        await appendText(ctx.stageLogPath, "### source-health-wait\n")
         sourceHealth = await waitForDaemonFullHealth(sourcePort, 60_000, { waitForGatewayEnabled: true })
+        await appendText(ctx.stageLogPath, "### source-health-ok\n")
         sourceGatewaySummary = describeGatewayHealth(sourceHealth)
         if (isGatewayRunning(sourceHealth)) {
           sourceChannels = await waitForHttpJson(`http://127.0.0.1:${sourcePort}/gateway/channels/status`, 20_000)
+          await appendText(ctx.stageLogPath, "### source-channels-ok\n")
         }
       },
     )),
@@ -768,7 +797,12 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
         timeoutMs: 60_000,
       },
       async () => {
+        await appendText(ctx.stageLogPath, "### dist-spawned\n")
         distHealth = await waitForDaemonFullHealth(distPort, 60_000, { waitForGatewayEnabled: true })
+        await appendText(ctx.stageLogPath, "### dist-health-ok\n")
+        const settled = await waitForDistParity(distPort, sourceHealth, 45_000)
+        if (settled) distHealth = settled
+        await appendText(ctx.stageLogPath, "### dist-settled\n")
         distGatewaySummary = describeGatewayHealth(distHealth)
         if (isGatewayRunning(distHealth)) {
           distChannels = await waitForHttpJson(`http://127.0.0.1:${distPort}/gateway/channels/status`, 20_000)

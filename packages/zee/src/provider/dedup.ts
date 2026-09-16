@@ -26,8 +26,8 @@ function parseClaudeModel(id: string): ParsedModel | null {
   const dated = dateMatch ? dateMatch[1] : null
   const cleanID = id.replace(DATE_PATTERN, "").replace(/-latest$/, "")
 
-  // New format: claude-{type}-{major}-{minor} (e.g., claude-opus-4-5)
-  const newFormat = cleanID.match(/^claude-(opus|sonnet|haiku)-(\d+)-(\d+)$/)
+  // New format: claude-{type}-{major}-{minor} (e.g., claude-opus-4-5, claude-fable-5)
+  const newFormat = cleanID.match(/^claude-(opus|sonnet|haiku|fable)-(\d+)-(\d+)$/)
   if (newFormat) {
     const [, type, major, minor] = newFormat
     return { family: `claude-${type}`, version: parseFloat(`${major}.${minor}`), dated, isLatest }
@@ -48,7 +48,7 @@ function parseClaudeModel(id: string): ParsedModel | null {
   }
 
   // New format without minor: claude-{type}-{major} (e.g., claude-opus-4)
-  const newFormatNoMinor = cleanID.match(/^claude-(opus|sonnet|haiku)-(\d+)$/)
+  const newFormatNoMinor = cleanID.match(/^claude-(opus|sonnet|haiku|fable)-(\d+)$/)
   if (newFormatNoMinor) {
     const [, type, major] = newFormatNoMinor
     return { family: `claude-${type}`, version: parseFloat(major), dated, isLatest }

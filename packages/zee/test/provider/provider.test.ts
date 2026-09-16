@@ -138,7 +138,7 @@ test("model whitelist filters models for provider", async () => {
   })
 })
 
-test("anthropic provider is forced to opus 4.6", async () => {
+test("anthropic provider is limited to the approved catalog", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
@@ -158,8 +158,21 @@ test("anthropic provider is forced to opus 4.6", async () => {
       const providers = await Provider.list()
       const modelIDs = Object.keys(providers["anthropic"].models)
 
+      const allowed = new Set([
+        "claude-opus-4-6",
+        "claude-opus-4-7",
+        "claude-opus-4-8",
+        "claude-opus-5",
+        "claude-sonnet-4-6",
+        "claude-sonnet-5",
+        "claude-fable-5",
+        "claude-haiku-4-5",
+      ])
       expect(modelIDs).toContain("claude-opus-4-6")
-      expect(modelIDs).toHaveLength(1)
+      expect(modelIDs.length).toBeGreaterThan(0)
+      for (const modelID of modelIDs) {
+        expect(allowed.has(modelID)).toBe(true)
+      }
       expect(modelIDs).not.toContain("claude-sonnet-4-5")
       expect(modelIDs).not.toContain("claude-opus-4-6@default")
       expect(modelIDs).not.toContain("claude-opus-4.6")
@@ -167,7 +180,7 @@ test("anthropic provider is forced to opus 4.6", async () => {
   })
 })
 
-test("xai provider is limited to grok 4.20 beta variants", async () => {
+test("xai provider is limited to GA grok variants", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
@@ -187,9 +200,12 @@ test("xai provider is limited to grok 4.20 beta variants", async () => {
       const providers = await Provider.list()
       expect(providers["xai"]).toBeDefined()
       const allowed = new Set([
-        "grok-4.20-experimental-beta-0304-reasoning",
-        "grok-4.20-experimental-beta-0304-non-reasoning",
-        "grok-4.20-multi-agent-experimental-beta-0304",
+        "grok-4.20-0309-reasoning",
+        "grok-4.20-0309-non-reasoning",
+        "grok-4.20-multi-agent-0309",
+        "grok-4.3",
+        "grok-4.5",
+        "grok-4.6",
       ])
       for (const modelID of Object.keys(providers["xai"].models)) {
         expect(allowed.has(modelID)).toBe(true)
@@ -198,7 +214,7 @@ test("xai provider is limited to grok 4.20 beta variants", async () => {
   })
 })
 
-test("minimax provider is limited to MiniMax-M2.5", async () => {
+test("minimax provider is limited to the approved catalog", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
@@ -218,9 +234,16 @@ test("minimax provider is limited to MiniMax-M2.5", async () => {
       const providers = await Provider.list()
       expect(providers["minimax"]).toBeDefined()
       const models = Object.keys(providers["minimax"].models)
+      const allowed = new Set([
+        "MiniMax-M2.5",
+        "MiniMax-M2.5-highspeed",
+        "MiniMax-M2.7",
+        "MiniMax-M2.7-highspeed",
+        "MiniMax-M3",
+      ])
       expect(models).toContain("MiniMax-M2.5")
       for (const modelID of models) {
-        expect(modelID).toBe("MiniMax-M2.5")
+        expect(allowed.has(modelID)).toBe(true)
       }
     },
   })
@@ -322,7 +345,15 @@ test("glm provider keeps only requested model IDs", async () => {
     fn: async () => {
       const providers = await Provider.list()
       const models = Object.keys(providers["zai-coding-plan"].models)
-      const allowed = new Set(["glm-4.7", "glm-4.7-flash", "glm-5"])
+      const allowed = new Set([
+        "glm-4.7",
+        "glm-5-turbo",
+        "glm-5.2",
+        "glm-5.2-highspeed",
+        "glm-5.3",
+        "glm-5.3-flash",
+        "glm-5.3-highspeed",
+      ])
       expect(models.length).toBeGreaterThan(0)
       for (const modelID of models) {
         expect(allowed.has(modelID)).toBe(true)
@@ -331,7 +362,7 @@ test("glm provider keeps only requested model IDs", async () => {
   })
 })
 
-test("openai provider is limited to the approved GPT-5 catalog", async () => {
+test("openai provider is limited to the approved catalog", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
@@ -351,7 +382,22 @@ test("openai provider is limited to the approved GPT-5 catalog", async () => {
       const providers = await Provider.list()
       expect(providers["openai"]).toBeDefined()
       const models = Object.keys(providers["openai"].models)
-      const allowed = new Set(["gpt-5.2", "gpt-5.3-codex", "gpt-5.3-codex-spark", "gpt-5.4"])
+      const allowed = new Set([
+        "gpt-5.2",
+        "gpt-5.3-codex",
+        "gpt-5.3-codex-spark",
+        "gpt-5.4",
+        "gpt-5.4-pro",
+        "gpt-5.4-mini",
+        "gpt-5.4-nano",
+        "gpt-5.5",
+        "gpt-5.5-pro",
+        "gpt-5.6",
+        "gpt-5.6-luna",
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-6-astra",
+      ])
       expect(models).toContain("gpt-5.4")
       for (const modelID of models) {
         expect(allowed.has(modelID)).toBe(true)
@@ -1153,7 +1199,7 @@ test("getSmallModel returns appropriate small model", async () => {
     fn: async () => {
       const model = await Provider.getSmallModel("anthropic")
       expect(model).toBeDefined()
-      expect(model?.id).toBe("claude-opus-4-6")
+      expect(model?.id).toBe("claude-haiku-4-5")
     },
   })
 })

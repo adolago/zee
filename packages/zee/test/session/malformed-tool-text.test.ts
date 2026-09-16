@@ -184,7 +184,9 @@ describe("session.malformed-tool-text", () => {
     expect(reminder).toContain("[MALFORMED TOOL OUTPUT]")
   })
 
-  test("auto-retries malformed GPT-5 pseudo-tool output and hides it from follow-up context", async () => {
+  test(
+    "auto-retries malformed GPT-5 pseudo-tool output and hides it from follow-up context",
+    async () => {
     process.env.OPENAI_API_KEY = "test-key"
     await using tmp = await tmpdir({
       git: true,
@@ -230,5 +232,10 @@ describe("session.malformed-tool-text", () => {
         expect(serializedMessages).not.toContain('to=glob {"pattern":"*"}')
       },
     })
-  })
+  },
+  // Full session loop with mocked LLM consistently takes ~5s on loaded
+  // runners; the 5s bun default flakes. Matches retry.test.ts precedent.
+  15_000,
+  )
 })
+

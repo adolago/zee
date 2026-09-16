@@ -139,6 +139,7 @@ export function DialogModel(props: { providerID?: string }) {
 
   const title = createMemo(() => {
     if (provider()) return provider()!.name
+    if (options().length === 0) return "No models available — connect a provider"
     return "Select model (session)"
   })
 

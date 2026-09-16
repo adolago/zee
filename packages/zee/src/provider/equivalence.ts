@@ -21,23 +21,27 @@ export namespace ModelEquivalence {
    */
   const DEFAULT_TIERS: Record<Tier, string[]> = {
     flagship: [
-      "anthropic/claude-opus-4-5",
-      "anthropic/claude-opus-4",
+      "anthropic/claude-opus-5",
+      "anthropic/claude-opus-4-8",
+      "anthropic/claude-opus-4-7",
+      "anthropic/claude-opus-4-6",
+      "openai/gpt-6-astra",
+      "openai/gpt-5.6",
+      "openai/gpt-5.5",
+      "openai/gpt-5.4",
       "openai/gpt-5",
-      "openai/o3",
     ],
     standard: [
-      "anthropic/claude-sonnet-4",
-      "anthropic/claude-sonnet-3-5",
-      "openai/gpt-4.1",
-      "openai/gpt-4o",
+      "anthropic/claude-sonnet-5",
+      "anthropic/claude-sonnet-4-6",
+      "anthropic/claude-sonnet-4-5",
+      "openai/gpt-5.4-mini",
+      "openai/gpt-5-mini",
     ],
     fast: [
-      "anthropic/claude-haiku-4",
-      "anthropic/claude-haiku-3-5",
-      "anthropic/claude-haiku-3",
-      "openai/gpt-4.1-mini",
-      "openai/gpt-4o-mini",
+      "anthropic/claude-haiku-4-5",
+      "openai/gpt-5.4-nano",
+      "openai/gpt-5-nano",
     ],
   }
 
@@ -105,20 +109,49 @@ export namespace ModelEquivalence {
    * @returns The tier, or undefined if model isn't in any tier
    */
   export function getTier(model: string): Tier | undefined {
-    for (const [tier, models] of Object.entries(customTiers) as [Tier, string[]][]) {
-      for (const pattern of models) {
-        if (matchesPattern(model, pattern)) {
-          return tier
+    const tiers = Object.entries(customTiers) as [Tier, string[]][]
+    const match = (exactOnly: boolean) => {
+      for (const [tier, models] of tiers) {
+        for (const pattern of models) {
+          if (exactOnly ? isExactMatch(model, pattern) : matchesPattern(model, pattern)) {
+            return tier
+          }
         }
       }
+      return undefined
     }
+    // Exact tier entries win over prefix matches: otherwise a flagship entry
+    // like openai/gpt-5.4 also matches openai/gpt-5.4-mini and the standard
+    // mapping is unreachable.
+    return match(true) ?? match(false) ?? inferTier(model)
+  }
 
+  function isExactMatch(model: string, pattern: string): boolean {
+    return normalizeModelID(model) === normalizeModelID(pattern)
+  }
+
+  function inferTier(model: string): Tier | undefined {
     // Try to infer tier from model name patterns
     const lower = model.toLowerCase()
-    if (lower.includes("opus") || lower.includes("gpt-5") || lower.includes("o3") || lower.includes("pro")) {
+    if (
+      lower.includes("opus") ||
+      lower.includes("fable") ||
+      lower.includes("gpt-6") ||
+      lower.includes("gpt-5") ||
+      lower.includes("o3") ||
+      lower.includes("pro") ||
+      lower.includes("muse")
+    ) {
       return "flagship"
     }
-    if (lower.includes("sonnet") || lower.includes("4o") || lower.includes("4.1") || lower.includes("flash")) {
+    if (
+      lower.includes("sonnet") ||
+      lower.includes("4o") ||
+      lower.includes("4.1") ||
+      lower.includes("flash") ||
+      lower.includes("kimi-k2") ||
+      lower.includes("glm-5")
+    ) {
       return "standard"
     }
     // "fast" tier now includes models previously in "mini"

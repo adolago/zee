@@ -171,17 +171,23 @@ export namespace Auth {
   }
 
   /**
-   * Proactively refresh all OAuth tokens that are expiring soon
+   * Proactively refresh all OAuth tokens that are expiring soon.
+   * Providers without a refresh configuration are reported in needsLogin
+   * instead of being silently skipped, so callers can prompt re-login.
    */
-  export async function refreshAllExpiring(): Promise<{ refreshed: string[]; failed: string[] }> {
+  export async function refreshAllExpiring(): Promise<{ refreshed: string[]; failed: string[]; needsLogin: string[] }> {
     const allAuth = await all()
     const refreshed: string[] = []
     const failed: string[] = []
+    const needsLogin: string[] = []
 
     for (const [providerID, auth] of Object.entries(allAuth)) {
       if (auth.type !== "oauth") continue
       if (!isExpiringSoon(auth)) continue
-      if (!OAUTH_REFRESH_CONFIG[providerID]) continue
+      if (!OAUTH_REFRESH_CONFIG[providerID]) {
+        needsLogin.push(providerID)
+        continue
+      }
 
       const success = await refreshToken(providerID)
       if (success) {
@@ -194,8 +200,14 @@ export namespace Auth {
     if (refreshed.length > 0 || failed.length > 0) {
       log.info("proactive token refresh complete", { refreshed, failed })
     }
+    if (needsLogin.length > 0) {
+      log.warn("oauth providers need manual re-login (no refresh flow)", {
+        providers: needsLogin,
+        hint: "run zee auth login <provider>",
+      })
+    }
 
-    return { refreshed, failed }
+    return { refreshed, failed, needsLogin }
   }
 
   /**
