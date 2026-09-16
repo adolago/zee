@@ -762,10 +762,13 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
         // Windows runners cold-start `bun run src/index.ts` slowly (transpile
         // + AV scanning); the default 15s budget flakes there. 60s still
         // fails fast on a genuinely dead daemon.
+        await appendText(ctx.stageLogPath, "### source-health-wait\n")
         sourceHealth = await waitForDaemonFullHealth(sourcePort, 60_000, { waitForGatewayEnabled: true })
+        await appendText(ctx.stageLogPath, "### source-health-ok\n")
         sourceGatewaySummary = describeGatewayHealth(sourceHealth)
         if (isGatewayRunning(sourceHealth)) {
           sourceChannels = await waitForHttpJson(`http://127.0.0.1:${sourcePort}/gateway/channels/status`, 20_000)
+          await appendText(ctx.stageLogPath, "### source-channels-ok\n")
         }
       },
     )),
@@ -794,9 +797,12 @@ async function stageSourceVsDistParity(ctx: StageInternalContext): Promise<Relia
         timeoutMs: 60_000,
       },
       async () => {
+        await appendText(ctx.stageLogPath, "### dist-spawned\n")
         distHealth = await waitForDaemonFullHealth(distPort, 60_000, { waitForGatewayEnabled: true })
+        await appendText(ctx.stageLogPath, "### dist-health-ok\n")
         const settled = await waitForDistParity(distPort, sourceHealth, 45_000)
         if (settled) distHealth = settled
+        await appendText(ctx.stageLogPath, "### dist-settled\n")
         distGatewaySummary = describeGatewayHealth(distHealth)
         if (isGatewayRunning(distHealth)) {
           distChannels = await waitForHttpJson(`http://127.0.0.1:${distPort}/gateway/channels/status`, 20_000)

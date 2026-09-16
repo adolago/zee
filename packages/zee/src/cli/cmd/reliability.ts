@@ -40,6 +40,11 @@ const ReliabilityRunCommand = cmd({
         describe: "Override long-soak duration in minutes",
       }),
   handler: async (args: ReliabilityRunArgs) => {
+    // Surface silent deaths (unhandled rejections kill the suite with no
+    // stage error recorded, which hides the cause from CI artifacts).
+    process.on("unhandledRejection", (reason) => {
+      console.error(`[reliability] unhandled rejection: ${String(reason)}`)
+    })
     const profile = (args.profile ?? "alpha") as ReliabilityProfile
     const report = await runReliabilitySuite({
       profile,
