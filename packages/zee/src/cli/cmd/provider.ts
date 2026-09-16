@@ -14,7 +14,7 @@ const ProviderDiagnoseCommand = cmd({
   describe: "diagnose filtering for a specific model (provider/model format)",
   builder: (yargs: Argv) => {
     return yargs.positional("model", {
-      describe: "model in provider/model format (e.g. anthropic/claude-opus-4-5)",
+      describe: "model in provider/model format (e.g. anthropic/claude-opus-4-8)",
       type: "string",
       demandOption: true,
     })
@@ -26,7 +26,7 @@ const ProviderDiagnoseCommand = cmd({
         const input = args.model as string
         const slash = input.indexOf("/")
         if (slash === -1) {
-          UI.error("Model must be in provider/model format (e.g. anthropic/claude-opus-4-5)")
+          UI.error("Model must be in provider/model format (e.g. anthropic/claude-opus-4-8)")
           return
         }
         const providerID = input.slice(0, slash)

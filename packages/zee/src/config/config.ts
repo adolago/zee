@@ -893,11 +893,6 @@ export namespace Config {
       session_delete: z.string().optional().default("<leader>d").describe("Delete session"),
       stash_delete: z.string().optional().default("<leader>shift+x").describe("Delete stash entry"),
       model_provider_list: z.string().optional().default("<leader>p").describe("Open provider list from model dialog"),
-      session_delegate: z
-        .string()
-        .optional()
-        .default("<leader>shift+d")
-        .describe("Deprecated (delegation selector removed; Zee is the only assistant)"),
       session_interrupt: z.string().optional().default("escape").describe("Interrupt current session"),
       session_compact: z.string().optional().default("<leader>shift+c").describe("Compact the session"),
       messages_page_up: z.string().optional().default("pageup,ctrl+alt+b").describe("Scroll messages up by one page"),
@@ -940,7 +935,7 @@ export namespace Config {
         .describe("Toggle session scrollbar visibility"),
       model_list: z.string().optional().default("<leader>m").describe("List available models"),
       model_fallback_toggle: z.string().optional().default("f3").describe("Toggle between primary and fallback model"),
-      model_favorite_toggle: z.string().optional().default("ctrl+f").describe("Toggle current model as favorite"),
+      model_favorite_toggle: z.string().optional().default("<leader>f").describe("Toggle current model as favorite"),
       model_cycle_favorite: z.string().optional().default("f2").describe("Cycle to next favorite model"),
       model_cycle_favorite_reverse: z
         .string()
@@ -948,13 +943,6 @@ export namespace Config {
         .default("shift+f2")
         .describe("Cycle to previous favorite model"),
       command_list: z.string().optional().default("<leader>c").describe("List available commands"),
-      agent_list: z
-        .string()
-        .optional()
-        .default("<leader>a")
-        .describe("Deprecated (agent switching removed; Zee is the only assistant)"),
-      agent_cycle: z.string().optional().default("tab").describe("Deprecated (agent switching removed)"),
-      agent_cycle_reverse: z.string().optional().default("none").describe("Deprecated (agent switching removed)"),
       mode_toggle: z.string().optional().default("<leader>h").describe("Toggle plan/accept mode"),
       mode_cycle: z.string().optional().default("shift+tab").describe("Cycle mode (plan/accept/bypass)."),
       variant_cycle: z.string().optional().default("<leader>v").describe("Cycle model variants"),
@@ -1054,7 +1042,6 @@ export namespace Config {
       session_child_cycle: z.string().optional().default("<leader>right").describe("Next child session"),
       session_child_cycle_reverse: z.string().optional().default("<leader>left").describe("Previous child session"),
       session_parent: z.string().optional().default("<leader>up").describe("Go to parent session"),
-      tips_toggle: z.string().optional().default("<leader>?").describe("Toggle tips on home screen"),
       // Vim mode keybinds
       vim_normal_mode: z.string().optional().default("escape").describe("Enter vim normal mode from insert mode"),
       vim_insert_mode: z.string().optional().default("i").describe("Enter vim insert mode"),

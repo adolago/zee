@@ -158,6 +158,20 @@ export namespace McpOAuthCallback {
     }
   }
 
+  /**
+   * Settle a pending authorization with a manually pasted code (headless
+   * flows where the browser cannot be opened). Returns false when there is
+   * no pending authorization for the state.
+   */
+  export function resolvePending(oauthState: string, code: string): boolean {
+    const pending = pendingAuths.get(oauthState)
+    if (!pending) return false
+    clearTimeout(pending.timeout)
+    pendingAuths.delete(oauthState)
+    pending.resolve(code)
+    return true
+  }
+
   export async function isPortInUse(): Promise<boolean> {
     return new Promise((resolve) => {
       Bun.connect({

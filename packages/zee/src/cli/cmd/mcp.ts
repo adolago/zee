@@ -253,12 +253,26 @@ export const McpAuthCommand = cmd({
         spinner.start("Starting OAuth flow...")
 
         try {
-          const status = await MCP.authenticate(serverName, (url) => {
-            spinner.stop("Could not open browser automatically")
-            prompts.log.warn("Please open this URL in your browser to authenticate:")
-            prompts.log.info(url)
-            spinner.start("Waiting for authorization...")
-          })
+          const status = await MCP.authenticate(
+            serverName,
+            (url) => {
+              prompts.log.info("Open this URL in your browser to authenticate:")
+              prompts.log.info(url)
+            },
+            async () => {
+              // Headless/SSH: let the user paste the code instead of hanging.
+              spinner.stop("Browser unavailable")
+              prompts.log.warn("Could not open a browser automatically.")
+              const pasted = await prompts.text({
+                message: "Paste the authorization code or the full redirect URL (empty to keep waiting):",
+              })
+              if (prompts.isCancel(pasted) || !pasted.toString().trim()) {
+                spinner.start("Waiting for authorization...")
+                return null
+              }
+              return pasted.toString()
+            },
+          )
 
           if (status.status === "connected") {
             spinner.stop("Authentication successful!")

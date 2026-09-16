@@ -20,7 +20,6 @@ export type KeybindsConfig = SDKKeybindsConfig & {
   mode_cycle?: string
   input_dictation_toggle?: string
   input_dictation_hold?: string
-  session_delegate?: string
   session_delete?: string
   stash_delete?: string
   messages_line_up?: string

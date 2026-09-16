@@ -1,4 +1,4 @@
-import { createMemo, createSignal, onMount, Show } from "solid-js"
+import { createMemo, createSignal, onCleanup, onMount, Show } from "solid-js"
 import { useSync } from "@tui/context/sync"
 import { map, pipe, sortBy } from "remeda"
 import { DialogSelect } from "@tui/ui/dialog-select"
@@ -199,11 +199,16 @@ function AutoMethod(props: AutoMethodProps) {
   })
 
   onMount(async () => {
+    let cancelled = false
+    onCleanup(() => {
+      cancelled = true
+    })
     const result = await sdk.client.provider.oauth.callback({
       providerID: props.providerID,
       method: props.index,
       ...(props.requestId ? { requestId: props.requestId } : {}),
     } as any)
+    if (cancelled) return
     if (result.error) {
       dialog.clear()
       return

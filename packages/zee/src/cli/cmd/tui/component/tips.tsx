@@ -4,7 +4,7 @@ import { useTerminalDimensions } from "@opentui/solid"
 import type { JSX } from "solid-js"
 
 const themeCount = Object.keys(DEFAULT_THEMES).length
-const themeTip = `Theme is fixed to {highlight}Selenized Dark{/highlight} (${themeCount} built-in theme).`
+const themeTip = `Press {highlight}Space Shift+T{/highlight} or {highlight}:themes{/highlight} to switch themes ({themeCount} built-in, Selenized Dark default).`
 
 type TipPart = { text: string; highlight: boolean }
 

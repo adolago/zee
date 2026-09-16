@@ -2496,12 +2496,40 @@ export namespace MCP {
   }
 
   /**
+   * Extract an authorization code from pasted headless input: either the raw
+   * code or the full IdP redirect URL (validating its state parameter).
+   */
+  export function extractPastedAuthorizationCode(pasted: string, oauthState: string): string | null {
+    const text = pasted.trim()
+    if (!text) return null
+    try {
+      const url = new URL(text)
+      const state = url.searchParams.get("state")
+      if (state && state !== oauthState) {
+        throw new Error("OAuth state mismatch - potential CSRF attack")
+      }
+      return url.searchParams.get("code")
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("state mismatch")) throw error
+      // Not a URL: treat the pasted text as the raw code.
+      return text
+    }
+  }
+
+  /**
    * Complete OAuth authentication after user authorizes in browser.
    * Opens the browser and waits for callback. The optional onAuthorization
    * callback fires with the URL as soon as the callback listener is
    * registered, so callers can display it without waiting for completion.
+   * The optional requestCode is invoked when the browser cannot be opened
+   * (headless/SSH); it should return a pasted authorization code or
+   * redirect URL, or null to keep waiting for the browser callback.
    */
-  export async function authenticate(mcpName: string, onAuthorization?: (url: string) => void): Promise<Status> {
+  export async function authenticate(
+    mcpName: string,
+    onAuthorization?: (url: string) => void,
+    requestCode?: () => Promise<string | null>,
+  ): Promise<Status> {
     const { authorizationUrl } = await startAuth(mcpName)
 
     if (!authorizationUrl) {
@@ -2532,9 +2560,18 @@ export namespace MCP {
     const openResult = await openExternalUrl(safeUrl, { errorCheckDelayMs: 500 })
     if (!openResult.ok) {
       // Browser opening failed (e.g., in remote/headless sessions like SSH, devcontainers)
-      // Emit event so CLI can display the URL for manual opening
+      // Emit event so external listeners can display the URL for manual opening
       log.warn("failed to open browser, user must open URL manually", { mcpName, error: openResult.error })
       Bus.publish(BrowserOpenFailed, { mcpName, url: safeUrl })
+      if (requestCode) {
+        const pasted = await requestCode()
+        const code = pasted ? extractPastedAuthorizationCode(pasted, oauthState) : null
+        if (code) {
+          McpOAuthCallback.resolvePending(oauthState, code)
+          await McpAuth.clearOAuthState(mcpName)
+          return finishAuth(mcpName, code)
+        }
+      }
     }
 
     // Wait for callback using the already-registered promise

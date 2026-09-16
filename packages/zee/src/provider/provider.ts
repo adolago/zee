@@ -52,15 +52,56 @@ export namespace Provider {
   ])
 
   const HARDCODED_MODEL_ALLOWLIST: Record<string, Set<string>> = {
-    anthropic: new Set(["claude-opus-4-6"]),
-    "zai-coding-plan": new Set(["glm-4.7", "glm-4.7-flash", "glm-5"]),
-    minimax: new Set(["MiniMax-M2.5"]),
-    xai: new Set([
-      "grok-4.20-experimental-beta-0304-reasoning",
-      "grok-4.20-experimental-beta-0304-non-reasoning",
-      "grok-4.20-multi-agent-experimental-beta-0304",
+    anthropic: new Set([
+      "claude-opus-4-6",
+      "claude-opus-4-7",
+      "claude-opus-4-8",
+      "claude-opus-5",
+      "claude-sonnet-4-6",
+      "claude-sonnet-5",
+      "claude-fable-5",
+      "claude-haiku-4-5",
     ]),
-    openai: new Set(["gpt-5.2", "gpt-5.3-codex", "gpt-5.3-codex-spark", "gpt-5.4"]),
+    "zai-coding-plan": new Set([
+      "glm-4.7",
+      "glm-5-turbo",
+      "glm-5.2",
+      "glm-5.2-highspeed",
+      "glm-5.3",
+      "glm-5.3-flash",
+      "glm-5.3-highspeed",
+    ]),
+    minimax: new Set([
+      "MiniMax-M2.5",
+      "MiniMax-M2.5-highspeed",
+      "MiniMax-M2.7",
+      "MiniMax-M2.7-highspeed",
+      "MiniMax-M3",
+    ]),
+    xai: new Set([
+      "grok-4.20-0309-reasoning",
+      "grok-4.20-0309-non-reasoning",
+      "grok-4.20-multi-agent-0309",
+      "grok-4.3",
+      "grok-4.5",
+      "grok-4.6",
+    ]),
+    openai: new Set([
+      "gpt-5.2",
+      "gpt-5.3-codex",
+      "gpt-5.3-codex-spark",
+      "gpt-5.4",
+      "gpt-5.4-pro",
+      "gpt-5.4-mini",
+      "gpt-5.4-nano",
+      "gpt-5.5",
+      "gpt-5.5-pro",
+      "gpt-5.6",
+      "gpt-5.6-luna",
+      "gpt-5.6-sol",
+      "gpt-5.6-terra",
+      "gpt-6-astra",
+    ]),
   }
 
   const HARDCODED_MODEL_ALLOW_FILTERS: Record<string, (modelID: string) => boolean> = {}
@@ -230,12 +271,12 @@ export namespace Provider {
     })
   export type Info = z.infer<typeof Info>
 
-  const XAI_GROK_420_BETA_FALLBACK_MODELS: Record<string, ModelsDev.Model> = {
-    "grok-4.20-experimental-beta-0304-reasoning": {
-      id: "grok-4.20-experimental-beta-0304-reasoning",
-      name: "Grok 4.20 Experimental Beta (Reasoning)",
+  const XAI_GROK_420_GA_FALLBACK_MODELS: Record<string, ModelsDev.Model> = {
+    "grok-4.20-0309-reasoning": {
+      id: "grok-4.20-0309-reasoning",
+      name: "Grok 4.20 (Reasoning)",
       family: "grok-4.20",
-      release_date: "2026-03-04",
+      release_date: "2026-03-09",
       attachment: false,
       reasoning: true,
       temperature: true,
@@ -261,11 +302,11 @@ export namespace Provider {
       },
       options: {},
     },
-    "grok-4.20-experimental-beta-0304-non-reasoning": {
-      id: "grok-4.20-experimental-beta-0304-non-reasoning",
-      name: "Grok 4.20 Experimental Beta (Non-Reasoning)",
+    "grok-4.20-0309-non-reasoning": {
+      id: "grok-4.20-0309-non-reasoning",
+      name: "Grok 4.20 (Non-Reasoning)",
       family: "grok-4.20",
-      release_date: "2026-03-04",
+      release_date: "2026-03-09",
       attachment: false,
       reasoning: false,
       temperature: true,
@@ -291,11 +332,11 @@ export namespace Provider {
       },
       options: {},
     },
-    "grok-4.20-multi-agent-experimental-beta-0304": {
-      id: "grok-4.20-multi-agent-experimental-beta-0304",
-      name: "Grok 4.20 Multi-Agent Experimental Beta",
+    "grok-4.20-multi-agent-0309": {
+      id: "grok-4.20-multi-agent-0309",
+      name: "Grok 4.20 Multi-Agent",
       family: "grok-4.20-multi-agent",
-      release_date: "2026-03-04",
+      release_date: "2026-03-09",
       attachment: false,
       reasoning: true,
       temperature: true,
@@ -333,10 +374,10 @@ export namespace Provider {
       env: ["XAI_API_KEY"],
       api: "https://api.x.ai/v1",
       npm: "@ai-sdk/xai",
-      models: XAI_GROK_420_BETA_FALLBACK_MODELS,
+      models: XAI_GROK_420_GA_FALLBACK_MODELS,
     }
 
-    for (const [modelID, fallback] of Object.entries(XAI_GROK_420_BETA_FALLBACK_MODELS)) {
+    for (const [modelID, fallback] of Object.entries(XAI_GROK_420_GA_FALLBACK_MODELS)) {
       if (provider.models[modelID]) continue
       provider.models[modelID] = fromModelsDevModel(xaiProviderForTransform, fallback)
     }
@@ -669,7 +710,12 @@ export namespace Provider {
 
       for (const [modelID, model] of Object.entries(provider.models)) {
         model.api.id = model.api.id ?? model.id ?? modelID
-        if (modelID === "gpt-5-chat-latest" || (providerID === "openrouter" && modelID === "openai/gpt-5-chat")) {
+        if (
+          modelID === "gpt-5-chat-latest" ||
+          modelID === "gpt-5.2-chat-latest" ||
+          modelID === "gpt-5.3-chat-latest" ||
+          (providerID === "openrouter" && modelID === "openai/gpt-5-chat")
+        ) {
           log.debug("model filtered", { providerID, modelID, reason: "gpt-5-chat exclusion" })
           delete provider.models[modelID]
         }
@@ -952,7 +998,10 @@ export namespace Provider {
         "3.5-haiku",
         "gemini-3-flash",
         "gemini-2.5-flash",
+        "gpt-5.4-nano",
         "gpt-5-nano",
+        "deepseek-v4-flash",
+        "glm-5.3-flash",
       ]
       for (const item of priority) {
         for (const model of Object.keys(provider.models)) {
@@ -976,7 +1025,7 @@ export namespace Provider {
     return undefined
   }
 
-  const priority = ["gpt-5", "claude-sonnet-4", "big-pickle", "gemini-3-pro"]
+  const priority = ["gpt-6", "gpt-5", "claude-opus-5", "claude-opus-4", "claude-sonnet-5", "claude-sonnet-4", "gemini-3-pro"]
   export function sort(models: Model[]) {
     return sortBy(
       models,
