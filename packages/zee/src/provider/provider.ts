@@ -622,6 +622,10 @@ export namespace Provider {
       database[providerID] = parsed
     }
 
+    // Seed the xAI fallback models into the catalog before plugin loaders run, so a
+    // subscription loader (SuperGrok OAuth) can zero their costs like any other xAI model.
+    injectXaiGrok420FallbackModels(database["xai"])
+
     // load env
     const env = Env.all()
     for (const [providerID, provider] of Object.entries(database)) {
@@ -766,7 +770,7 @@ export namespace Provider {
 
       // Deduplicate model versions: keep only the best per family
       // Applies to anthropic, openai, google, xai (providers with registered parsers)
-      if (hasDedupParser(providerID)) {
+      if (hasDedupParser(providerID) && !HARDCODED_MODEL_ALLOWLIST[providerID]) {
         const removedByDedup = dedup(providerID, Object.keys(provider.models))
         for (const modelID of removedByDedup) {
           delete provider.models[modelID]

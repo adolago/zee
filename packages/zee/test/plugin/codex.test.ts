@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import {
   CodexAuthPlugin,
+  isCodexOauthAllowedModel,
   parseJwtClaims,
   extractAccountIdFromClaims,
   extractAccountId,
@@ -32,6 +33,23 @@ function createProvider() {
   return {
     models: {
       "gpt-5.2": {
+        id: "gpt-5.2",
+        cost: {
+          input: 1,
+          output: 1,
+          cache: { read: 1, write: 1 },
+        },
+      },
+      "gpt-5.3-codex": {
+        id: "gpt-5.3-codex",
+        cost: {
+          input: 1,
+          output: 1,
+          cache: { read: 1, write: 1 },
+        },
+      },
+      "gpt-5.3-codex-spark": {
+        id: "gpt-5.3-codex-spark",
         cost: {
           input: 1,
           output: 1,
@@ -39,6 +57,71 @@ function createProvider() {
         },
       },
       "gpt-5.4": {
+        id: "gpt-5.4",
+        cost: {
+          input: 1,
+          output: 1,
+          cache: { read: 1, write: 1 },
+        },
+      },
+      "gpt-5.4-mini": {
+        id: "gpt-5.4-mini",
+        cost: {
+          input: 1,
+          output: 1,
+          cache: { read: 1, write: 1 },
+        },
+      },
+      "gpt-5.5": {
+        id: "gpt-5.5",
+        cost: {
+          input: 1,
+          output: 1,
+          cache: { read: 1, write: 1 },
+        },
+      },
+      "gpt-5.5-pro": {
+        id: "gpt-5.5-pro",
+        cost: {
+          input: 1,
+          output: 1,
+          cache: { read: 1, write: 1 },
+        },
+      },
+      "gpt-5.6": {
+        id: "gpt-5.6",
+        cost: {
+          input: 1,
+          output: 1,
+          cache: { read: 1, write: 1 },
+        },
+      },
+      "gpt-5.6-luna": {
+        id: "gpt-5.6-luna",
+        cost: {
+          input: 1,
+          output: 1,
+          cache: { read: 1, write: 1 },
+        },
+      },
+      "gpt-5.6-sol": {
+        id: "gpt-5.6-sol",
+        cost: {
+          input: 1,
+          output: 1,
+          cache: { read: 1, write: 1 },
+        },
+      },
+      "gpt-5.6-terra": {
+        id: "gpt-5.6-terra",
+        cost: {
+          input: 1,
+          output: 1,
+          cache: { read: 1, write: 1 },
+        },
+      },
+      "gpt-6-astra": {
+        id: "gpt-6-astra",
         cost: {
           input: 1,
           output: 1,
@@ -49,7 +132,37 @@ function createProvider() {
   } as any
 }
 
+function oauthAuth() {
+  return {
+    type: "oauth" as const,
+    access: "access-token",
+    refresh: "refresh-token",
+    expires: Date.now() + 60_000,
+  }
+}
+
 describe("plugin.codex", () => {
+  describe("isCodexOauthAllowedModel", () => {
+    test("keeps ChatGPT Codex models and later GPT generations", () => {
+      expect(isCodexOauthAllowedModel("gpt-5.5")).toBe(true)
+      expect(isCodexOauthAllowedModel("gpt-5.3-codex-spark")).toBe(true)
+      expect(isCodexOauthAllowedModel("gpt-5.4")).toBe(true)
+      expect(isCodexOauthAllowedModel("gpt-5.4-mini")).toBe(true)
+      expect(isCodexOauthAllowedModel("gpt-5.6-luna")).toBe(true)
+      expect(isCodexOauthAllowedModel("gpt-5.6-sol")).toBe(true)
+      expect(isCodexOauthAllowedModel("gpt-5.6-terra")).toBe(true)
+      expect(isCodexOauthAllowedModel("gpt-6-astra")).toBe(true)
+    })
+
+    test("drops retired and unsupported Codex models", () => {
+      expect(isCodexOauthAllowedModel("gpt-5.2")).toBe(false)
+      expect(isCodexOauthAllowedModel("gpt-5.3-codex")).toBe(false)
+      expect(isCodexOauthAllowedModel("gpt-5.5-pro")).toBe(false)
+      expect(isCodexOauthAllowedModel("gpt-5.6")).toBe(false)
+      expect(isCodexOauthAllowedModel("gpt-5.4-pro", { options: { reasoningMode: "pro" } })).toBe(false)
+    })
+  })
+
   describe("CodexAuthPlugin", () => {
     test("loader returns no options when OpenAI auth is missing", async () => {
       const hooks = await CodexAuthPlugin(createPluginInput())
@@ -58,8 +171,45 @@ describe("plugin.codex", () => {
       const result = await hooks.auth!.loader!(async () => undefined, provider)
 
       expect(result).toEqual({})
-      expect(Object.keys(provider.models)).toEqual(["gpt-5.2", "gpt-5.4"])
+      expect(Object.keys(provider.models)).toEqual([
+        "gpt-5.2",
+        "gpt-5.3-codex",
+        "gpt-5.3-codex-spark",
+        "gpt-5.4",
+        "gpt-5.4-mini",
+        "gpt-5.5",
+        "gpt-5.5-pro",
+        "gpt-5.6",
+        "gpt-5.6-luna",
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-6-astra",
+      ])
       expect(provider.models["gpt-5.4"].cost.input).toBe(1)
+    })
+
+    test("loader keeps ChatGPT-supported models and zeros their cost", async () => {
+      const hooks = await CodexAuthPlugin(createPluginInput())
+      const provider = createProvider()
+
+      await hooks.auth!.loader!(async () => oauthAuth(), provider)
+
+      expect(Object.keys(provider.models).sort()).toEqual([
+        "gpt-5.3-codex-spark",
+        "gpt-5.4",
+        "gpt-5.4-mini",
+        "gpt-5.5",
+        "gpt-5.6-luna",
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-6-astra",
+      ])
+      expect(provider.models["gpt-5.5"].cost.input).toBe(0)
+      expect(provider.models["gpt-5.5"].limit).toEqual({
+        context: 400_000,
+        input: 272_000,
+        output: 128_000,
+      })
     })
 
     test("wrapped fetch throws a readable error when OpenAI oauth disappears", async () => {

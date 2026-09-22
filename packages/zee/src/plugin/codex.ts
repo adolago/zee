@@ -11,6 +11,21 @@ const CODEX_API_ENDPOINT = "https://chatgpt.com/backend-api/codex/responses"
 const CODEX_AUTH_MISSING_MESSAGE = "OpenAI OAuth session is no longer available. Run `zee auth login openai` and retry."
 const OAUTH_PORT = 1455
 const OAUTH_POLLING_SAFETY_MARGIN_MS = 3000
+const CODEX_OAUTH_ALLOWED_MODELS = new Set([
+  "gpt-5.5",
+  "gpt-5.3-codex-spark",
+  "gpt-5.4",
+  "gpt-5.4-mini",
+  "gpt-5.6-luna",
+  "gpt-5.6-sol",
+  "gpt-5.6-terra",
+])
+const CODEX_OAUTH_DISALLOWED_MODELS = new Set(["gpt-5.5-pro"])
+const CODEX_OAUTH_GPT55_LIMIT = {
+  context: 400_000,
+  input: 272_000,
+  output: 128_000,
+}
 
 interface PkceCodes {
   verifier: string
@@ -120,6 +135,38 @@ type RawCodexOauthAuth = {
   access?: unknown
   refresh?: unknown
   expires?: unknown
+}
+
+function resolveCodexModelID(modelID: string, model: { api?: { id?: string }; id?: string }): string {
+  return model.api?.id ?? model.id ?? modelID
+}
+
+export function isCodexOauthAllowedModel(
+  modelID: string,
+  model: { api?: { id?: string }; id?: string; options?: Record<string, any> } = {},
+): boolean {
+  if (model.options?.reasoningMode === "pro") return false
+  const id = resolveCodexModelID(modelID, model)
+  if (CODEX_OAUTH_ALLOWED_MODELS.has(id)) return true
+  if (CODEX_OAUTH_DISALLOWED_MODELS.has(id)) return false
+  if (id === "gpt-5.6") return false
+  const match = /^gpt-(\d+)(?:\.(\d+))?/.exec(id)
+  if (!match) return false
+  const major = Number(match[1])
+  const minor = Number(match[2] ?? 0)
+  return major > 5 || (major === 5 && minor > 4)
+}
+
+function applyCodexOauthModel(modelID: string, model: any) {
+  model.cost = {
+    input: 0,
+    output: 0,
+    cache: { read: 0, write: 0 },
+  }
+  const id = resolveCodexModelID(modelID, model)
+  if (id.includes("gpt-5.5") || id.includes("gpt-5.6")) {
+    model.limit = { ...CODEX_OAUTH_GPT55_LIMIT }
+  }
 }
 
 function requireCodexOauthAuth(
@@ -387,21 +434,13 @@ export async function CodexAuthPlugin(input: PluginInput): Promise<Hooks> {
         const auth = requireCodexOauthAuth((await getAuth()) as CodexOauthAuth | undefined, "loader")
         if (!auth) return {}
 
-        // Filter models to the OpenAI OAuth-supported set.
-        const allowedModels = new Set(["gpt-5.2", "gpt-5.3-codex", "gpt-5.3-codex-spark", "gpt-5.4"])
-        for (const modelId of Object.keys(provider.models)) {
-          if (!allowedModels.has(modelId)) {
-            delete provider.models[modelId]
+        for (const modelID of Object.keys(provider.models)) {
+          const model = provider.models[modelID]
+          if (!isCodexOauthAllowedModel(modelID, model)) {
+            delete provider.models[modelID]
+            continue
           }
-        }
-
-        // Zero out costs for Codex (included with ChatGPT subscription)
-        for (const model of Object.values(provider.models)) {
-          model.cost = {
-            input: 0,
-            output: 0,
-            cache: { read: 0, write: 0 },
-          }
+          applyCodexOauthModel(modelID, model)
         }
 
         return {
