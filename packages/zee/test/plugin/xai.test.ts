@@ -8,7 +8,7 @@ function makeJwt(payload: object): string {
   return `${header}.${body}.sig`
 }
 
-function makeInput(opts?: { failSet?: boolean }) {
+function makeInput(opts?: { failSet?: boolean | "result" }) {
   const setCalls: Array<Record<string, unknown>> = []
   return {
     input: {
@@ -16,7 +16,9 @@ function makeInput(opts?: { failSet?: boolean }) {
         auth: {
           set: async (req: Record<string, unknown>) => {
             setCalls.push(req)
+            if (opts?.failSet === "result") return { error: { message: "auth.set boom" } }
             if (opts?.failSet) throw new Error("auth.set boom")
+            return {}
           },
         },
       },
@@ -601,6 +603,16 @@ describe("plugin.xai", () => {
       }
     })
 
+    test("defers to a configured provider.options.apiKey over stored OAuth", async () => {
+      const opts = await (
+        await XaiAuthPlugin(makeInput().input)
+      ).auth!.loader!(
+        async () => ({ type: "oauth", access: "a", refresh: "r", expires: Date.now() + 3600_000 }),
+        { env: ["XAI_API_KEY"], options: { apiKey: "sk-config" }, models: {} } as any,
+      )
+      expect(opts).toEqual({})
+    })
+
     test("zeroes model costs for SuperGrok subscription auth", async () => {
       const provider = {
         env: ["XAI_API_KEY"],
@@ -637,6 +649,22 @@ describe("plugin.xai", () => {
         /could not be saved/,
       )
       expect((setCalls[0].body as any).refresh).toBe("rt-new")
+    })
+
+    test("treats a non-throwing error result from the auth store as a failed save", async () => {
+      const { input } = makeInput({ failSet: "result" })
+      using server = makeServer((request, url) => {
+        if (url.pathname === "/oauth2/token")
+          return Response.json({ access_token: "new-access", refresh_token: "rt-new", expires_in: 3600 })
+        return new Response("{}", { status: 200 })
+      })
+      const opts = await (
+        await XaiAuthPlugin(input, serverOptions(server))
+      ).auth!.loader!(async () => ({ type: "oauth", access: "old", refresh: "rt-old", expires: 0 }), {} as any)
+
+      await expect(opts.fetch!(new URL("/chat/completions", server.url), { headers: {} })).rejects.toThrow(
+        /could not be saved/,
+      )
     })
   })
 
