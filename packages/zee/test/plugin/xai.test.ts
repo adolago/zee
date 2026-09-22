@@ -582,4 +582,62 @@ describe("plugin.xai", () => {
       expect(await ((await headless.authorize!()) as any).callback()).toEqual({ type: "failed" })
     })
   })
+
+  describe("loader precedence and subscription costs", () => {
+    test("defers to an explicit XAI_API_KEY over stored OAuth", async () => {
+      const previous = process.env.XAI_API_KEY
+      process.env.XAI_API_KEY = "sk-env"
+      try {
+        const opts = await (
+          await XaiAuthPlugin(makeInput().input)
+        ).auth!.loader!(
+          async () => ({ type: "oauth", access: "a", refresh: "r", expires: Date.now() + 3600_000 }),
+          { env: ["XAI_API_KEY"], models: {} } as any,
+        )
+        expect(opts).toEqual({})
+      } finally {
+        if (previous === undefined) delete process.env.XAI_API_KEY
+        else process.env.XAI_API_KEY = previous
+      }
+    })
+
+    test("zeroes model costs for SuperGrok subscription auth", async () => {
+      const provider = {
+        env: ["XAI_API_KEY"],
+        models: { "grok-4": { cost: { input: 3, output: 15, cache: { read: 0.75, write: 0 } } } },
+      } as any
+      const previous = process.env.XAI_API_KEY
+      delete process.env.XAI_API_KEY
+      try {
+        const opts = await (
+          await XaiAuthPlugin(makeInput().input)
+        ).auth!.loader!(
+          async () => ({ type: "oauth", access: "a", refresh: "r", expires: Date.now() + 3600_000 }),
+          provider,
+        )
+        expect(opts.apiKey).toBe(OAUTH_DUMMY_KEY)
+        expect(provider.models["grok-4"].cost).toEqual({ input: 0, output: 0, cache: { read: 0, write: 0 } })
+      } finally {
+        if (previous !== undefined) process.env.XAI_API_KEY = previous
+      }
+    })
+
+    test("surfaces a failed save when the refresh token was rotated", async () => {
+      const { input, setCalls } = makeInput({ failSet: true })
+      using server = makeServer((request, url) => {
+        if (url.pathname === "/oauth2/token")
+          return Response.json({ access_token: "new-access", refresh_token: "rt-new", expires_in: 3600 })
+        return new Response("{}", { status: 200 })
+      })
+      const opts = await (
+        await XaiAuthPlugin(input, serverOptions(server))
+      ).auth!.loader!(async () => ({ type: "oauth", access: "old", refresh: "rt-old", expires: 0 }), {} as any)
+
+      await expect(opts.fetch!(new URL("/chat/completions", server.url), { headers: {} })).rejects.toThrow(
+        /could not be saved/,
+      )
+      expect((setCalls[0].body as any).refresh).toBe("rt-new")
+    })
+  })
+
 })

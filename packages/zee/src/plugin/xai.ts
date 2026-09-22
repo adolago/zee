@@ -174,9 +174,17 @@ export async function XaiAuthPlugin(input: PluginInput, options: XaiAuthPluginOp
   return {
     auth: {
       provider: "xai",
-      async loader(getAuth) {
+      async loader(getAuth, provider) {
         const auth = await getAuth()
         if (!auth || auth.type !== "oauth") return {}
+        // An explicitly configured API key wins over a leftover OAuth record.
+        const envKey = (provider?.env ?? []).map((name) => process.env[name]?.trim()).find(Boolean)
+        if (envKey) return {}
+
+        // SuperGrok subscription usage is not pay-as-you-go; do not report models.dev prices as spend.
+        for (const model of Object.values(provider?.models ?? {})) {
+          model.cost = { input: 0, output: 0, cache: { read: 0, write: 0 } }
+        }
 
         let refreshPromise: Promise<RefreshResult> | undefined
 
@@ -197,8 +205,9 @@ export async function XaiAuthPlugin(input: PluginInput, options: XaiAuthPluginOp
                   .then(async (tokens) => {
                     const refreshedExpires = Date.now() + (tokens.expires_in ?? 3600) * 1000
                     const refreshedRefresh = tokens.refresh_token || refreshToken
-                    await input.client.auth
-                      .set({
+                    const rotated = refreshedRefresh !== refreshToken
+                    try {
+                      await input.client.auth.set({
                         path: { id: "xai" },
                         body: {
                           type: "oauth",
@@ -207,7 +216,14 @@ export async function XaiAuthPlugin(input: PluginInput, options: XaiAuthPluginOp
                           expires: refreshedExpires,
                         },
                       })
-                      .catch(() => {})
+                    } catch (err) {
+                      // A rotated refresh token that never reached disk would force a re-login at the
+                      // next refresh, so surface the failure instead of continuing with a dead record.
+                      if (rotated) {
+                        const detail = err instanceof Error ? err.message : String(err)
+                        throw new Error(`xAI refreshed credentials could not be saved: ${detail}`)
+                      }
+                    }
                     return { access: tokens.access_token, refresh: refreshedRefresh, expires: refreshedExpires }
                   })
                   .finally(() => {
