@@ -766,7 +766,7 @@ export namespace Provider {
 
       // Deduplicate model versions: keep only the best per family
       // Applies to anthropic, openai, google, xai (providers with registered parsers)
-      if (hasDedupParser(providerID)) {
+      if (hasDedupParser(providerID) && !HARDCODED_MODEL_ALLOWLIST[providerID]) {
         const removedByDedup = dedup(providerID, Object.keys(provider.models))
         for (const modelID of removedByDedup) {
           delete provider.models[modelID]

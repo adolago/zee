@@ -17,6 +17,7 @@ import { useToast } from "../ui/toast"
 const PROVIDER_PRIORITY: Record<string, number> = {
   anthropic: 0,
   openai: 1,
+  xai: 2,
 }
 
 // Services that aren't AI model providers but can be configured
@@ -79,10 +80,11 @@ export function createDialogProviderOptions() {
         return {
           title: provider.name,
           value: provider.id,
-          description: {
-            anthropic: "(Recommended - Claude Max or API key)",
-            openai: "(ChatGPT Plus/Pro or API key)",
-          }[provider.id],
+            description: {
+              anthropic: "(Recommended - Claude Max or API key)",
+              openai: "(ChatGPT Plus/Pro or API key)",
+              xai: "(SuperGrok or API key)",
+            }[provider.id],
           category: provider.id in PROVIDER_PRIORITY ? "Popular" : "Other",
           footer: isConnected ? "Connected" : undefined,
           async onSelect() {

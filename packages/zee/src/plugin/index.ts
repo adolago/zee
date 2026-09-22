@@ -7,6 +7,7 @@ import { createZeeClient } from "@zee/sdk"
 import { BunProc } from "../bun"
 import { Instance } from "../project/instance"
 import { CodexAuthPlugin } from "./codex"
+import { XaiAuthPlugin } from "./xai"
 import { Session } from "../session"
 import { NamedError } from "@zee/util/error"
 import { KimiAuthPlugin } from "./kimi"
@@ -18,7 +19,7 @@ export namespace Plugin {
   const BUILTIN: string[] = []
 
   // Built-in plugins that are directly imported (not installed from npm)
-  const INTERNAL_PLUGINS: PluginInstance[] = [CodexAuthPlugin, KimiAuthPlugin]
+  const INTERNAL_PLUGINS: PluginInstance[] = [CodexAuthPlugin, KimiAuthPlugin, XaiAuthPlugin]
 
   const state = Instance.state(async () => {
     const { Server } = await import("../server/server")
