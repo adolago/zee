@@ -622,6 +622,10 @@ export namespace Provider {
       database[providerID] = parsed
     }
 
+    // Seed the xAI fallback models into the catalog before plugin loaders run, so a
+    // subscription loader (SuperGrok OAuth) can zero their costs like any other xAI model.
+    injectXaiGrok420FallbackModels(database["xai"])
+
     // load env
     const env = Env.all()
     for (const [providerID, provider] of Object.entries(database)) {
